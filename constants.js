@@ -4320,6 +4320,7 @@ const KEY_ITEMS = {
         name: "Master Ball",
         description: "La Ball ultime. Capture n'importe quel Pokémon à coup sûr.",
         icon: "🟣", // Ou Ⓜ️
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",
         rarity: 'legendary',
         type: 'consumable' // Notez le type si vous voulez l'utiliser plus tard
     }
@@ -5337,14 +5338,14 @@ const ZONES = {
     4: { name: "Forêt de Jade", levelRange: [5, 9], multiplier: 16, maxTier: 25, requiredEpics: 1 },
 
     // AZURIA (Badge 2)
-    5: { name: "Route 3 (Vers Mont)", levelRange: [8, 12], multiplier: 15, maxTier: 30 },
-    6: { name: "Mont Sélénite", levelRange: [10, 15], multiplier: 28, maxTier: 35, requiredBosses: 1 },
-    7: { name: "Route 4 (Sortie)", levelRange: [12, 16], multiplier: 53, maxTier: 40 },
-    8: { name: "Pont Pépite (Route 24)", levelRange: [14, 18], multiplier: 102, maxTier: 45 },
-    9: { name: "Cap d'Azuria (Route 25)", levelRange: [15, 20], multiplier: 25, maxTier: 50 },
+    5: { name: "Route 3 (Vers Mont)", levelRange: [8, 12], multiplier: 32, maxTier: 30 },
+    6: { name: "Mont Sélénite", levelRange: [10, 15], multiplier: 61, maxTier: 35, requiredBosses: 1 },
+    7: { name: "Route 4 (Sortie)", levelRange: [12, 16], multiplier: 110, maxTier: 40 },
+    8: { name: "Pont Pépite (Route 24)", levelRange: [14, 18], multiplier: 187, maxTier: 45 },
+    9: { name: "Cap d'Azuria (Route 25)", levelRange: [15, 20], multiplier: 300, maxTier: 50 },
 
     // CARMIN (Badge 3)
-    10: { name: "Route 5 (Pension)", levelRange: [16, 21], multiplier: 35, maxTier: 55 },
+    10: { name: "Route 5 (Pension)", levelRange: [16, 21], multiplier: 450, maxTier: 55 },
     11: { name: "Route 6 (Sud)", levelRange: [17, 22], multiplier: 50, maxTier: 60 },
     12: { name: "Cave Taupiqueur", levelRange: [18, 25], multiplier: 75, maxTier: 65, requiredEpics: 2 },
     13: { name: "Route 11 (Est)", levelRange: [19, 24], multiplier: 100, maxTier: 70 },

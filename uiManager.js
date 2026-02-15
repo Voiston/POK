@@ -45,24 +45,24 @@ function showFloatingText(text, targetContainer, type = '', isCritical = false) 
     if (!targetContainer) return;
 
     const textElement = document.createElement('div');
-    
+
     // Ajout de la classe critique pour le style
     const critClass = isCritical ? ' ft-crit' : '';
     textElement.className = `floating-text ${type}${critClass}`;
-    
+
     // Contenu : Texte simple + petit indicateur
     let content = text;
     if (isCritical) content = `${text}`;
     else if (type.includes('heal')) content = `+${text}`;
-    
+
     textElement.textContent = content;
 
     // POSITIONNEMENT RESSERRÉ (Moins éparpillé)
-    
+
     // On réduit la zone horizontale : entre -20% et +20% (au lieu de -40/+40)
-    const randomOffset = (Math.random() * 40) - 20; 
+    const randomOffset = (Math.random() * 40) - 20;
     textElement.style.left = `calc(50% + ${randomOffset}%)`;
-    
+
     // On réduit la variation verticale : entre 40px et 60px (au lieu de 40 à 80)
     const randomBottom = 40 + (Math.random() * 20);
     textElement.style.bottom = `${randomBottom}px`;
@@ -147,18 +147,18 @@ async function playCaptureSequence(ballImage, spriteElement, success, shakesCoun
 
         const ball = document.createElement('img');
         ball.src = ballImage;
-        ball.className = 'flying-ball'; 
-        
+        ball.className = 'flying-ball';
+
         // Position
         ball.style.bottom = '10px';
         ball.style.left = '50%';
         ball.style.marginLeft = '-32px';
         ball.style.opacity = '0';
-        
+
         container.appendChild(ball);
 
         // Force Reflow
-        void ball.offsetWidth; 
+        void ball.offsetWidth;
 
         // --- PHASE 1 : LANCER (0.75s) ---
         ball.style.opacity = '1';
@@ -166,11 +166,11 @@ async function playCaptureSequence(ballImage, spriteElement, success, shakesCoun
 
         // --- PHASE 2 : IMPACT (à 750ms) ---
         setTimeout(() => {
-            if(spriteElement) spriteElement.classList.add('absorbed');
-            ball.classList.add('grounded'); 
+            if (spriteElement) spriteElement.classList.add('absorbed');
+            ball.classList.add('grounded');
             ball.classList.remove('anim-throw');
             ball.classList.add('anim-bounce');
-        }, 750); 
+        }, 750);
 
         // --- PHASE 3 : SECOUSSES (à 1350ms) ---
         setTimeout(async () => {
@@ -178,7 +178,7 @@ async function playCaptureSequence(ballImage, spriteElement, success, shakesCoun
                 ball.classList.remove('anim-bounce', 'anim-shake-1', 'anim-shake-2', 'anim-shake-3');
                 void ball.offsetWidth;
                 ball.classList.add(cls);
-                setTimeout(r, 900); 
+                setTimeout(r, 900);
             });
 
             // On joue simplement le nombre de shakes calculés
@@ -192,18 +192,18 @@ async function playCaptureSequence(ballImage, spriteElement, success, shakesCoun
                 const star = document.createElement('div');
                 star.textContent = '✨';
                 star.style.position = 'absolute';
-                star.style.bottom = '60px'; 
+                star.style.bottom = '60px';
                 star.style.left = '50%';
-                star.style.fontSize = '40px'; 
+                star.style.fontSize = '40px';
                 star.style.transform = 'translateX(-50%)';
                 star.style.animation = 'catch-stars 0.5s ease-out forwards';
                 container.appendChild(star);
-                
+
                 setTimeout(() => { resolve(); }, 800);
             } else {
                 ball.classList.add('anim-break');
                 setTimeout(() => {
-                    if(spriteElement) {
+                    if (spriteElement) {
                         spriteElement.classList.remove('absorbed');
                         spriteElement.style.filter = "sepia(1) hue-rotate(-50deg) saturate(3)";
                         setTimeout(() => spriteElement.style.filter = "", 500);
@@ -213,7 +213,7 @@ async function playCaptureSequence(ballImage, spriteElement, success, shakesCoun
                 }, 300);
             }
 
-        }, 1350); 
+        }, 1350);
     });
 }
 
@@ -230,22 +230,22 @@ function getItemIconPath(itemKey) {
     // 1. On regarde dans la constante ALL_ITEMS
     if (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[itemKey]) {
         const item = ALL_ITEMS[itemKey];
-        
+
         // PRIORITÉ 1 : La propriété 'img' (PokeAPI)
         if (item.img) return item.img;
-        
+
         // Compatibilité : Si jamais certains objets utilisent d'autres noms
         if (item.image) return item.image;
         if (item.sprite) return item.sprite;
     }
-    
+
     // 2. Gestion des Œufs (Si pas définis dans ALL_ITEMS)
     if (itemKey.startsWith('egg_')) {
         return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-egg.png";
     }
-    
+
     // 3. Fallback : Si aucune image n'est définie
-    return `assets/items/${itemKey}.png`; 
+    return `assets/items/${itemKey}.png`;
 }
 
 /**
@@ -263,7 +263,7 @@ function getPokemonSpritePath(name, isShiny) {
         if (isShiny && stats.shinySprite) return stats.shinySprite;
         // Sinon sprite normal
         if (!isShiny && stats.sprite) return stats.sprite;
-        
+
         // Parfois on met juste "image" pour le normal
         if (!isShiny && stats.image) return stats.image;
     }
@@ -272,7 +272,7 @@ function getPokemonSpritePath(name, isShiny) {
     if (typeof getPokemonSpriteUrl === 'function') {
         return getPokemonSpriteUrl(name, isShiny);
     }
-    
+
     // 3. Fallback ultime
     return `assets/sprites/${name.toLowerCase()}.png`;
 }
@@ -294,7 +294,7 @@ function getRarityClass(itemKey) {
     if (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[itemKey]) {
         return `rarity-${ALL_ITEMS[itemKey].rarity || 'common'}`;
     }
-    
+
     // 3. Par défaut
     return 'rarity-common';
 }
@@ -543,7 +543,7 @@ function getPokemonSpriteUrl(name, shiny, back = false) {
     const baseUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
     const shinyPath = shiny ? "/shiny" : "";
     const backPath = back ? "/back" : "";
-    
+
     if (typeof POKEMON_SPRITE_IDS !== 'undefined' && POKEMON_SPRITE_IDS[name]) {
         return `${baseUrl}${backPath}${shinyPath}/${POKEMON_SPRITE_IDS[name]}.png`;
     }
@@ -592,7 +592,7 @@ function logMessage(msg) {
 
     const div = document.createElement('div');
     div.className = 'log-entry';
-    
+
     const time = new Date().toLocaleTimeString('fr-FR');
     div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
 
@@ -730,7 +730,7 @@ function updateItemsDisplayUI(game) {
                      onmouseenter="game.scheduleTooltip(event, '${safeName}', '${safeDesc}')" 
                      onmouseleave="game.hideTooltip()"
                      onclick="${clickAction}" 
-                     style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                     style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px;">
                     ${typeIcon}
                     <div class="item-icon">${iconHTML}</div>
                     <div class="item-count">x${count}</div>
@@ -802,8 +802,8 @@ function updateTeamDisplayUI(game) {
             teamList.appendChild(card);
             const triggerEl = card.querySelector('.team-contribution-trigger');
             if (triggerEl) {
-                triggerEl.addEventListener('mouseenter', function(e) { e.stopPropagation(); game.showTeamContributionPopover(i, this); });
-                triggerEl.addEventListener('mouseleave', function() { game.scheduleHidePensionContributionPopover(150); });
+                triggerEl.addEventListener('mouseenter', function (e) { e.stopPropagation(); game.showTeamContributionPopover(i, this); });
+                triggerEl.addEventListener('mouseleave', function () { game.scheduleHidePensionContributionPopover(150); });
             }
         } else {
             const emptySlot = document.createElement('div');
@@ -934,12 +934,13 @@ function updateUpgradesDisplayUI(game) {
 
     if (!game.upgrades) return;
     Object.entries(game.upgrades).forEach(([key, upgrade]) => {
-        const upgradeCard = document.createElement('div');
-        upgradeCard.className = 'upgrade-card';
-
         const cost = game.getUpgradeCost(key);
         const canAfford = game.canAffordUpgrade(key);
         const isMaxLevel = upgrade.level >= upgrade.maxLevel;
+
+        const upgradeCard = document.createElement('div');
+        upgradeCard.className = 'upgrade-card';
+        if (!canAfford && !isMaxLevel) upgradeCard.classList.add('not-affordable');
 
         let currentEffect = "";
         switch (key) {
@@ -976,12 +977,12 @@ function updateUpgradesDisplayUI(game) {
             <div class="upgrade-title">${upgrade.name}</div>
             <div class="upgrade-description">${upgrade.description}</div>
             <div class="upgrade-stats">
-                <div class="upgrade-level">Niveau: ${upgrade.level}/${upgrade.maxLevel}</div>
+                <div class="upgrade-level">Niv. ${upgrade.level}/${upgrade.maxLevel}</div>
                 <div class="upgrade-effect">${upgrade.effect}</div>
             </div>
-            ${currentEffect ? `<div style="font-size: 12px; color: #666; margin-bottom: 10px;">${currentEffect}</div>` : ''}
+            ${currentEffect ? `<div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 10px; font-weight: 600;">${currentEffect}</div>` : ''}
             <div class="upgrade-cost" style="margin-bottom: 15px;">
-                ${isMaxLevel ? 'NIVEAU MAX' : cost + ' Pokedollars'}
+                ${isMaxLevel ? 'NIVEAU MAX' : cost + ' Pokédollars'}
             </div>
             <button class="upgrade-btn" 
                     onclick="game.buyUpgrade('${key}')" 
@@ -1006,9 +1007,6 @@ function updateShopDisplayUI(game) {
 
     if (typeof SHOP_ITEMS === 'undefined') return;
     Object.entries(SHOP_ITEMS).forEach(([key, item]) => {
-        const card = document.createElement('div');
-        card.className = 'shop-item';
-
         let currentCost = item.cost;
         let isMaxed = false;
         let levelInfo = "";
@@ -1029,6 +1027,10 @@ function updateShopDisplayUI(game) {
         }
 
         const canAfford = !isMaxed && game.questTokens >= currentCost;
+
+        const card = document.createElement('div');
+        card.className = 'shop-item';
+        if (!canAfford && !isMaxed) card.classList.add('not-affordable');
 
         let extraInfo = '';
         if (item.type === 'permanent' && item.effect.type === 'permanentXP') {
@@ -1338,8 +1340,14 @@ function updateCombatDisplayUI(game) {
         updateTextContentUI(ui.playerHpText, `${formatNumber(currentHp)} / ${formatNumber(maxHp)}`);
 
         const stats = game.getEffectiveStats();
-        const statsText = `⚔️ ${formatNumber(stats.attack)} | 💥 ${formatNumber(stats.spattack)} | 🛡️ ${formatNumber(stats.defense)} | 💠 ${formatNumber(stats.spdefense)} | 👟 ${formatNumber(stats.speed)}`;
-        if (ui.playerStats && ui.playerStats.innerHTML !== statsText) ui.playerStats.innerHTML = statsText;
+        const statsHTML = `
+            <span>⚔️ ${formatNumber(stats.attack)}</span>
+            <span>💥 ${formatNumber(stats.spattack)}</span>
+            <span>🛡️ ${formatNumber(stats.defense)}</span>
+            <span>💠 ${formatNumber(stats.spdefense)}</span>
+            <span>👟 ${formatNumber(stats.speed)}</span>
+        `;
+        if (ui.playerStats && ui.playerStats.innerHTML !== statsHTML) ui.playerStats.innerHTML = statsHTML;
 
         const pThreshold = creature.actionThreshold || 10000;
         const rawAtbRatio = creature.actionGauge / pThreshold;
@@ -1408,8 +1416,14 @@ function updateCombatDisplayUI(game) {
         updateTransformScaleXUI(ui.enemyATB, Math.min(1, rawEnemyAtb));
         updateTextContentUI(ui.enemyHpText, `${formatNumber(enemy.currentHp)} / ${formatNumber(maxHp)}`);
 
-        const eStatsText = `⚔️ ${formatNumber(enemy.attack)} | 💥 ${formatNumber(enemy.spattack)} | 🛡️ ${formatNumber(enemy.defense)} | 💠 ${formatNumber(enemy.spdefense)} | 👟 ${formatNumber(enemy.speed)}`;
-        if (ui.enemyStats && ui.enemyStats.innerHTML !== eStatsText) ui.enemyStats.innerHTML = eStatsText;
+        const statsHTML = `
+            <span>⚔️ ${formatNumber(enemy.attack)}</span>
+            <span>💥 ${formatNumber(enemy.spattack)}</span>
+            <span>🛡️ ${formatNumber(enemy.defense)}</span>
+            <span>💠 ${formatNumber(enemy.spdefense)}</span>
+            <span>👟 ${formatNumber(enemy.speed)}</span>
+        `;
+        if (ui.enemyStats && ui.enemyStats.innerHTML !== statsHTML) ui.enemyStats.innerHTML = statsHTML;
     } else {
         const placeholderUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png";
         if (ui.enemySprite) {
@@ -1519,7 +1533,7 @@ function showItemSelectModalUI(itemsData, creatureIndex, location) {
         display: flex; justify-content: center; align-items: center;
         backdrop-filter: blur(4px);
     `;
-    modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+    modal.onclick = function (e) { if (e.target === modal) modal.remove(); };
 
     let listHTML = '';
     if (itemsData.length === 0) {
@@ -1531,7 +1545,7 @@ function showItemSelectModalUI(itemsData, creatureIndex, location) {
             </div>
         `;
     } else {
-        itemsData.forEach(function(item) {
+        itemsData.forEach(function (item) {
             listHTML += `
                 <div class="item-select-card"
                      style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;"
@@ -1574,7 +1588,7 @@ function renderCreatureModalContent(data) {
     return `
         <div class="stats-header" style="border: none;">
             <h2 style="margin: 0;">${data.titleLine}</h2>
-            <button class="stats-close" onclick="game.closeCreatureModal()">Fermer</button>
+            <button class="stats-close" onclick="game.closeCreatureModal()">✕</button>
         </div>
         <div class="creature-modal-grid">
             <div class="creature-modal-sprite-wrap">

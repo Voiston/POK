@@ -1,0 +1,16 @@
+/* Fix for malformed arrow characters in sort buttons */
+.sort-btn.active::after {
+    content: " ↓";
+}
+
+.sort-btn.active.asc::after {
+    content: " ↑";
+}
+
+/* Additional Pokedex card improvements */
+.creature-card h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}

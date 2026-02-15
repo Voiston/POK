@@ -73,8 +73,8 @@ const NARRATIVE_FAKE_STARTERS = [
 
 /** Real starters after inflation rant (Chenipan = Weedle, Aspicot = Caterpie). */
 const NARRATIVE_REAL_STARTERS = [
-    { key: 'weedle', name: 'Weedle', displayName: 'Aspicot', spriteId: 13 },
-    { key: 'caterpie', name: 'Caterpie', displayName: 'Chenipan', spriteId: 10 }
+    { key: 'weedle', name: 'Chenipan', displayName: 'Chenipan', spriteId: 13 },
+    { key: 'caterpie', name: 'Caterpie', displayName: 'Aspicot', spriteId: 10 }
 ];
 
 /** Milestone thresholds for totalStats (playerMainStats sum). */
