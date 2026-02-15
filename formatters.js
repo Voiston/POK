@@ -61,11 +61,11 @@ function formatFloatingNumber(num) {
 
 
 /**
- * Génère une clé de shard
+ * Génère une clé de shard (basée sur la famille uniquement)
  */
 function getShardKey(creatureName, rarity) {
     const familyName = EVOLUTION_FAMILIES[creatureName] || creatureName;
-    return familyName + "_" + rarity;
+    return familyName;
 }
 
 // Export global
@@ -73,4 +73,5 @@ window.formatNumber = formatNumber;
 window.formatTime = formatTime;
 window.formatTimeString = formatTimeString;
 window.formatPercentage = formatPercentage;
+window.formatFloatingNumber = formatFloatingNumber;
 window.getShardKey = getShardKey;

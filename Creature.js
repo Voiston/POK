@@ -25,7 +25,7 @@ class Creature {
 		this.heldItem = null;
 		this.berserkStacks = 0;
 		this.prestigeTokens = 0; // Jetons à dépenser
-    this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, speed: 0 }; // Jetons dépensés (1 = +10%)
+    this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, spattack: 0, spdefense: 0, speed: 0 }; // Jetons dépensés (1 = +10%)
    
 		
         const generateWeightedIV = () => {
@@ -34,7 +34,9 @@ class Creature {
 
         this.ivHP = generateWeightedIV();
         this.ivAttack = generateWeightedIV();
+        this.ivSpAttack = generateWeightedIV();
         this.ivDefense = generateWeightedIV();
+        this.ivSpDefense = generateWeightedIV();
         this.ivSpeed = generateWeightedIV();
         
         // Assignation de l'ultime
@@ -70,17 +72,21 @@ class Creature {
         const baseStats = this.getBaseStats();
 		baseStats.hp += this.ivHP;
         baseStats.attack += this.ivAttack;
+        baseStats.spattack += this.ivSpAttack;
         baseStats.defense += this.ivDefense;
+        baseStats.spdefense += this.ivSpDefense;
         baseStats.speed += this.ivSpeed;
         const rarityMultiplier = RARITY_MULTIPLIERS[this.rarity];
         const prestigeMultiplier = 1 + (this.prestige * 0.25);
         const tierMultiplier = this.isEnemy ? Math.pow(1.0033, this.tier) : 1;
-        const shinyMultiplier = this.isShiny ? 1.3 : 1;
+        const shinyMultiplier = this.isShiny ? 1.5 : 1;
         
         this.maxHp = Math.floor(baseStats.hp * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier);
         this.currentHp = this.maxHp;
         this.attack = Math.floor(baseStats.attack * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier);
+        this.spattack = Math.floor(baseStats.spattack * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier);
         this.defense = Math.floor(baseStats.defense * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier);
+        this.spdefense = Math.floor(baseStats.spdefense * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier);
         this.speed = Math.floor(baseStats.speed * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier);
         
         this.maxStamina = 3 + Math.floor(RARITY_STAMINA_BONUS[this.rarity] + (this.level / 6));
@@ -138,7 +144,9 @@ class Creature {
         const baseStats = this.getBaseStats();
 		baseStats.hp += this.ivHP;
         baseStats.attack += this.ivAttack;
+        baseStats.spattack += this.ivSpAttack;
         baseStats.defense += this.ivDefense;
+        baseStats.spdefense += this.ivSpDefense;
         baseStats.speed += this.ivSpeed;
         const rarityMultiplier = RARITY_MULTIPLIERS[this.rarity];
         const prestigeMultiplier = 1 + (this.prestige * 0.25);
@@ -146,7 +154,9 @@ class Creature {
         
         this.maxHp = Math.floor(baseStats.hp * rarityMultiplier * prestigeMultiplier * shinyMultiplier);
         this.attack = Math.floor(baseStats.attack * rarityMultiplier * prestigeMultiplier * shinyMultiplier);
+        this.spattack = Math.floor(baseStats.spattack * rarityMultiplier * prestigeMultiplier * shinyMultiplier);
         this.defense = Math.floor(baseStats.defense * rarityMultiplier * prestigeMultiplier * shinyMultiplier);
+        this.spdefense = Math.floor(baseStats.spdefense * rarityMultiplier * prestigeMultiplier * shinyMultiplier);
         this.speed = Math.floor(baseStats.speed * rarityMultiplier * prestigeMultiplier * shinyMultiplier);
         
         const hpGain = this.maxHp - oldMaxHp;
@@ -172,7 +182,7 @@ class Creature {
     }
     
     // OPTIMISATION : Gestion Dégâts Universelle (Fix Arène & Affichage)
-    takeDamage(damage, playerMainStats = null, isCritical = false) {
+    takeDamage(damage, playerMainStats = null, isCritical = false, damageCategory = 'physical') {
         // 1. Esquive (Agile)
         if (this.hasStatusEffect() && this.statusEffect.type === STATUS_EFFECTS.AGILE) {
             if (this.statusEffect.dodgeCount < 2 && Math.random() < 0.50) { 
@@ -196,20 +206,13 @@ class Creature {
 
         const isFullLife = currentHpVal >= maxHpVal * 0.99;
 
-        if (this.passiveTalent === 'robustesse' && isFullLife && damage >= currentHpVal) {
-            damage = currentHpVal - 1; 
-            const containerId = this.isEnemy ? 'enemySpriteContainer' : 'playerSpriteContainer';
-            window.showFloatingText("ROBUSTESSE !", document.getElementById(containerId), 'ft-heal');
-            logMessage(`${this.name} tient bon grâce à sa Robustesse !`);
-        }
-
         // 3. Calcul Renvoi (Thorns / Casque Brut)
         let reflectedDamage = 0;
         if (this.hasStatusEffect() && this.statusEffect.type === STATUS_EFFECTS.THORNY) {
             reflectedDamage += Math.floor(damage * 0.30);
         }
-        if (this.heldItem === 'rocky_helmet') {
-            reflectedDamage += Math.floor(damage * HELD_ITEMS['rocky_helmet'].effect.reflect_mult);
+        if (this.heldItem === 'rocky_helmet' && typeof HELD_ITEMS !== 'undefined') {
+            reflectedDamage += Math.floor(damage * (HELD_ITEMS['rocky_helmet']?.effect?.reflect_mult || 0));
         }
 
         // --- 4. APPLICATION DES DÉGÂTS (Le Fix est ici) ---
@@ -217,37 +220,53 @@ class Creature {
         // CAS A : C'est le JOUEUR qui prend les dégâts
         if (!this.isEnemy) {
             
-            // Réduction des PV (Selon le mode)
+            // Réduction des PV du Joueur
             if (game && game.arenaState.active) {
                 this.currentHp = Math.max(0, this.currentHp - damage);
             } else {
                 this.mainAccountCurrentHp = Math.max(0, this.mainAccountCurrentHp - damage);
             }
 
-            // Affichage (Toujours sur le container Joueur)
-            window.showFloatingText(formatFloatingNumber(damage), document.getElementById('playerSpriteContainer'), 'ft-damage-player', isCritical);
+            // Affichage (couleur selon catégorie : physique ou spécial)
+            const damageTypeClass = (damageCategory === 'special') ? 'ft-damage-special' : 'ft-damage-physical';
+            window.showFloatingText(formatFloatingNumber(damage), document.getElementById('playerSpriteContainer'), `ft-damage-player ${damageTypeClass}`, isCritical);
             
             if (game) game.stats.totalDamageTaken += damage;
             
-            // Renvoi de dégâts vers l'ennemi
+            // ✅ C'EST ICI QU'ON APPLIQUE LE FIX (Renvoi de dégâts vers l'ennemi)
             if (reflectedDamage > 0 && game && game.currentEnemy) {
+                // 1. L'ennemi prend les dégâts
                 game.currentEnemy.currentHp = Math.max(0, game.currentEnemy.currentHp - reflectedDamage);
-                window.showFloatingText("💢" + formatFloatingNumber(reflectedDamage), document.getElementById('enemySpriteContainer'), 'ft-damage-enemy');
+                const reflTypeClass = (damageCategory === 'special') ? 'ft-damage-special' : 'ft-damage-physical';
+                window.showFloatingText("💢" + formatFloatingNumber(reflectedDamage), document.getElementById('enemySpriteContainer'), `ft-damage-enemy ${reflTypeClass}`);
+                
+                // 💀 2. VÉRIFICATION IMMÉDIATE DE LA MORT DE L'ENNEMI 💀
+                // Si l'ennemi se tue en tapant, on déclenche la victoire tout de suite.
+                if (!game.currentEnemy.isAlive()) {
+                    logMessage(`💀 ${game.currentEnemy.name} s'est tué sur vos épines !`);
+                    
+                    // On appelle la fonction de victoire du GameManager
+                    // (Assurez-vous que cette méthode est accessible)
+                    game.winCombat(); 
+                    
+                    return false; // On retourne false pour dire "Le joueur n'est pas mort", le combat est fini.
+                }
             }
             
-            // Vérification Mort
+            // Vérification Mort du Joueur (Si l'ennemi a survécu à ses propres dégâts)
             if (game && game.arenaState.active) return this.currentHp <= 0;
             return this.mainAccountCurrentHp <= 0;
-        } 
+        }
         
         // CAS B : C'est l'ENNEMI qui prend les dégâts
         else {
             this.currentHp = Math.max(0, this.currentHp - damage);
             
-            // Affichage (Toujours sur le container Ennemi)
-            window.showFloatingText(formatFloatingNumber(damage), document.getElementById('enemySpriteContainer'), 'ft-damage-enemy', isCritical);
+            // Affichage (couleur selon catégorie : physique ou spécial)
+            const damageTypeClass = (damageCategory === 'special') ? 'ft-damage-special' : 'ft-damage-physical';
+            window.showFloatingText(formatFloatingNumber(damage), document.getElementById('enemySpriteContainer'), `ft-damage-enemy ${damageTypeClass}`, isCritical);
             
-            // Renvoi de dégâts vers le joueur
+            // Renvoi de dégâts vers le joueur (Si l'ennemi a des épines)
             if (reflectedDamage > 0 && game && game.currentPlayerCreature) {
                 const player = game.currentPlayerCreature;
                 
@@ -256,14 +275,17 @@ class Creature {
                 } else {
                     player.mainAccountCurrentHp = Math.max(0, player.mainAccountCurrentHp - reflectedDamage);
                 }
-                window.showFloatingText("💢" + formatFloatingNumber(reflectedDamage), document.getElementById('playerSpriteContainer'), 'ft-damage-player');
+                const reflTypeClass = (damageCategory === 'special') ? 'ft-damage-special' : 'ft-damage-physical';
+                window.showFloatingText("💢" + formatFloatingNumber(reflectedDamage), document.getElementById('playerSpriteContainer'), `ft-damage-player ${reflTypeClass}`);
+                
+                // Optionnel : Vérifier si le joueur meurt sur le coup des épines ennemies
+                // (Généralement géré par la boucle de jeu suivante, mais vous pouvez l'ajouter ici aussi)
             }
             
             if (game) game.stats.totalDamageDealt += damage;
             return this.currentHp <= 0;
         }
     }
-    
 	/**
      * Calcule les dégâts finaux d'une attaque (Logique centralisée)
      * @param {Creature|Object} attacker - L'attaquant (ou un proxy avec stats modifiées)
@@ -274,20 +296,22 @@ class Creature {
         const { 
             isCritical = false, 
             ultMultiplier = 1.0, 
-            ignoreDefensePct = 0, 
+            ignoreDefensePct = 0,
+            attackCategory = 'physical',
+            movePower = 50, // Puissance par défaut (ex: Charge)
             gameContext = null 
         } = options;
 
         // 1. Attaque (On utilise la valeur du proxy qui contient déjà les boosts Tour/Potions)
-        const attack = attacker.attack;
+        const attack = attackCategory === 'special' ? attacker.spattack : attacker.attack;
 
         // 2. Défense (Cible)
-        let defense = target.defense;
+        let defense = attackCategory === 'special' ? target.spdefense : target.defense;
 
         // Si la cible est le joueur, on s'assure d'avoir la défense effective (avec buffs)
         if (!target.isEnemy && gameContext && gameContext.getEffectiveStats) {
             const playerStats = gameContext.getEffectiveStats();
-            defense = playerStats.defense;
+            defense = attackCategory === 'special' ? playerStats.spdefense : playerStats.defense;
         }
 
         // Application Pénétration d'Armure (Ultime / Talent)
@@ -319,6 +343,15 @@ class Creature {
 
         // 5. Multiplicateurs Finaux
         let multiplier = ultMultiplier * effectiveness * stab;
+
+        // 🎯 Objet tenu : Ceinture Pro (Expert Belt)
+        // Bonus si l'attaque est super efficace (effectiveness > 1)
+        if (effectiveness > 1 && attacker.heldItem === 'expert_belt' && typeof HELD_ITEMS !== 'undefined') {
+            const bonus = HELD_ITEMS['expert_belt']?.effect?.super_effective_bonus || 0;
+            if (bonus > 0) {
+                multiplier *= (1 + bonus);
+            }
+        }
         
         // ✅ CORRECTION CRITIQUE (x2 ou x3 avec Sniper)
         if (isCritical) {
@@ -340,15 +373,19 @@ class Creature {
         }
 
         // 6. Calcul Final
-        const rawDamage = attack * multiplier;
+        const power = movePower || 50;
+        const rawDamage = attack * (power / 100) * multiplier;
         
         // Mitigation : Dégâts réduits par la défense (Ratio 1.25)
         // ✅ SÉCURITÉ : Ajout de +1 pour éviter la division par zéro
-        const mitigationRatio = attack / (attack + (defense * 1.25) + 1);
+        const mitigationRatio = attack / (attack + (defense * 1.5) + 1);
         
         let finalDamage = Math.floor(rawDamage * mitigationRatio);
         
-        return Math.max(1, finalDamage);
+        // Minimum proportionnel à la puissance : préserve le ratio entre moves (ex. 80/60 = 4/3).
+        // Formule: min = round(power/20) → 40→2, 60→3, 80→4, 100→5. Ainsi 60 vs 80 donnent 3 vs 4.
+        const minDamageFromPower = Math.max(1, Math.round(power / 20));
+        return Math.max(minDamageFromPower, finalDamage);
     }
 	
     heal() {
@@ -400,6 +437,9 @@ class Creature {
 
             return false;
         }
+
+        const moveName = POKEMON_DEFAULT_MOVES[this.name] || 'Charge';
+        const move = MOVES_DB[moveName];
         
         // 3. Calculs
         const maitreBonus = game ? game.getTalentStackBonus('maitre') : 0;
@@ -407,61 +447,37 @@ class Creature {
         let effectiveness = TYPE_EFFECTIVENESS[this.type]?.[target.type] || 1;
         if (target.secondaryType) effectiveness *= (TYPE_EFFECTIVENESS[this.type]?.[target.secondaryType] || 1);
         
-        let stab = 1.0; 
-        const attackType = this.type; 
-        if (this.type === attackType || this.secondaryType === attackType) stab = 1.2;
-        if (maitreBonus > 0 && stab > 1.0) stab = 1.2 * (1 + maitreBonus);
-        
-        let staminaMultiplier = 1.0;
-        const hasRobustesse = this.passiveTalent === 'robustesse';
-        if (!this.isEnemy && this.currentStamina <= 0 && !hasRobustesse) staminaMultiplier = 0.7;
-        
         const attackMultiplier = this.getAttackMultiplier();
-        const defenseMultiplier = target.getDefenseMultiplier ? target.getDefenseMultiplier() : 1.0;
         
         let attackStat = !this.isEnemy && playerMainStats ? playerMainStats.attack : this.attack;
         attackStat = Math.floor(attackStat * attackMultiplier);
         
-        let defenseStat;
-        if (this.isEnemy) { 
-            defenseStat = playerMainStats ? playerMainStats.defense : target.defense;
-            if (game) { 
-                const defenseBoost = 1 + game.getStatBoostMultiplier('defense');
-                defenseStat = Math.floor(defenseStat * defenseBoost);
+        let spAttackStat = !this.isEnemy && playerMainStats ? playerMainStats.spattack : this.spattack;
+        spAttackStat = Math.floor(spAttackStat * attackMultiplier);
+
+        let damage = Creature.calculateDamageOutput(
+            { ...this, attack: attackStat, spattack: spAttackStat },
+            target,
+            {
+                attackCategory: move.category,
+                movePower: move.power,
+                gameContext: game
             }
-        } else { 
-            defenseStat = target.defense;
-        }
-        defenseStat = Math.floor(defenseStat * defenseMultiplier);
+        );
         
-        // --- 4. NOUVELLE FORMULE DE DÉGÂTS (Ratio x1.25) ---
-        
-        // A. Dégâts Bruts
-        let rawDamage = attackStat * effectiveness * stab * staminaMultiplier;
-
-        // B. Talent Opportuniste
-        if (this.passiveTalent === 'opportuniste' && target.hasStatusEffect()) {
-            rawDamage *= 1.5; 
-        }
-
-        // C. Facteur de Mitigation (Ratio Renforcé)
-        // ✅ MODIFIÉ : La défense compte pour 125% de sa valeur dans la réduction
-        const mitigation = attackStat / (attackStat + defenseStat * 1.25);
-
-        // D. Dégâts Finaux
-        let damage = Math.floor(rawDamage * mitigation);
-        damage = Math.max(1, damage);
-        
-        // 5. Application Coûts & Bonus
-        if (!this.isEnemy && this.currentStamina > 0 && !hasRobustesse) {
+        // 5. Application Coûts & Bonus (Endurance)
+        if (!this.isEnemy && this.currentStamina > 0) {
             this.currentStamina--;
         }
         
+        // Bonus de dégâts (Talents de compte + Collection Synergies - Joueur uniquement)
         if (game && !this.isEnemy && target.isEnemy) {
-            const damageBonus = 1 + game.getAccountTalentBonus('damage_mult');
+            const collDmg = (game.getCollectionSynergyBonuses ? game.getCollectionSynergyBonuses() : {}).damage_mult || 0;
+            const damageBonus = 1 + game.getAccountTalentBonus('damage_mult') + collDmg;
             damage = Math.floor(damage * damageBonus);
         }
         
+        // Réduction de dégâts (Talents de compte - Ennemi attaque joueur)
         if (game && this.isEnemy && !target.isEnemy) {
             const damageReduction = 1 - game.getAccountTalentBonus('damage_reduction');
             damage = Math.floor(damage * damageReduction);
@@ -473,7 +489,7 @@ class Creature {
         }
         
         const isBigHit = false;
-        const isDead = target.takeDamage(damage, playerMainStats, isBigHit);
+        const isDead = target.takeDamage(damage, playerMainStats, isBigHit, move.category);
         
         // Talent Vampire
         if (this.passiveTalent === 'vampire') {
@@ -803,7 +819,9 @@ class Creature {
         const baseStats = this.getBaseStats();
         baseStats.hp += this.ivHP;
         baseStats.attack += this.ivAttack;
+        baseStats.spattack += this.ivSpAttack;
         baseStats.defense += this.ivDefense;
+        baseStats.spdefense += this.ivSpDefense;
         baseStats.speed += this.ivSpeed;
 
         // 2️⃣ Multiplicateurs Individuels
@@ -814,10 +832,12 @@ class Creature {
         const zoneMultiplier = this.zoneMultiplier || 1;
 
         // 3️⃣ Bonus Jetons Prestige (Stats perso)
-        if (!this.prestigeBonuses) this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, speed: 0 };
+        if (!this.prestigeBonuses) this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, spattack: 0, spdefense: 0, speed: 0 };
         const pBonusHP = 1 + (this.prestigeBonuses.hp * 0.05);
         const pBonusATK = 1 + (this.prestigeBonuses.attack * 0.05);
+        const pBonusSpATK = 1 + (this.prestigeBonuses.spattack * 0.05);
         const pBonusDEF = 1 + (this.prestigeBonuses.defense * 0.05);
+        const pBonusSpDEF = 1 + (this.prestigeBonuses.spdefense * 0.05);
         const pBonusSPD = 1 + (this.prestigeBonuses.speed * 0.05);
 
         // 4️⃣ RÉCUPÉRATION DES SYNERGIES (C'est ici que la magie opère !)
@@ -843,9 +863,19 @@ class Creature {
             zoneMultiplier * pBonusATK * syn.attack_mult) + attackBonus
         );
 
+        this.spattack = Math.floor(
+            (baseStats.spattack * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
+            zoneMultiplier * pBonusSpATK * syn.attack_mult) + attackBonus
+        );
+
         this.defense = Math.floor(
             baseStats.defense * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
             zoneMultiplier * pBonusDEF * syn.defense_mult
+        );
+
+        this.spdefense = Math.floor(
+            baseStats.spdefense * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
+            zoneMultiplier * pBonusSpDEF * syn.defense_mult
         );
 
         this.speed = Math.floor(
@@ -876,7 +906,9 @@ class Creature {
             maxHp: this.maxHp,
             currentHp: this.currentHp,
             attack: this.attack,
+            spattack: this.spattack,
             defense: this.defense,
+            spdefense: this.spdefense,
             speed: this.speed,
             exp: this.exp,
             expToNext: this.expToNext,
@@ -888,7 +920,9 @@ class Creature {
             zoneMultiplier: this.zoneMultiplier,
 			ivHP: this.ivHP,
             ivAttack: this.ivAttack,
+            ivSpAttack: this.ivSpAttack,
             ivDefense: this.ivDefense,
+            ivSpDefense: this.ivSpDefense,
             ivSpeed: this.ivSpeed,
 			isBoss: this.isBoss, 
             isEpic: this.isEpic ,
@@ -914,12 +948,16 @@ class Creature {
         );
         creature.ivHP = data.ivHP || 0;
         creature.ivAttack = data.ivAttack || 0;
+        creature.ivSpAttack = data.ivSpAttack || 0;
         creature.ivDefense = data.ivDefense || 0;
+        creature.ivSpDefense = data.ivSpDefense || 0;
         creature.ivSpeed = data.ivSpeed || 0;
         creature.maxHp = data.maxHp;
         creature.currentHp = data.currentHp;
         creature.attack = data.attack;
+        creature.spattack = data.spattack || 0;
         creature.defense = data.defense;
+        creature.spdefense = data.spdefense || 0;
         creature.speed = data.speed;
         creature.exp = data.exp || 0;
         creature.expToNext = data.expToNext || 100;
@@ -932,7 +970,8 @@ class Creature {
 		creature.heldItem = data.heldItem || null;
 		creature.actionGauge = 0;
 		creature.prestigeTokens = data.prestigeTokens || 0;
-		creature.prestigeBonuses = data.prestigeBonuses || { hp: 0, attack: 0, defense: 0, speed: 0 };
+		creature.prestigeBonuses = data.prestigeBonuses || { hp: 0, attack: 0, defense: 0, spattack: 0, spdefense: 0, speed: 0 };
+        creature.recalculateStats();
     
         
         return creature;

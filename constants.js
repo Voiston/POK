@@ -349,6 +349,899 @@ const POKEMON_SECONDARY_TYPES = {
     'Shaymin': TYPES.FLYING // Forme Céleste (Sky Forme), sinon pur Plante
 };
 
+
+// 1. Définition des attaques
+const MOVES_DB = {
+    // === NORMAL ===
+    'Charge':         { name: 'Charge',         type: 'normal',   category: 'physical', power: 40 },
+    'Griffe':         { name: 'Griffe',         type: 'normal',   category: 'physical', power: 40 },
+    'Plaquage':       { name: 'Plaquage',       type: 'normal',   category: 'physical', power: 85 },
+    'Tranche':        { name: 'Tranche',        type: 'normal',   category: 'physical', power: 70 },
+    'Météores':       { name: 'Météores',       type: 'normal',   category: 'special',  power: 60 },
+    'Ultralaser':     { name: 'Ultralaser',     type: 'normal',   category: 'special',  power: 150 },
+    
+    // === FEU (Fire) ===
+    'Flammèche':      { name: 'Flammèche',      type: 'fire',     category: 'special',  power: 40 },
+    'Lance-Flammes':  { name: 'Lance-Flammes',  type: 'fire',     category: 'special',  power: 90 },
+    'Déflagration':   { name: 'Déflagration',   type: 'fire',     category: 'special',  power: 110 },
+    'Poing de Feu':   { name: 'Poing de Feu',   type: 'fire',     category: 'physical', power: 75 },
+    'Roue de Feu':    { name: 'Roue de Feu',    type: 'fire',     category: 'physical', power: 60 },
+    'Boutefeu':       { name: 'Boutefeu',       type: 'fire',     category: 'physical', power: 120 },
+    
+    // === EAU (Water) ===
+    'Pistolet à O':   { name: 'Pistolet à O',   type: 'water',    category: 'special',  power: 40 },
+    'Surf':           { name: 'Surf',           type: 'water',    category: 'special',  power: 90 },
+    'Hydrocanon':     { name: 'Hydrocanon',     type: 'water',    category: 'special',  power: 110 },
+    'Cascade':        { name: 'Cascade',        type: 'water',    category: 'physical', power: 80 },
+    'Aqua-Jet':       { name: 'Aqua-Jet',       type: 'water',    category: 'physical', power: 40 },
+    'Pince-Masse':    { name: 'Pince-Masse',    type: 'water',    category: 'physical', power: 100 },
+    
+    // === PLANTE (Grass) ===
+    'Fouet Lianes':   { name: 'Fouet Lianes',   type: 'grass',    category: 'physical', power: 45 },
+    'Tranch\'Herbe':  { name: 'Tranch\'Herbe',  type: 'grass',    category: 'physical', power: 55 },
+    'Lame-Feuille':   { name: 'Lame-Feuille',   type: 'grass',    category: 'physical', power: 90 },
+    'Méga-Sangsue':   { name: 'Méga-Sangsue',   type: 'grass',    category: 'special',  power: 75 },
+    'Tempête Verte':  { name: 'Tempête Verte',  type: 'grass',    category: 'special',  power: 130 },
+    'Éco-Sphère':     { name: 'Éco-Sphère',     type: 'grass',    category: 'special',  power: 90 },
+    
+    // === ÉLECTRIK (Electric) ===
+    'Éclair':         { name: 'Éclair',         type: 'electric', category: 'special',  power: 40 },
+    'Tonnerre':       { name: 'Tonnerre',       type: 'electric', category: 'special',  power: 90 },
+    'Fatal-Foudre':   { name: 'Fatal-Foudre',   type: 'electric', category: 'special',  power: 110 },
+    'Poing Éclair':   { name: 'Poing Éclair',   type: 'electric', category: 'physical', power: 75 },
+    'Étincelle':      { name: 'Étincelle',      type: 'electric', category: 'physical', power: 65 },
+    'Éclair Fou':     { name: 'Éclair Fou',     type: 'electric', category: 'physical', power: 90 },
+    
+    // === GLACE (Ice) ===
+    'Poudreuse':      { name: 'Poudreuse',      type: 'ice',      category: 'special',  power: 40 },
+    'Laser Glace':    { name: 'Laser Glace',    type: 'ice',      category: 'special',  power: 90 },
+    'Blizzard':       { name: 'Blizzard',       type: 'ice',      category: 'special',  power: 110 },
+    'Poing Glace':    { name: 'Poing Glace',    type: 'ice',      category: 'physical', power: 75 },
+    'Crocs Givre':    { name: 'Crocs Givre',    type: 'ice',      category: 'physical', power: 65 },
+    'Avalanche':      { name: 'Avalanche',      type: 'ice',      category: 'physical', power: 60 },
+    
+    // === COMBAT (Fighting) ===
+    'Poing-Karaté':   { name: 'Poing-Karaté',   type: 'fighting', category: 'physical', power: 50 },
+    'Casse-Brique':   { name: 'Casse-Brique',   type: 'fighting', category: 'physical', power: 75 },
+    'Close Combat':   { name: 'Close Combat',   type: 'fighting', category: 'physical', power: 120 },
+    'Marto-Poing':    { name: 'Marto-Poing',    type: 'fighting', category: 'physical', power: 100 },
+    'Aurasphère':     { name: 'Aurasphère',     type: 'fighting', category: 'special',  power: 80 },
+    'Exploforce':     { name: 'Exploforce',     type: 'fighting', category: 'special',  power: 120 },
+    
+    // === POISON ===
+    'Dard-Venin':     { name: 'Dard-Venin',     type: 'poison',   category: 'physical', power: 15 },
+    'Bomb-Beurk':     { name: 'Bomb-Beurk',     type: 'poison',   category: 'special',  power: 90 },
+    'Crochet Venin':  { name: 'Crochet Venin',  type: 'poison',   category: 'physical', power: 50 },
+    'Direct Toxik':   { name: 'Direct Toxik',   type: 'poison',   category: 'physical', power: 80 },
+    'Acidarmure':     { name: 'Acidarmure',     type: 'poison',   category: 'special',  power: 40 },
+    
+    // === SOL (Ground) ===
+    'Séisme':         { name: 'Séisme',         type: 'ground',   category: 'physical', power: 100 },
+    'Piétisol':       { name: 'Piétisol',       type: 'ground',   category: 'physical', power: 60 },
+    'Tunnel':         { name: 'Tunnel',         type: 'ground',   category: 'physical', power: 80 },
+    'Telluriforce':   { name: 'Telluriforce',   type: 'ground',   category: 'special',  power: 90 },
+    'Tourbi-Sable':   { name: 'Tourbi-Sable',   type: 'ground',   category: 'special',  power: 35 },
+    
+    // === VOL (Flying) ===
+    'Cru-Ailes':      { name: 'Cru-Ailes',      type: 'flying',   category: 'physical', power: 60 },
+    'Aéropique':      { name: 'Aéropique',      type: 'flying',   category: 'physical', power: 60 },
+    'Rapace':         { name: 'Rapace',         type: 'flying',   category: 'physical', power: 120 },
+    'Vent Violent':   { name: 'Vent Violent',   type: 'flying',   category: 'special',  power: 110 },
+    'Lame d\'Air':    { name: 'Lame d\'Air',    type: 'flying',   category: 'special',  power: 75 },
+    
+    // === PSY (Psychic) ===
+    'Choc Mental':    { name: 'Choc Mental',    type: 'psychic',  category: 'special',  power: 50 },
+    'Psyko':          { name: 'Psyko',          type: 'psychic',  category: 'special',  power: 90 },
+    'Psyko-Boost':    { name: 'Psyko-Boost',    type: 'psychic',  category: 'special',  power: 140 },
+    'Coupe Psycho':   { name: 'Coupe Psycho',   type: 'psychic',  category: 'physical', power: 70 },
+    'Zen Headbutt':   { name: 'Zen Headbutt',   type: 'psychic',  category: 'physical', power: 80 },
+    
+    // === INSECTE (Bug) ===
+    'Dard-Nuée':      { name: 'Dard-Nuée',      type: 'bug',      category: 'physical', power: 25 },
+    'Plaie-Croix':    { name: 'Plaie-Croix',    type: 'bug',      category: 'physical', power: 80 },
+    'Mégacorne':      { name: 'Mégacorne',      type: 'bug',      category: 'physical', power: 120 },
+    'Bourdon':        { name: 'Bourdon',        type: 'bug',      category: 'special',  power: 90 },
+    'Rayon Signal':   { name: 'Rayon Signal',   type: 'bug',      category: 'special',  power: 75 },
+    
+    // === ROCHE (Rock) ===
+    'Jet-Pierres':    { name: 'Jet-Pierres',    type: 'rock',     category: 'physical', power: 50 },
+    'Éboulement':     { name: 'Éboulement',     type: 'rock',     category: 'physical', power: 75 },
+    'Lame de Roc':    { name: 'Lame de Roc',    type: 'rock',     category: 'physical', power: 100 },
+    'Pouvoir Antique':{ name: 'Pouvoir Antique',type: 'rock',     category: 'special',  power: 60 },
+    'Gemme Lumière':  { name: 'Gemme Lumière',  type: 'rock',     category: 'special',  power: 80 },
+    
+    // === SPECTRE (Ghost) ===
+    'Léchouille':     { name: 'Léchouille',     type: 'ghost',    category: 'physical', power: 30 },
+    'Griffe Ombre':   { name: 'Griffe Ombre',   type: 'ghost',    category: 'physical', power: 70 },
+    'Ball\'Ombre':    { name: 'Ball\'Ombre',    type: 'ghost',    category: 'special',  power: 80 },
+    'Châtiment':      { name: 'Châtiment',      type: 'ghost',    category: 'physical', power: 50 },
+    'Revenant':       { name: 'Revenant',       type: 'ghost',    category: 'physical', power: 120 },
+    
+    // === DRAGON ===
+    'Draco-Rage':     { name: 'Draco-Rage',     type: 'dragon',   category: 'special',  power: 40 },
+    'Dracogriffe':    { name: 'Dracogriffe',    type: 'dragon',   category: 'physical', power: 80 },
+    'Colère':         { name: 'Colère',         type: 'dragon',   category: 'physical', power: 120 },
+    'Draco-Météor':   { name: 'Draco-Météor',   type: 'dragon',   category: 'special',  power: 130 },
+    'Draco-Choc':     { name: 'Draco-Choc',     type: 'dragon',   category: 'special',  power: 85 },
+    
+    // === TÉNÈBRES (Dark) ===
+    'Morsure':        { name: 'Morsure',        type: 'dark',     category: 'physical', power: 60 },
+    'Tranche-Nuit':   { name: 'Tranche-Nuit',   type: 'dark',     category: 'physical', power: 70 },
+    'Mâchouille':     { name: 'Mâchouille',     type: 'dark',     category: 'physical', power: 80 },
+    'Vibrobscur':     { name: 'Vibrobscur',     type: 'dark',     category: 'special',  power: 80 },
+    'Dark Pulse':     { name: 'Dark Pulse',     type: 'dark',     category: 'special',  power: 80 },
+    
+    // === ACIER (Steel) ===
+    'Griffe Acier':   { name: 'Griffe Acier',   type: 'steel',    category: 'physical', power: 50 },
+    'Queue de Fer':   { name: 'Queue de Fer',   type: 'steel',    category: 'physical', power: 100 },
+    'Poing Météor':   { name: 'Poing Météor',   type: 'steel',    category: 'physical', power: 90 },
+    'Luminocanon':    { name: 'Luminocanon',    type: 'steel',    category: 'special',  power: 80 },
+    'Gyro Ball':      { name: 'Gyro Ball',      type: 'steel',    category: 'physical', power: 75 },
+    
+    // === FÉE (Fairy) ===
+    'Éclat Magique':  { name: 'Éclat Magique',  type: 'fairy',    category: 'special',  power: 80 },
+    'Pouvoir Lunaire':{ name: 'Pouvoir Lunaire',type: 'fairy',    category: 'special',  power: 95 },
+    'Câlinerie':      { name: 'Câlinerie',      type: 'fairy',    category: 'physical', power: 90 },
+    'Doux Baiser':    { name: 'Doux Baiser',    type: 'fairy',    category: 'special',  power: 40 },
+};
+
+// 2. Attribution des attaques par défaut aux Pokémon
+// Chaque Pokémon utilise une attaque adaptée à son type principal et ses stats (ATK vs SP.ATK)
+const POKEMON_DEFAULT_MOVES = {
+    // === GEN 1 - KANTO ===
+    // Starters Plante
+    'Bulbasaur': 'Fouet Lianes',       // Grass Physical (ATK moyen)
+    'Ivysaur': 'Tranch\'Herbe',        // Grass Physical
+    'Venusaur': 'Éco-Sphère',          // Grass Special (SP.ATK élevé)
+    
+    // Starters Feu
+    'Charmander': 'Flammèche',         // Fire Special
+    'Charmeleon': 'Lance-Flammes',     // Fire Special
+    'Charizard': 'Lance-Flammes',      // Fire Special (SP.ATK élevé)
+    
+    // Starters Eau
+    'Squirtle': 'Pistolet à O',        // Water Special
+    'Wartortle': 'Surf',               // Water Special
+    'Blastoise': 'Hydrocanon',         // Water Special
+    
+    // Insectes de début
+    'Caterpie': 'Charge',              // Normal Physical
+    'Metapod': 'Charge',
+    'Butterfree': 'Choc Mental',       // Psychic Special (SP.ATK élevé)
+    'Weedle': 'Dard-Venin',            // Poison Physical
+    'Kakuna': 'Dard-Venin',
+    'Beedrill': 'Dard-Nuée',           // Bug Physical (ATK élevé)
+    
+    // Oiseaux
+    'Pidgey': 'Cru-Ailes',             // Flying Physical
+    'Pidgeotto': 'Cru-Ailes',
+    'Pidgeot': 'Rapace',               // Flying Physical (ATK élevé)
+    'Spearow': 'Cru-Ailes',
+    'Fearow': 'Rapace',
+    
+    // Rongeurs
+    'Rattata': 'Charge',               // Normal Physical
+    'Raticate': 'Plaquage',
+    
+    // Serpents Poison
+    'Ekans': 'Crochet Venin',          // Poison Physical
+    'Arbok': 'Direct Toxik',
+    
+    // Ligne Pikachu
+    'Pichu': 'Éclair',                 // Electric Special
+    'Pikachu': 'Éclair',
+    'Raichu': 'Tonnerre',
+    
+    // Sol
+    'Sandshrew': 'Piétisol',           // Ground Physical
+    'Sandslash': 'Séisme',
+    'Diglett': 'Piétisol',
+    'Dugtrio': 'Séisme',
+    
+    // Nidoran
+    'Nidoran♀': 'Crochet Venin',
+    'Nidorina': 'Direct Toxik',
+    'Nidoqueen': 'Séisme',             // Ground Physical (ATK élevé)
+    'Nidoran♂': 'Crochet Venin',
+    'Nidorino': 'Direct Toxik',
+    'Nidoking': 'Séisme',
+    
+    // Fée
+    'Clefairy': 'Éclat Magique',       // Fairy Special (SP.ATK dominant)
+    'Clefable': 'Pouvoir Lunaire',
+    'Cleffa': 'Éclat Magique',
+    'Jigglypuff': 'Éclat Magique',
+    'Wigglytuff': 'Pouvoir Lunaire',
+    'Igglybuff': 'Éclat Magique',
+    
+    // Renards Feu
+    'Vulpix': 'Flammèche',
+    'Ninetales': 'Lance-Flammes',
+    
+    // Chauves-souris
+    'Zubat': 'Cru-Ailes',
+    'Golbat': 'Cru-Ailes',
+    'Crobat': 'Rapace',
+    
+    // Plantes Poison
+    'Oddish': 'Méga-Sangsue',          // Grass Special
+    'Gloom': 'Méga-Sangsue',
+    'Vileplume': 'Éco-Sphère',
+    'Bellossom': 'Éco-Sphère',
+    
+    // Insectes
+    'Paras': 'Plaie-Croix',            // Bug Physical
+    'Parasect': 'Plaie-Croix',
+    'Venonat': 'Choc Mental',          // Psychic Special (Sp.ATK dominant)
+    'Venomoth': 'Bourdon',             // Bug Special
+    
+    // Chats
+    'Meowth': 'Griffe',                // Normal Physical
+    'Persian': 'Tranche',
+    
+    // Canards
+    'Psyduck': 'Choc Mental',          // Psychic Special (SP.ATK élevé)
+    'Golduck': 'Psyko',
+    
+    // Singes Combat
+    'Mankey': 'Poing-Karaté',          // Fighting Physical
+    'Primeape': 'Close Combat',
+    
+    // Chiens Feu
+    'Growlithe': 'Flammèche',
+    'Arcanine': 'Boutefeu',            // Fire Physical (ATK élevé)
+    
+    // Grenouilles
+    'Poliwag': 'Pistolet à O',
+    'Poliwhirl': 'Surf',
+    'Poliwrath': 'Cascade',            // Water Physical (ATK élevé)
+    'Politoed': 'Surf',
+    
+    // Psy
+    'Abra': 'Choc Mental',
+    'Kadabra': 'Psyko',
+    'Alakazam': 'Psyko',               // Psychic Special (SP.ATK très élevé)
+    
+    // Combat
+    'Machop': 'Poing-Karaté',
+    'Machoke': 'Casse-Brique',
+    'Machamp': 'Close Combat',
+    
+    // Plantes Poison
+    'Bellsprout': 'Fouet Lianes',
+    'Weepinbell': 'Tranch\'Herbe',
+    'Victreebel': 'Lame-Feuille',
+    
+    // Méduses
+    'Tentacool': 'Surf',
+    'Tentacruel': 'Surf',
+    
+    // Roches
+    'Geodude': 'Jet-Pierres',
+    'Graveler': 'Éboulement',
+    'Golem': 'Séisme',
+    
+    // Chevaux Feu
+    'Ponyta': 'Roue de Feu',
+    'Rapidash': 'Boutefeu',
+    
+    // Slowpoke
+    'Slowpoke': 'Surf',
+    'Slowbro': 'Psyko',
+    'Slowking': 'Psyko',
+    
+    // Magnétiques
+    'Magnemite': 'Éclair',
+    'Magneton': 'Tonnerre',
+    'Magnezone': 'Tonnerre',
+    
+    // Oiseaux
+    'Farfetch\'d': 'Cru-Ailes',
+    'Doduo': 'Cru-Ailes',
+    'Dodrio': 'Rapace',
+    
+    // Phoques
+    'Seel': 'Surf',
+    'Dewgong': 'Laser Glace',
+    
+    // Slimes
+    'Grimer': 'Bomb-Beurk',
+    'Muk': 'Bomb-Beurk',
+    
+    // Coquillages
+    'Shellder': 'Cascade',
+    'Cloyster': 'Laser Glace',
+    
+    // Spectres
+    'Gastly': 'Ball\'Ombre',           // Ghost Special (SP.ATK dominant)
+    'Haunter': 'Ball\'Ombre',
+    'Gengar': 'Ball\'Ombre',
+    
+    // Serpent Roche
+    'Onix': 'Jet-Pierres',
+    'Steelix': 'Queue de Fer',
+    
+    // Psy
+    'Drowzee': 'Choc Mental',
+    'Hypno': 'Psyko',
+    
+    // Crabes
+    'Krabby': 'Pince-Masse',           // Water Physical (ATK très élevé)
+    'Kingler': 'Pince-Masse',
+    
+    // Électriques
+    'Voltorb': 'Éclair',
+    'Electrode': 'Tonnerre',
+    
+    // Œufs Plante
+    'Exeggcute': 'Choc Mental',
+    'Exeggutor': 'Psyko',
+    
+    // Osseux
+    'Cubone': 'Piétisol',
+    'Marowak': 'Séisme',
+    
+    // Combat
+    'Hitmonlee': 'Close Combat',
+    'Hitmonchan': 'Marto-Poing',
+    'Hitmontop': 'Close Combat',
+    'Tyrogue': 'Poing-Karaté',
+    
+    // Langue
+    'Lickitung': 'Plaquage',
+    'Lickilicky': 'Plaquage',
+    
+    // Poison Gaz
+    'Koffing': 'Bomb-Beurk',
+    'Weezing': 'Bomb-Beurk',
+    
+    // Rhino
+    'Rhyhorn': 'Jet-Pierres',
+    'Rhydon': 'Séisme',
+    'Rhyperior': 'Séisme',
+    
+    // Rose
+    'Chansey': 'Plaquage',
+    'Blissey': 'Plaquage',
+    'Happiny': 'Plaquage',
+    
+    // Plante
+    'Tangela': 'Lame-Feuille',
+    'Tangrowth': 'Lame-Feuille',
+    
+    // Kangourou
+    'Kangaskhan': 'Plaquage',
+    
+    // Hippocampes
+    'Horsea': 'Surf',
+    'Seadra': 'Surf',
+    'Kingdra': 'Draco-Choc',           // Dragon Special
+    
+    // Poissons
+    'Goldeen': 'Cascade',
+    'Seaking': 'Cascade',
+    
+    // Étoiles
+    'Staryu': 'Surf',
+    'Starmie': 'Psyko',
+    
+    // Mime
+    'Mr. Mime': 'Psyko',
+    'Mime Jr.': 'Choc Mental',
+    
+    // Mante
+    'Scyther': 'Plaie-Croix',          // Bug Physical (ATK très élevé)
+    'Scizor': 'Plaie-Croix',
+    
+    // Humanoïdes
+    'Jynx': 'Psyko',
+    'Smoochum': 'Choc Mental',
+    
+    // Électriques
+    'Electabuzz': 'Poing Éclair',      // Electric Physical (ATK et SP.ATK proches)
+    'Elekid': 'Éclair',
+    'Electivire': 'Éclair Fou',
+    
+    // Feu
+    'Magmar': 'Lance-Flammes',
+    'Magby': 'Flammèche',
+    'Magmortar': 'Lance-Flammes',
+    
+    // Insecte
+    'Pinsir': 'Mégacorne',
+    
+    // Taureau
+    'Tauros': 'Plaquage',
+    
+    // Poisson
+    'Magikarp': 'Charge',
+    'Gyarados': 'Cascade',             // Water Physical (ATK très élevé)
+    
+    // Glace
+    'Lapras': 'Laser Glace',           // Ice Special (SP.ATK élevé)
+    
+    // Métamorphe
+    'Ditto': 'Charge',
+    
+    // Évoli et évolutions
+    'Eevee': 'Charge',
+    'Vaporeon': 'Surf',                // Water Special (SP.ATK élevé)
+    'Jolteon': 'Tonnerre',             // Electric Special
+    'Flareon': 'Boutefeu',             // Fire Physical (ATK élevé)
+    'Espeon': 'Psyko',                 // Psychic Special
+    'Umbreon': 'Morsure',              // Dark Physical (DEF orienté mais Dark)
+    'Leafeon': 'Lame-Feuille',         // Grass Physical (ATK élevé)
+    'Glaceon': 'Laser Glace',          // Ice Special (SP.ATK élevé)
+    
+    // Virtuel
+    'Porygon': 'Météores',
+    'Porygon2': 'Météores',
+    'Porygon-Z': 'Ultralaser',
+    
+    // Fossiles
+    'Omanyte': 'Surf',
+    'Omastar': 'Surf',
+    'Kabuto': 'Cascade',
+    'Kabutops': 'Cascade',
+    'Aerodactyl': 'Lame de Roc',
+    
+    // Dormeur
+    'Snorlax': 'Plaquage',
+    'Munchlax': 'Plaquage',
+    
+    // Légendaires Oiseaux
+    'Articuno': 'Blizzard',            // Ice Special
+    'Zapdos': 'Fatal-Foudre',          // Electric Special
+    'Moltres': 'Déflagration',         // Fire Special
+    
+    // Dragons
+    'Dratini': 'Draco-Choc',
+    'Dragonair': 'Draco-Choc',
+    'Dragonite': 'Colère',             // Dragon Physical (ATK très élevé)
+    
+    // Légendaires Psy
+    'Mewtwo': 'Psyko',
+    'Mew': 'Psyko',
+    
+    // === GEN 2 - JOHTO ===
+    'Chikorita': 'Fouet Lianes',
+    'Bayleef': 'Tranch\'Herbe',
+    'Meganium': 'Éco-Sphère',
+    
+    'Cyndaquil': 'Flammèche',
+    'Quilava': 'Lance-Flammes',
+    'Typhlosion': 'Lance-Flammes',
+    
+    'Totodile': 'Pistolet à O',
+    'Croconaw': 'Cascade',
+    'Feraligatr': 'Cascade',           // Water Physical (ATK élevé)
+    
+    'Sentret': 'Charge',
+    'Furret': 'Plaquage',
+    
+    'Hoothoot': 'Cru-Ailes',
+    'Noctowl': 'Lame d\'Air',
+    
+    'Ledyba': 'Dard-Nuée',
+    'Ledian': 'Dard-Nuée',
+    
+    'Spinarak': 'Dard-Nuée',
+    'Ariados': 'Plaie-Croix',
+    
+    'Chinchou': 'Éclair',
+    'Lanturn': 'Tonnerre',
+    
+    'Togepi': 'Éclat Magique',
+    'Togetic': 'Éclat Magique',
+    'Togekiss': 'Pouvoir Lunaire',
+    
+    'Natu': 'Choc Mental',
+    'Xatu': 'Psyko',
+    
+    'Mareep': 'Éclair',
+    'Flaaffy': 'Éclair',
+    'Ampharos': 'Tonnerre',
+    
+    'Marill': 'Cascade',
+    'Azumarill': 'Cascade',
+    'Azurill': 'Charge',
+    
+    'Sudowoodo': 'Jet-Pierres',
+    'Bonsly': 'Jet-Pierres',
+    
+    'Hoppip': 'Méga-Sangsue',
+    'Skiploom': 'Méga-Sangsue',
+    'Jumpluff': 'Méga-Sangsue',
+    
+    'Aipom': 'Tranche',
+    'Ambipom': 'Tranche',
+    
+    'Sunkern': 'Méga-Sangsue',
+    'Sunflora': 'Éco-Sphère',
+    
+    'Yanma': 'Lame d\'Air',
+    'Yanmega': 'Bourdon',
+    
+    'Wooper': 'Piétisol',
+    'Quagsire': 'Séisme',
+    
+    'Murkrow': 'Morsure',
+    'Honchkrow': 'Tranche-Nuit',
+    
+    'Misdreavus': 'Ball\'Ombre',
+    'Mismagius': 'Ball\'Ombre',
+    
+    'Unown': 'Choc Mental',
+    
+    'Wobbuffet': 'Charge',
+    'Wynaut': 'Charge',
+    
+    'Girafarig': 'Psyko',
+    
+    'Pineco': 'Plaie-Croix',
+    'Forretress': 'Gyro Ball',
+    
+    'Dunsparce': 'Plaquage',
+    
+    'Gligar': 'Séisme',
+    'Gliscor': 'Séisme',
+    
+    'Snubbull': 'Câlinerie',
+    'Granbull': 'Câlinerie',
+    
+    'Qwilfish': 'Direct Toxik',
+    
+    'Shuckle': 'Jet-Pierres',
+    
+    'Heracross': 'Mégacorne',
+    
+    'Sneasel': 'Tranche-Nuit',
+    'Weavile': 'Tranche-Nuit',
+    
+    'Teddiursa': 'Tranche',
+    'Ursaring': 'Close Combat',
+    
+    'Slugma': 'Flammèche',
+    'Magcargo': 'Lance-Flammes',
+    
+    'Swinub': 'Piétisol',
+    'Piloswine': 'Séisme',
+    'Mamoswine': 'Séisme',
+    
+    'Corsola': 'Pouvoir Antique',
+    
+    'Remoraid': 'Pistolet à O',
+    'Octillery': 'Surf',
+    
+    'Delibird': 'Poudreuse',
+    
+    'Mantine': 'Surf',
+    'Mantyke': 'Surf',
+    
+    'Skarmory': 'Griffe Acier',
+    
+    'Houndour': 'Flammèche',
+    'Houndoom': 'Lance-Flammes',
+    
+    'Phanpy': 'Piétisol',
+    'Donphan': 'Séisme',
+    
+    'Stantler': 'Zen Headbutt',
+    
+    'Smeargle': 'Charge',
+    
+    'Miltank': 'Plaquage',
+    
+    'Larvitar': 'Jet-Pierres',
+    'Pupitar': 'Éboulement',
+    'Tyranitar': 'Lame de Roc',
+    
+    // Légendaires Gen 2
+    'Raikou': 'Tonnerre',
+    'Entei': 'Lance-Flammes',
+    'Suicune': 'Surf',
+    'Lugia': 'Psyko',
+    'Ho-Oh': 'Déflagration',
+    'Celebi': 'Éco-Sphère',
+    
+    // === GEN 3 - HOENN ===
+    'Treecko': 'Fouet Lianes',
+    'Grovyle': 'Lame-Feuille',
+    'Sceptile': 'Lame-Feuille',
+    
+    'Torchic': 'Flammèche',
+    'Combusken': 'Boutefeu',
+    'Blaziken': 'Boutefeu',            // Fire Physical (ATK très élevé)
+    
+    'Mudkip': 'Pistolet à O',
+    'Marshtomp': 'Surf',
+    'Swampert': 'Séisme',              // Ground Physical
+    
+    'Poochyena': 'Morsure',
+    'Mightyena': 'Mâchouille',
+    
+    'Zigzagoon': 'Charge',
+    'Linoone': 'Plaquage',
+    
+    'Wurmple': 'Dard-Nuée',
+    'Silcoon': 'Charge',
+    'Beautifly': 'Bourdon',
+    'Cascoon': 'Charge',
+    'Dustox': 'Bourdon',
+    
+    'Lotad': 'Surf',
+    'Lombre': 'Surf',
+    'Ludicolo': 'Éco-Sphère',
+    
+    'Seedot': 'Fouet Lianes',
+    'Nuzleaf': 'Tranch\'Herbe',
+    'Shiftry': 'Lame-Feuille',
+    
+    'Taillow': 'Cru-Ailes',
+    'Swellow': 'Rapace',
+    
+    'Wingull': 'Cru-Ailes',
+    'Pelipper': 'Surf',
+    
+    'Ralts': 'Choc Mental',
+    'Kirlia': 'Choc Mental',
+    'Gardevoir': 'Psyko',
+    'Gallade': 'Close Combat',
+    
+    'Surskit': 'Surf',
+    'Masquerain': 'Bourdon',
+    
+    'Shroomish': 'Méga-Sangsue',
+    'Breloom': 'Close Combat',
+    
+    'Slakoth': 'Tranche',
+    'Vigoroth': 'Tranche',
+    'Slaking': 'Plaquage',
+    
+    'Nincada': 'Piétisol',
+    'Ninjask': 'Plaie-Croix',
+    'Shedinja': 'Griffe Ombre',
+    
+    'Whismur': 'Plaquage',
+    'Loudred': 'Plaquage',
+    'Exploud': 'Ultralaser',
+    
+    'Makuhita': 'Poing-Karaté',
+    'Hariyama': 'Close Combat',
+    
+    'Aron': 'Jet-Pierres',
+    'Lairon': 'Éboulement',
+    'Aggron': 'Queue de Fer',
+    
+    'Meditite': 'Aurasphère',
+    'Medicham': 'Aurasphère',
+    
+    'Electrike': 'Éclair',
+    'Manectric': 'Tonnerre',
+    
+    'Plusle': 'Éclair',
+    'Minun': 'Éclair',
+    
+    'Volbeat': 'Rayon Signal',
+    'Illumise': 'Bourdon',
+    
+    'Budew': 'Méga-Sangsue',
+    'Roselia': 'Méga-Sangsue',
+    'Roserade': 'Éco-Sphère',
+    
+    'Gulpin': 'Bomb-Beurk',
+    'Swalot': 'Bomb-Beurk',
+    
+    'Carvanha': 'Cascade',
+    'Sharpedo': 'Cascade',
+    
+    'Wailmer': 'Surf',
+    'Wailord': 'Surf',
+    
+    'Numel': 'Flammèche',
+    'Camerupt': 'Séisme',
+    
+    'Torkoal': 'Lance-Flammes',
+    
+    'Spoink': 'Choc Mental',
+    'Grumpig': 'Psyko',
+    
+    'Spinda': 'Plaquage',
+    
+    'Trapinch': 'Piétisol',
+    'Vibrava': 'Draco-Choc',
+    'Flygon': 'Séisme',
+    
+    'Cacnea': 'Dard-Nuée',
+    'Cacturne': 'Tranche-Nuit',
+    
+    'Swablu': 'Cru-Ailes',
+    'Altaria': 'Draco-Choc',
+    
+    'Zangoose': 'Tranche',
+    'Seviper': 'Direct Toxik',
+    
+    'Lunatone': 'Psyko',
+    'Solrock': 'Jet-Pierres',
+    
+    'Barboach': 'Piétisol',
+    'Whiscash': 'Séisme',
+    
+    'Corphish': 'Pince-Masse',
+    'Crawdaunt': 'Pince-Masse',
+    
+    'Baltoy': 'Choc Mental',
+    'Claydol': 'Telluriforce',
+    
+    'Lileep': 'Pouvoir Antique',
+    'Cradily': 'Pouvoir Antique',
+    
+    'Anorith': 'Plaie-Croix',
+    'Armaldo': 'Plaie-Croix',
+    
+    'Feebas': 'Surf',
+    'Milotic': 'Surf',
+    
+    'Castform': 'Météores',
+    'Kecleon': 'Tranche',
+    
+    'Shuppet': 'Ball\'Ombre',
+    'Banette': 'Griffe Ombre',
+    
+    'Duskull': 'Ball\'Ombre',
+    'Dusclops': 'Ball\'Ombre',
+    'Dusknoir': 'Griffe Ombre',
+    
+    'Tropius': 'Lame d\'Air',
+    
+    'Chimecho': 'Choc Mental',
+    'Chingling': 'Choc Mental',
+    
+    'Absol': 'Tranche-Nuit',
+    
+    'Snorunt': 'Poudreuse',
+    'Glalie': 'Laser Glace',
+    'Froslass': 'Ball\'Ombre',
+    
+    'Spheal': 'Poudreuse',
+    'Sealeo': 'Surf',
+    'Walrein': 'Blizzard',
+    
+    'Clamperl': 'Surf',
+    'Huntail': 'Cascade',
+    'Gorebyss': 'Surf',
+    
+    'Relicanth': 'Lame de Roc',
+    
+    'Luvdisc': 'Surf',
+    
+    'Bagon': 'Dracogriffe',
+    'Shelgon': 'Dracogriffe',
+    'Salamence': 'Colère',
+    
+    'Beldum': 'Charge',
+    'Metang': 'Poing Météor',
+    'Metagross': 'Poing Météor',
+    
+    'Regirock': 'Lame de Roc',
+    'Regice': 'Blizzard',
+    'Registeel': 'Queue de Fer',
+    
+    'Latias': 'Psyko',
+    'Latios': 'Draco-Météor',
+    
+    'Kyogre': 'Hydrocanon',
+    'Groudon': 'Séisme',
+    'Rayquaza': 'Colère',
+    
+    'Jirachi': 'Psyko',
+    'Deoxys': 'Psyko-Boost',
+    
+    // === GEN 4 - SINNOH ===
+    'Turtwig': 'Fouet Lianes',
+    'Grotle': 'Tranch\'Herbe',
+    'Torterra': 'Séisme',
+    
+    'Chimchar': 'Flammèche',
+    'Monferno': 'Lance-Flammes',
+    'Infernape': 'Close Combat',
+    
+    'Piplup': 'Pistolet à O',
+    'Prinplup': 'Surf',
+    'Empoleon': 'Surf',
+    
+    'Starly': 'Cru-Ailes',
+    'Staravia': 'Cru-Ailes',
+    'Staraptor': 'Rapace',
+    
+    'Bidoof': 'Charge',
+    'Bibarel': 'Cascade',
+    
+    'Kricketot': 'Dard-Nuée',
+    'Kricketune': 'Plaie-Croix',
+    
+    'Shinx': 'Étincelle',
+    'Luxio': 'Étincelle',
+    'Luxray': 'Éclair Fou',
+    
+    'Cranidos': 'Lame de Roc',
+    'Rampardos': 'Lame de Roc',
+    
+    'Shieldon': 'Jet-Pierres',
+    'Bastiodon': 'Queue de Fer',
+    
+    'Burmy': 'Charge',
+    'Wormadam': 'Rayon Signal',
+    
+    'Combee': 'Dard-Nuée',
+    'Vespiquen': 'Plaie-Croix',
+    
+    'Buizel': 'Aqua-Jet',
+    'Floatzel': 'Cascade',
+    
+    'Cherubi': 'Méga-Sangsue',
+    'Cherrim': 'Éco-Sphère',
+    
+    'Shellos': 'Surf',
+    'Gastrodon': 'Telluriforce',
+    
+    'Drifloon': 'Ball\'Ombre',
+    'Drifblim': 'Ball\'Ombre',
+    
+    'Buneary': 'Plaquage',
+    'Lopunny': 'Plaquage',
+    
+    'Glameow': 'Tranche',
+    'Purugly': 'Tranche',
+    
+    'Stunky': 'Morsure',
+    'Skuntank': 'Mâchouille',
+    
+    'Bronzor': 'Choc Mental',
+    'Bronzong': 'Psyko',
+    
+    'Gible': 'Dracogriffe',
+    'Gabite': 'Dracogriffe',
+    'Garchomp': 'Séisme',
+    
+    'Riolu': 'Aurasphère',
+    'Lucario': 'Aurasphère',
+    
+    'Hippopotas': 'Piétisol',
+    'Hippowdon': 'Séisme',
+    
+    'Skorupi': 'Dard-Nuée',
+    'Drapion': 'Mâchouille',
+    
+    'Croagunk': 'Direct Toxik',
+    'Toxicroak': 'Direct Toxik',
+    
+    'Finneon': 'Surf',
+    'Lumineon': 'Surf',
+    
+    'Snover': 'Laser Glace',
+    'Abomasnow': 'Blizzard',
+    
+    'Rotom': 'Éclair',
+    
+    'Uxie': 'Psyko',
+    'Mesprit': 'Psyko',
+    'Azelf': 'Psyko',
+    
+    'Dialga': 'Draco-Météor',
+    'Palkia': 'Draco-Météor',
+    'Heatran': 'Lance-Flammes',
+    'Regigigas': 'Plaquage',
+    'Giratina': 'Ball\'Ombre',
+    'Cresselia': 'Psyko',
+    'Phione': 'Surf',
+    'Manaphy': 'Surf',
+    'Darkrai': 'Dark Pulse',
+    'Arceus': 'Ultralaser',
+    
+    // Fallback : Les Pokémon non listés utiliseront 'Charge' (physical normal)
+};
+
 const TOWER_SHOP_ITEMS = {
     permanentXP: {
         name: "Savoir Ancien (Permanent)",
@@ -658,6 +1551,51 @@ const TEAM_SYNERGIES = {
         all_required: true,
         effect: { pokedollars_mult: 0.50, exp_mult: 0.20 },
         message: "La fortune vous sourit ! (+50% $$$ et +20% XP)"
+    }
+};
+
+/**
+ * Collection Synergies — Bonus passifs basés sur la collection de familles complètes.
+ * Principe "Maillon Faible" : niveau de bonus = min(prestige) parmi tous les membres requis.
+ * Si un Pokémon manque ou a prestige 0 → bonus famille = 0.
+ * Les valeurs dans effect sont par niveau (ex: crit_chance: 0.1 → +10% crit par niveau).
+ */
+/** Évolutions finales uniquement. Valeurs /10. Water Starters = 1% PV max par prestige. */
+const COLLECTION_SYNERGIES = {
+    'muscle_heads': {
+        name: "Muscle Heads",
+        pokemon: ['Machamp', 'Primeape', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Heracross', 'Hariyama', 'Medicham', 'Lucario', 'Toxicroak'],
+        effect: { crit_chance: 0.01 }
+    },
+    'poltergeists': {
+        name: "Poltergeists",
+        pokemon: ['Gengar', 'Crobat', 'Mismagius', 'Banette', 'Sableye', 'Dusknoir', 'Drifblim', 'Spiritomb'],
+        effect: { life_steal: 0.005 }
+    },
+    'thieves_guild': {
+        name: "Thieves Guild",
+        pokemon: ['Persian', 'Weavile', 'Houndoom', 'Honchkrow', 'Mightyena', 'Sharpedo', 'Skuntank', 'Purugly'],
+        effect: { gold_mult: 0.02 }
+    },
+    'brainiacs': {
+        name: "Brainiacs",
+        pokemon: ['Alakazam', 'Hypno', 'Mr. Mime', 'Xatu', 'Espeon', 'Girafarig', 'Gardevoir', 'Gallade', 'Grumpig', 'Chimecho', 'Bronzong'],
+        effect: { xp_mult: 0.05 }
+    },
+    'fire_starters': {
+        name: "Fire Starters",
+        pokemon: ['Charizard', 'Typhlosion', 'Blaziken', 'Infernape'],
+        effect: { damage_mult: 0.01 }
+    },
+    'water_starters': {
+        name: "Water Starters",
+        pokemon: ['Blastoise', 'Feraligatr', 'Swampert', 'Empoleon'],
+        effect: { max_hp_mult: 0.01 }
+    },
+    'grass_starters': {
+        name: "Grass Starters",
+        pokemon: ['Venusaur', 'Meganium', 'Sceptile', 'Torterra'],
+        effect: { hp_regen_per_turn: 0.005 }
     }
 };
 
@@ -1797,11 +2735,6 @@ const PASSIVE_TALENTS = {
         description: "+25% XP pour toute l'équipe (Cumulable)",
         rarity: RARITY.EPIC
     },
-    robustesse: {
-        name: "Robustesse", 
-        description: "Immunisé au One-Shot si PV pleins + Endurance infinie hors combat",
-        rarity: RARITY.EPIC
-    },
     collecteur: {
         name: "Collecteur",
         description: "+50% Pokédollars après victoire",
@@ -1891,7 +2824,6 @@ const PASSIVE_TALENTS = {
 // On inclut TOUS les talents épiques
 const EPIC_TALENTS = [
     'mentor', 
-    'robustesse', 
     'collecteur', 
     'catalyseur', 
     'vengeance',   
@@ -3026,6 +3958,14 @@ const ACHIEVEMENTS = {
         trackingKey: 'badgesEarned', 
         rewards: { questTokens: 150, eggs: { [RARITY.LEGENDARY]: 1 } } 
     },
+    // --- Professor Chen (narrative, unlocked manually) ---
+    'toutCaPourCa_1': {
+        title: "Tout ça pour ça ?",
+        desc: "Obtenir un starter légendaire qui est 1 000 000 000 de fois plus faible que votre équipe actuelle.",
+        target: 1,
+        trackingKey: 'billionFinaleUnlocked',
+        rewards: {}
+    },
     // --- COLLECTION SHINY ---
     'shinyHunter_1': { 
         title: "Chasseur d'Étoiles I", desc: "Capturer 1 Pokémon Shiny", 
@@ -3225,101 +4165,127 @@ const VITAMINS = {
 };
 
 // Boosts : Augmentent les stats ACTUELLES temporairement
+// Mécanique : le temps s'ajoute (réutilisation = +durée), pas le bonus. Tous les single-stat à 15%.
+// Super Potion et Potion Max ne sont pas cumulables entre elles ; elles s'ajoutent en bonus aux single-stat.
 const STAT_BOOSTERS = {
     attaque_plus: {
         name: "Attaque +",
-        description: "+20% d'Attaque pendant 10 minutes",
+        description: "+15% d'Attaque pendant 10 min (réutiliser = +temps)",
         icon: "⚔️",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/x-attack.png",
         rarity: 'common',
         effect: {
             stat: 'attack',
-            value: 0.2,
+            value: 0.15,
             duration: 600000
         }
     },
     defense_plus: {
         name: "Défense +",
-        description: "+20% de Défense pendant 10 minutes",
+        description: "+15% de Défense pendant 10 min (réutiliser = +temps)",
         icon: "🛡️",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/x-defense.png",
         rarity: 'common',
         effect: {
             stat: 'defense',
-            value: 0.2,
+            value: 0.15,
+            duration: 600000
+        }
+    },
+    attaque_speciale_plus: {
+        name: "Att. Spé. +",
+        description: "+15% d'Attaque Spéciale pendant 10 min (réutiliser = +temps)",
+        icon: "💥",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/x-sp-atk.png",
+        rarity: 'common',
+        effect: {
+            stat: 'spattack',
+            value: 0.15,
+            duration: 600000
+        }
+    },
+    defense_speciale_plus: {
+        name: "Déf. Spé. +",
+        description: "+15% de Défense Spéciale pendant 10 min (réutiliser = +temps)",
+        icon: "💠",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/x-sp-def.png",
+        rarity: 'common',
+        effect: {
+            stat: 'spdefense',
+            value: 0.15,
             duration: 600000
         }
     },
     vitesse_plus: {
         name: "Vitesse +",
-        description: "+20% de Vitesse pendant 10 minutes",
+        description: "+15% de Vitesse pendant 10 min (réutiliser = +temps)",
         icon: "💨",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/x-speed.png",
         rarity: 'common',
         effect: {
             stat: 'speed',
-            value: 0.2,
+            value: 0.15,
             duration: 600000
         }
     },
     pv_plus_boost: {
         name: "PV +",
-        description: "+20% de PV pendant 10 minutes",
+        description: "+15% de PV pendant 10 min (réutiliser = +temps)",
         icon: "❤️",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hyper-potion.png",
         rarity: 'common',
         effect: {
             stat: 'hp',
-            value: 0.2,
+            value: 0.15,
             duration: 600000
         }
     },
     muscle_plus: {
         name: "Muscle +",
-        description: "+30% d'Attaque pendant 30 minutes",
+        description: "+15% d'Attaque pendant 10 min (réutiliser = +temps)",
         icon: "💪",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/muscle-band.png",
         rarity: 'rare',
         effect: {
             stat: 'attack',
-            value: 0.3,
-            duration: 1800000
+            value: 0.15,
+            duration: 600000
         }
     },
     garde_plus: {
         name: "Garde +",
-        description: "+30% de Défense pendant 30 minutes",
+        description: "+15% de Défense pendant 10 min (réutiliser = +temps)",
         icon: "🔰",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/guard-spec.png",
         rarity: 'rare',
         effect: {
             stat: 'defense',
-            value: 0.3,
-            duration: 1800000
+            value: 0.15,
+            duration: 600000
         }
     },
     super_potion: {
         name: "Super Potion",
-        description: "+50% de toutes les stats pendant 15 minutes",
+        description: "+5% à toutes les stats pendant 15 min (cumul avec single-stat ; remplace Potion Max)",
         icon: "🧪",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/super-potion.png",
         rarity: 'epic',
         effect: {
             stat: 'all',
-            value: 0.5,
+            value: 0.05,
             duration: 900000
         }
     },
     potion_max: {
         name: "Potion Max",
-        description: "+100% de toutes les stats pendant 5 minutes !",
+        description: "+10% à toutes les stats pendant 15 min (cumul avec single-stat ; remplace Super Potion)",
         icon: "⭐",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/max-potion.png",
         rarity: 'legendary',
         effect: {
             stat: 'all',
-            value: 1.0,
-            duration: 300000
+            value: 0.10,
+            duration: 900000
         }
     }
 };
@@ -3332,7 +4298,7 @@ const KEY_ITEMS = {
         description: "Permet d'attraper des Pokémon aquatiques dans les zones de pêche.",
         icon: "🎣",
         rarity: 'rare',
-        type: 'key_item' // Nouveau type pour les distinguer
+        type: 'key_item'
     },
     'surfboard': {
         name: "Planche de Surf",
@@ -3340,99 +4306,525 @@ const KEY_ITEMS = {
         icon: "🏄",
         rarity: 'legendary',
         type: 'key_item'
+    },
+    // ✅ AJOUT : Le Scope Sylphe manquait !
+    'scope': {
+        name: "Scope Sylphe",
+        description: "Permet d'identifier les Pokémon Spectres invisibles.",
+        icon: "🔭",
+        rarity: 'epic',
+        type: 'key_item'
+    },
+    // ✅ AJOUT : La Masterball manquait aussi (pour la quête finale)
+    'masterball': {
+        name: "Master Ball",
+        description: "La Ball ultime. Capture n'importe quel Pokémon à coup sûr.",
+        icon: "🟣", // Ou Ⓜ️
+        rarity: 'legendary',
+        type: 'consumable' // Notez le type si vous voulez l'utiliser plus tard
     }
 };
 
 // Fusionne ceci dans ALL_ITEMS à la fin du fichier constants.js :
 // Object.assign(ALL_ITEMS, KEY_ITEMS); <--- Fais-le manuellement ou copie les blocs ci-dessus dans ALL_ITEMS
 
-// 2. Définition des Quêtes Scénarisées (Prioritaires)
+// 2. Quêtes Scénarisées — Tutoriel Linéaire ("Invisible Tutorial")
+// Ordre strict : le joueur doit accomplir chaque mécanique consciemment pour avancer.
+const STORY_QUEST_ORDER = [
+    'training', 'recruitment', 'rarity_hunt', 'exploration', 'hoarding',
+    'evolution', 'shop_improvements', 'pension_storage', 'vitamin_intake', 'stat_boost_used', 'equip_item', 
+    'synergy_discovery', 'duplicates_system', 'fusion_evolution','tower_climb', 'ultimate_intro', 'arena_first','the_wall', 'arena_second', 'rebirth', 'recycler_intro', 'collection_synergy', 'arena_third', 'first_expedition'
+];
+
 const STORY_QUESTS = {
-    'unlock_rod': {
-        id: 'story_rod', // ID Unique
-        title: "Le Vieux Pêcheur",
-        description: "Un pêcheur vous observe. Montrez-lui votre force pour obtenir sa Canne !",
-        target: 10, // Tuer 10 ennemis
-        trackingKey: 'combatsWon',
-        difficulty: 'EASY',
-        rewards: {
-            items: { 'old_rod': 1 }, // La récompense unique
-            pokedollars: 500,
-            questTokens: 20
-        },
-        triggerZone: 7 // Se déclenche dès qu'on atteint la Zone 2 (Route 22)
-    },
-    'unlock_surf': {
-        id: 'story_surf',
-        title: "Dompteur de Vagues",
-        description: "Pour naviguer sur les océans, vous devez vaincre le Boss de cette zone !",
-        target: 1, // Tuer 1 Boss
-        trackingKey: 'bossDefeated',
-        difficulty: 'HARD',
-        rewards: {
-            items: { 'surfboard': 1 },
-            pokedollars: 5000,
-            questTokens: 100
-        },
-        triggerZone: 10 // Se déclenche vers la Zone 10 (ou avant les zones eau)
-    },
-    'science_fusion': {
-        id: 'story_fusion',
-        title: "L'Expérience de Léo",
-        description: "Le Pokémaniac Léo a besoin de données. Capturez 5 doublons pour étudier la fusion !",
-        target: 5,
-        trackingKey: 'fusion_completed', 
-        difficulty: 'EASY',
-        rewards: {
-            items: { 'greatball': 10 },
-            super_bonbon: 5,
-            pokedollars: 1000
-        },
-        triggerZone: 4 
-    },
-    'unlock_scope': {
-        id: 'story_scope',
-        title: "L'Œil du Faucon",
-        description: "Prouvez votre sens de l'observation. Capturez 10 Pokémon de type Vol.",
-        target: 10,
-        trackingKey: 'creaturesObtained',
-        special: 'type_hunt',
-        requiredType: 'flying', // Assure-toi que tes types sont bien en anglais (flying) ou français selon ta DB
-        difficulty: 'NORMAL',
-        rewards: {
-            items: { 'scope': 1 }, // L'objet "Jumelles"
-            questTokens: 150
-        },
-        triggerZone: 6 
-    },
-
-    'rocket_threat': {
-        id: 'story_rocket',
-        title: "Barrage de la Team Rocket",
-        description: "La Team Rocket bloque la route ! Vainquez 50 Pokémon pour forcer le passage.",
-        target: 50,
-        trackingKey: 'combatsWon',
-        difficulty: 'HARD',
-        rewards: {
-            items: { 'leftovers': 1 }, // OBJET RARE (Restes)
-            pokedollars: 10000,
-            questTokens: 200
-        },
-        triggerZone: 14 // Route 9 (Vers la Grotte Sombre)
-    },
-
-    'master_key': {
-        id: 'story_master',
-        title: "Le Secret du Manoir",
-        description: "Trouvez la Clé Secrète en vainquant le Boss du Manoir Pokémon.",
+    // Phase 1: The Basics
+    'training': {
+        id: 'story_training',
+        title: "Entraînement du Starter",
+        description: "Faites monter votre Pokémon de départ (Weedle ou Caterpie) d'au moins 1 niveau.",
+        dialogue: "On commence par ton premier cobaye : ton starter. Garde-le en équipe et fais-le monter d'au moins 1 niveau en combat. C'est sur lui que tu vas tester toutes les mécaniques.",
         target: 1,
-        trackingKey: 'bossDefeated', // Il faudra tuer le Boss de zone
-        difficulty: 'EXTREME',
-        rewards: {
-            items: { 'masterball': 1, 'lucky_egg': 1 }, // GROSSE RÉCOMPENSE
-            questTokens: 500
-        },
-        triggerZone: 25 // Manoir Pokémon
+        trackingKey: 'starter_level_up',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 200, tokens: 10 }
+    },
+    'recruitment': {
+        id: 'story_recruitment',
+        title: "Recrutement",
+        description: "Capturez un Rattata en combat avec une Poké Ball.",
+        dialogue: "Votre équipe a pris de l'ampleur. Il est temps d'élargir vos rangs : trouvez un Rattata en zone et capturez-le avec une Poké Ball !",
+        target: 1,
+        trackingKey: 'creature_captured',
+        requiredSpecies: 'Rattata',
+        difficulty: 'EASY',
+        rewards: { items: { 'pokeball': 5 }, pokedollars: 300, tokens: 15 }
+    },
+    // Phase 2: Collection Depth
+    'rarity_hunt': {
+        id: 'story_rarity_hunt',
+        title: "Chasse au Pidgey",
+        description: "Capturez un Pidgey en combat.",
+        dialogue: "J'aimerais que tu capture un pokémon classé rare. Un Pidgey fera parfaitement l'affaire pour compléter tes données. Repère-en un en zone et capture-le !",
+        target: 1,
+        trackingKey: 'creature_captured',
+        requiredSpecies: 'Pidgey',
+        difficulty: 'EASY',
+        rewards: { items: { 'greatball': 3 }, pokedollars: 800, tokens: 25 }
+    },
+    'exploration': {
+        id: 'story_exploration',
+        title: "Exploration",
+        description: "Il est temps d'explorer un peu plus les environs ! ",
+        dialogue: "Le monde s'étend devant vous. Maîtrisez la Zone 1 pour débloquer la Zone 2.",
+        target: 1,
+        trackingKey: 'zone_2_visited',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 500, tokens: 20 }
+    },
+    'hoarding': {
+        id: 'story_hoarding',
+        title: "Réserve",
+        description: "Possédez au total 10 Pokémon différents.",
+        dialogue: "J'ai besoin de plus de données. Agrandissez votre PC : équipe et stockage réunis, atteignez 10 Pokémon !",
+        target: 10,
+        trackingKey: 'totalOwned',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 1000, tokens: 30 }
+    },
+    // Phase 2.5: Mécaniques intermédiaires
+    'evolution': {
+        id: 'story_evolution',
+        title: "Première Évolution",
+        description: "Faites évoluer votre starter (Weedle → Kakuna ou Caterpie → Metapod).",
+        dialogue: "Pas touche à  tes autres Pokémons ! Je sais à quel points tu as envie de te concentrer sur ton magnifique insecte ! ",
+        target: 1,
+        trackingKey: 'starter_evolved',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 800, tokens: 25 }
+    },
+    'shop_improvements': {
+        id: 'story_shop_improvements',
+        title: "Boutique d'améliorations",
+        description: "Achetez une amélioration de pension dans la boutique (onglet Améliorations).",
+        dialogue: "La boutique propose des améliorations permanentes : plus de slots de pension, deuxième chance de capture, plus d'expérience et autres! Allez dans la Boutique, onglet « Améliorations », et achetez au moins une amélioration de pension !",
+        target: 1,
+        trackingKey: 'pensionUpgradeBought',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 500, tokens: 20 }
+    },
+    'pension_storage': {
+        id: 'story_pension_storage',
+        title: "Pension & Stockage",
+        description: "Mettez un Pokémon à la pension (depuis l'équipe ou le stockage).",
+        dialogue: "La pension permet de faire contribuer des Pokémon sans les garder en équipe. Depuis l'onglet Équipe, envoyez au moins un Pokémon à la pension pour découvrir le système ! Désolé mais ici tes pokémons sont chastes, pas de petit en vu !",
+        target: 1,
+        trackingKey: 'pensionCount',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 600, tokens: 22 }
+    },
+    'vitamin_intake': {
+        id: 'story_vitamin',
+        title: "Dopage Organisé",
+        description: "Utilisez une Vitamine (HP UP, Protein, etc.).",
+        dialogue: "Tes pokemons se renforcent, mais on peux accelérer tout ça ! Je t'ai donné ta première vitamine, tu te débrouillera pour les prochaines ! Ah, et attention si tu croise la police avec ça, je ne sais toujours pas si c'est légal...",
+        target: 1,
+        trackingKey: 'vitaminUsed',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 400, tokens: 18 }
+    },
+    'stat_boost_used': {
+        id: 'story_stat_boost',
+        title: "Boost Temporaire",
+        description: "Utilisez un boost temporaire (Défense +, Attaque +, PV +, etc.) depuis le sac.",
+        dialogue: "En plus des vitamines permanentes, il existe des potions qui boostent tes stats pendant un temps limité. Défense +, Attaque +, Vitesse +... Tu en as reçu une pour tester. Utilise-la depuis le Sac : l'effet s'applique à toute l'équipe en combat. Réutiliser le même type = on ajoute du temps, pas du stack. Et non, ça ne remplace pas le café.",
+        target: 1,
+        trackingKey: 'statBoostUsed',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 350, tokens: 16 }
+    },
+    'equip_item': {
+        id: 'story_equip_item',
+        title: "Fashion Victim",
+        description: "Équipez un objet sur votre starter.",
+        dialogue: "Ton starter se balade sans objet, c'est indigne d'un chercheur sérieux. Donne-lui les Restes que je viens de te donner, ça le remplumera peut-être un peu !",
+        target: 1,
+        trackingKey: 'heldItemEquipped',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 500, tokens: 20 }
+    },
+    'tower_climb': {
+        id: 'story_tower_climb',
+        title: "Le Vertige",
+        description: "Atteignez l'étage 5 de la Tour de Combat.",
+        dialogue: "Tu vois cette tour immense qui gâche ma vue depuis mon labo ? Il paraît qu'il y a des puissants pokémons à combattre à l'intérieur. Je te donne un Ticket de Combat pour commencer ; les autres s'obtiennent en droppant sur les Boss. Grimpe au moins 5 étages. La Tour rapporte des Marques du Triomphe, à dépenser dans la boutique Tour pour des bonus permanents.",
+        target: 5,
+        trackingKey: 'towerFloor',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 1500, tokens: 45 }
+    },
+    'ultimate_intro': {
+        id: 'story_ultimate_intro',
+        title: "Attaque Ultime",
+        description: "Lancez une attaque ultime en combat à l'aide du bouton Ultime (la jauge se charge à chaque attaque envoyée et reçue).",
+        dialogue: "Chaque Pokémon dispose d'une attaque ultime : soin, buff, dégats dévastateur... La jauge d'ultime se remplit à chaque attaque que ton Pokémon envoie ou reçoit. Pour en voir le détail, ouvre la fiche du Pokémon (carte) : la description de son ultime y est indiquée. En combat, dès que la jauge est pleine, clique sur le bouton Ultime pour lancer l'attaque. Fais-le au moins une fois pour valider la quête.",
+        target: 1,
+        trackingKey: 'ultimateUsed',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 600, tokens: 25 }
+    },
+    'arena_first': {
+        id: 'story_arena_first',
+        title: "Première Arène",
+        description: "Battez la première arène pour obtenir votre premier badge.",
+        dialogue: "Les arènes vous mettent au défi face à des champions. Ouvrez l'onglet Arènes, lancez la première arène disponible et remportez la victoire pour gagner un badge et des bonus permanents !",
+        target: 1,
+        trackingKey: 'badgesEarned',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 1200, tokens: 35 }
+    },
+    'synergy_discovery': {
+        id: 'story_synergy',
+        title: "Synergies d'équipe",
+        description: "Activez n'importe quelle synergie d'équipe (ex. 3 Pokémon Feu = Résonance Pyro).",
+        dialogue: "En alignant des types similaires en combat (ex. 3 Feu), vous activez des bonus passifs : Résonance Pyro, Harmonie Hydro... Composez une équipe qui déclenche au moins une synergie !",
+        target: 1,
+        trackingKey: 'synergyActive',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 1500, tokens: 40 }
+    },
+    'duplicates_system': {
+        id: 'story_duplicates',
+        title: "Doublons & Fusion",
+        description: "Obtenez 5 doublons liés à la famille de votre starter (Weedle/Kakuna/Beedrill ou Caterpie/Metapod/Butterfree) qui déclenchent une fusion.",
+        dialogue: "On va optimiser UNE seule lignée pour l’instant : celle de ton starter. Quand tu captures un Pokémon que tu possèdes déjà dans cette famille, il est fusionné avec l'existant : meilleurs IVs conservés, Shards gagnés, progression vers un monstre parfait. Capture au moins 5 doublons de la famille de ton starter pour voir la fusion en action. Il paraît que vous pourrez en attraper sur la route 2",
+        target: 5,
+        trackingKey: 'fusion_completed',
+        difficulty: 'MEDIUM',
+        rewards: { items: { 'old_rod': 1 }, tokens: 35 }
+    },
+    'fusion_evolution': {
+        id: 'story_fusion_evolution',
+        title: "Évolution Fusion",
+        description: "Faites évoluer un Pokémon alors que vous possédez déjà sa forme évoluée pour déclencher une fusion évolutive.",
+        dialogue: "Tu peux pousser l’optimisation encore plus loin : si tu fais évoluer un Pokémon alors que tu as déjà sa forme finale, le jeu ne garde pas deux copies. On applique une fusion évolutive : meilleurs IVs transférés, une partie de l’XP cumulée (50%) transmise et le prestige conservé. C’est comme polir la version définitive d’une espèce. Prépare une évolution dans une lignée où tu as déjà la forme d’après, puis lance l’évolution pour voir la fusion évoluer.",
+        target: 1,
+        trackingKey: 'evolution_fusion',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 1500, tokens: 40 }
+    },
+    'rebirth': {
+        id: 'story_rebirth',
+        title: "Renaissance",
+        description: "Réalisez un prestige (prestigez un Pokémon pour la première fois).",
+        dialogue: "La renaissance permet de repartir plus fort. Effectuez votre premier prestige pour boucler le tutoriel.",
+        target: 1,
+        trackingKey: 'prestigeCount',
+        difficulty: 'HARD',
+        rewards: { pokedollars: 3000, tokens: 100 }
+    },
+    // Phase 3: Avancé
+    'the_wall': {
+        id: 'story_the_wall',
+        title: "Le Mur",
+        description: "Vainquez un Boss de zone.",
+        dialogue: "Un Boss bloque la route. C'est l'épreuve de force : battez-le pour prouver votre niveau.",
+        target: 1,
+        trackingKey: 'bossDefeated',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 2000, tokens: 50 }
+    },
+    'arena_second': {
+        id: 'story_arena_second',
+        title: "Deuxième Arène",
+        description: "Battez la deuxième arène pour obtenir votre deuxième badge.",
+        dialogue: "Le premier badge t’a donné goût à la gloire, pas vrai ? La deuxième arène est plus exigeante : meilleurs niveaux, meilleures synergies. Prépare une équipe adaptée au type du champion et remporte ton deuxième badge.",
+        target: 2,
+        trackingKey: 'badgesEarned',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 2200, tokens: 55 }
+    },
+    'recycler_intro': {
+        id: 'story_recycler_intro',
+        title: "Écologie Douteuse",
+        description: "Utilisez le Recycleur pour transformer des Shards en Poussière.",
+        dialogue: "Ton stockage déborde de fragments inutiles. Au lieu de les jeter dans la nature (ce qui est illégal), utilise mon Recycleur. Il broie... euh, 'transforme' les fragments en Poussière magique. C'est très écolo. Fais de la place !",
+        target: 1,
+        trackingKey: 'recyclerUsed',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 600, tokens: 25 }
+    },
+    // Synergie de collection (Pokédex)
+    'collection_synergy': {
+        id: 'story_collection_synergy',
+        title: "Synergie de collection",
+        description: "Activez une synergie de collection dans le Pokédex (famille complète avec prestige).",
+        dialogue: "Dans le Pokédex, onglet Synergies, certaines familles de Pokémon donnent des bonus si vous possédez tous les membres avec au moins 1 prestige. Complétez une famille et montez le prestige de chaque membre pour activer une synergie de collection !",
+        target: 1,
+        trackingKey: 'collectionSynergyActive',
+        difficulty: 'MEDIUM',
+        rewards: { pokedollars: 2000, tokens: 55 }
+    },
+    'arena_third': {
+        id: 'story_arena_third',
+        title: "Troisième Arène",
+        description: "Battez la troisième arène pour obtenir votre troisième badge.",
+        dialogue: "À ce stade, les champions ne plaisantent plus. La troisième arène suppose que tu as commencé à optimiser IVs, objets tenus et synergies. Ajuste ton équipe, exploite tes buffs et décroche ton troisième badge pour prouver que tu n’es plus un débutant.",
+        target: 3,
+        trackingKey: 'badgesEarned',
+        difficulty: 'HARD',
+        rewards: { pokedollars: 2600, tokens: 70 }
+    },
+    'first_expedition': {
+        id: 'story_first_expedition',
+        title: "Délocalisation",
+        description: "Lancez une expédition (Menu Expéditions).",
+        dialogue: "Le Labo est trop petit pour tout ce monde. J'ai repéré des zones dangere... heu, exotiques. Envoie une équipe en expédition. Ils me rapportent des ressources, ils gagnent de l'XP, et surtout : ils ne sont pas là. Lance une expédition, n'importe laquelle.",
+        target: 1,
+        trackingKey: 'expeditionLaunched',
+        difficulty: 'EASY',
+        rewards: { pokedollars: 800, tokens: 30 }
+    }
+};
+
+/** Guides détaillés par quête scénario — où cliquer, étapes, pour accompagner le joueur débutant. */
+const STORY_QUEST_GUIDES = {
+    story_training: {
+        title: "Entraînement — Monter le starter",
+        steps: [
+            "Les pokémons combattent automatiquementà l'aide des statistiques globales du compte.",
+            "Chacun attaque lorsque son attaque bar en bleu est complète. La vitesse à un impact réel ici, vous pouvez attaquer plusieurs fois d'affilé suivant votre vitesse !",
+            "Laissez les combats se dérouler et remportez des victoires.",
+            "Surveillez le niveau de votre starter : il doit gagner au moins 1 niveau pour valider la quête."
+        ],
+        where: "Zone de combat (en haut) → combats automatiques → le starter gagne de l’XP et finit par monter de niveau."
+    },
+    
+    story_recruitment: {
+        title: "Recrutement — Capturer un Rattata",
+        steps: [
+            "Sous l'interface de combat se trouve le bouton de capture.",
+            "Un deuxième clic active le mode capture ciblée : cliquez sur « Rattata » pour ne cibler que lui.",
+            "Combattez en zone jusqu'à affronter un Rattata, mettez-le K.O. : la fenêtre de capture s'ouvre.",
+            "Choisissez une Poké Ball et validez. Une fois le Rattata capturé, la quête est validée."
+        ],
+        where: "Zone de combat → mode capture ciblée (Rattata) → vaincre un Rattata → fenêtre de capture → Poké Ball."
+    },
+    story_exploration: {
+        title: "Exploration — Passer en Zone 2 (changer de zone)",
+        steps: [
+            "Au dessus de la zone de combat vous trouverez un menu déroulant avec les différentes zones disponibles.",
+            "Combattez tous les Pokémon de la zone pour faire monter leur tier, à chaque tier ils deviennent un peu plus puissant.",
+            "A droite du selecteur de zone, vous pouvez obtenir le détail de votre progression dans la zone.",
+            "Une fois la zone maîtrisée, la Zone 2 se débloque automatiquement dans le menu, il ne reste plus qu'à la selectionner"
+        ],
+        where: "Zone de combat → Zone 1 → combattre jusqu’à maîtrise et déblocage de la Zone 2 dans le sélecteur."
+    },
+    story_rarity_hunt: {
+        title: "Chasse au Pidgey — Capturer un Pidgey",
+        steps: [
+            "Activez le mode capture ciblée (bouton de capture) et sélectionnez « Pidgey ».",
+            "Combattez en zone jusqu'à affronter un Pidgey, mettez-le K.O. : la fenêtre de capture s'ouvre.",
+            "Choisissez une Ball et validez. Une fois le Pidgey capturé, la quête est validée."
+        ],
+        where: "Zone de combat → mode capture ciblée (Pidgey) → vaincre un Pidgey → fenêtre de capture → Ball."
+    },
+    story_hoarding: {
+        title: "Réserve — Avoir 10 Pokémon au total",
+        steps: [
+            "Pour obtenir de nouveaux pokémon, vous pouvez capturer des pokémon en combat ou ouvrir des œufs.",
+            "Mais attention, dans ce jeu, vous ne pouvez pas avoir deux fois le même pokémon",
+            "Il vous faut donc 10 pokémon différents en tout.",
+            "Vous pouvez consulter votre stockage à gauche de l'écran."
+        ],
+        where: "Captures en combat (centre) + œufs (Extras). Total visible dans l’onglet Équipe (équipe + stockage)."
+    },
+    story_evolution: {
+        title: "Évolution — Faire évoluer le starter",
+        steps: [
+            "Les starters évoluent tôt (ex. Chenipan niveau 7 → Chrysacier).",
+            "Dans l'onglet Équipe sur la gauche de l'écran (ou Stockage/Pension), cliquez sur votre starter.",
+            "Dans la fiche, si le niveau requis est atteint, un bouton « Évoluer » apparaît.",
+            "Cliquez sur « Évoluer » : faire évoluer le starter une fois valide la quête."
+        ],
+        where: "Onglet Équipe → cliquer sur le starter → bouton Évoluer dans la fiche (niveau requis atteint)."
+    },
+    story_shop_improvements: {
+        title: "Boutique d'améliorations — Acheter une amélioration de pension",
+        steps: [
+            "Ouvrez l'onglet Boutique en haut.",
+            "Cliquez sur le sous-onglet « 💰 Améliorations » (ou il s'ouvre automatiquement pour cette quête).",
+            "Repérez l'amélioration « Pension Pokemon » (slots + transfert de stats).",
+            "Achetez au moins un niveau avec vos Pokédollars."
+        ],
+        where: "Boutique → Améliorations → Pension Pokemon → Acheter."
+    },
+    story_pension_storage: {
+        title: "Pension & Stockage — Mettre un Pokémon à la pension",
+        steps: [
+            "La pension est une zone où les Pokémon contribuent aux stats sans être en combat.",
+            "Ils bénéficient également d'une petite partie de l'xp gagner par l'équipe",
+            "Cliquez sur un Pokémon de l'équipe (ou du stockage), puis sur « Pension ».",
+            "Une fois un Pokémon envoyé à la pension, la quête est validée."
+        ],
+        where: "Onglet Équipe → cliquer sur un Pokémon → Envoyer à la pension."
+    },
+    story_vitamin: {
+        title: "Dopage Organisé — Utiliser une Vitamine",
+        steps: [
+            "Les Vitamines (PV Plus, Protéine, Fer, Calcium...) augmentent définitivement les gains de stats.",
+            "Vous en avez reçu une pour tester. Ouvrez le Sac à dos et utilisez le HP UP.",
+            "Les vitamines s'obtiennent en drop en combat à un faible taux",
+            "Le bonus est additif.",
+        ],
+        where: "Sac à dos ou Boutique → utiliser une Vitamine (ex. PV Plus)."
+    },
+    story_stat_boost: {
+        title: "Boost Temporaire — Utiliser un Défense + / Attaque + / etc.",
+        steps: [
+            "Les boosts temporaires (Défense +, Attaque +, PV +, Vitesse +, Att. Spé. +, Déf. Spé. +) augmentent une stat de l'équipe pendant un certain temps (ex. 10 min).",
+            "Vous en avez reçu un pour tester. Ouvrez le Sac à dos, repérez un objet du type « Défense + » ou « PV + », etc., et utilisez-le.",
+            "L'effet s'applique à toute l'équipe en combat. Réutiliser le même type de boost ajoute du temps de durée, sans cumuler le pourcentage.",
+            "Une fois un boost consommé, la quête est validée."
+        ],
+        where: "Sac à dos (ou Boutique) → utiliser un boost temporaire (ex. Défense +, PV +)."
+    },
+    story_equip_item: {
+        title: "Fashion Victim — Objet sur le starter",
+        steps: [
+            "Les objets tenus (Restes, Bandeau...) ont plusieurs effets, je te laisserai les découvrir par toi même.",
+            "Vous avez reçu l'objet Restes. Cliquez sur votre starter et équipez l'objet.",
+            "Les objets se drop à un taux très faible en combat."
+        ],
+        where: "Équipe → fiche du starter → Objet tenu → équiper Restes (ou autre)."
+    },
+    story_tower_climb: {
+        title: "Le Vertige — Atteindre l'étage 5 de la Tour",
+        steps: [
+            "Un Ticket de Combat vous a été offert pour cette quête. Les autres tickets se dropent sur les Boss de zone.",
+            "Ouvrez l'onglet Tour de Combat, utilisez un Ticket pour lancer une ascension et atteignez au moins l'étage 5 pour valider la quête.",
+            "Chaque adversaire est plus fort que le précédent et tous les 10 étagess se trouve un boss qui permettra de choisir un bonus temporaire pour gravir encore plus d'étage.",
+            "La tour permet d'obtenir des Marques du Triomphe que vous pourrez dépenser dans la boutique Tour de combat."
+        ],
+        where: "Tour de Combat → Lancer une ascension (ticket) → vaincre jusqu'à l'étage 5."
+    },
+    story_ultimate_intro: {
+        title: "Attaque Ultime — Lancer un ultime en combat",
+        steps: [
+            "Chaque Pokémon a une attaque ultime (soin, buff, statut...). Pour en lire la description, ouvrez l'onglet Équipe, cliquez sur un Pokémon : sur sa fiche (carte), l'ultime et son effet sont indiqués.",
+            "La jauge d'ultime se charge à chaque attaque envoyée par votre Pokémon et à chaque attaque qu'il reçoit.",
+            "En combat de zone, repérez le bouton Ultime (souvent sous ou à côté du sprite). Il s'active quand la jauge est pleine.",
+            "Cliquez sur le bouton Ultime pour lancer l'attaque ultime du Pokémon actif. Une fois l'ultime utilisé, la quête est validée."
+        ],
+        where: "Combat (zone ou arène) → laisser la jauge se remplir (attaques données/reçues) → bouton Ultime → cliquer pour lancer l'ultime."
+    },
+    story_arena_first: {
+        title: "Première Arène — Obtenir le premier badge",
+        steps: [
+            "Rendez vous dans l'onglet Arènes afin de selectionner la première arène.",
+            "En combat d'arène, vos pokémons se battent avec leur propre statistiques et l'équipe n'est pas modifiable pendant le combat!",
+            "Chaque arène offre un bonus permanent.",
+            "Vainquez tous les Pokémon du champion pour remporter le badge ; la quête se valide à la victoire."
+        ],
+        where: "Onglet Arènes → première arène → Lancer → vaincre l'équipe du champion."
+    },
+    story_arena_second: {
+        title: "Deuxième Arène — Confirmer votre niveau",
+        steps: [
+            "Ouvrez l'onglet Arènes (menu principal).",
+            "Assurez-vous d’avoir déjà battu la première arène (premier badge obtenu).",
+            "Sélectionnez la deuxième arène dans la liste.",
+            "Adaptez votre équipe au type du champion (types résistants, synergies, objets tenus) et remportez le combat pour obtenir votre deuxième badge."
+        ],
+        where: "Onglet Arènes → deuxième arène → lancer le combat et gagner pour atteindre 2 badges au total."
+    },
+    story_the_wall: {
+        title: "Le Mur — Vaincre un Boss de zone",
+        steps: [
+            "Dans les combats de zone, vous pouvez rencontrer des ennemis Epic et des Boss.",
+            "Ils sont bien evidemment plus puissants que les ennemis classiques mais vous pouvez obtenir des butins spécifiques dessus.",
+            "Les ennemis Epic ont 2.5% de chance d'apparaitre et les Boss 1%."
+        ],
+        where: "Zone de combat → choisir une zone → enchaîner les combats jusqu’à l’apparition du Boss, puis le vaincre."
+    },
+    story_recycler_intro: {
+        title: "Écologie Douteuse — Utiliser le Recycleur",
+        steps: [
+            "Les Shards s'obtiennent lors des captures de doublons comme nous l'avons vu précédemment.",
+            "Ouvrez la Boutique, sous-onglet Recycleur et recycler ds Shards pour obtenir de la poussière d'essence",
+            "Vous pourrez utiliser la poussière d'essence dans le shop."
+        ],
+        where: "Boutique → Recycleur → Recycler (au moins 1 shard)."
+    },
+    story_synergy: {
+        title: "Synergies d'équipe — Activer une synergie (ex. Résonance Pyro)",
+        steps: [
+            "Les synergies d'équipe se déclenchent lorsque les prérequis sont remplis, par exemple 3 pokémon de type feu pour la Résonance Pyro.",
+            "Composez une équipe qui respecte une des combinaisons de synergies. Vous trouverez la liste des synergies au dessus de votre zone d'équipe.",
+            "Le bouton « Synergies » vert vous indique si une synergie est active, sinon il est grisé.",
+            "Les bonus de synergies sont un moyen très efficace d'augmenter la puissance de l'équipe, mais les statistiques gagnées ne participent pas aux gains / sec",
+        ],
+        where: "Extras → Pokédex → sous-onglet Synergies. Compléter une famille (tous les Pokémon avec prestige ≥ 1) pour l’activer."
+    },
+    story_duplicates: {
+        title: "Doublons & Fusion — Optimiser un Pokémon",
+        steps: [
+            "Rendez vous à la route 2 pour capturer des doublons de votre starter (Weedle ou Caterpie)",
+            "Quand vous capturez un doublon, le jeu le compare à celui que vous avez déjà et garde les meilleurs IVs.",
+            "En plus, la capture du doublon vous permet de gagner des Shards, utilisés plus tard pour les prestiges et le Recycleur.",
+            "L'obtention de doublons vous permet donc d'optimiser vos pokémon de manière efficace.",
+            "Capturer 5 Weedle ou Caterpie pour valider la quête, aidez vous du mode de capture ciblée."
+        ],
+        where: "Zone de combat → combats classiques puis captures. Les doublons se transforment automatiquement en fusion, avec transfert d’IV et gain de Shards."
+    },
+    story_fusion_evolution: {
+        title: "Évolution Fusion — Optimiser une forme évoluée",
+        steps: [
+            "Vous devez posséder déjà la forme évoluée d'un Pokémon (ex. un Dracaufeu alors que vous avez un Reptincelle à faire évoluer).",
+            "Faites monter en niveau le Pokémon de base (ex. Reptincelle) jusqu'au niveau d'évolution requis.",
+            "Ouvrez sa fiche (Équipe, Stockage ou Pension) et cliquez sur « Évoluer ».",
+            "Comme vous avez déjà la forme cible, le jeu déclenche une fusion évolutive : meilleurs IVs conservés, 50% de l'XP transférée, prestige conservé. Vous ne gardez qu'un seul Pokémon (la forme évoluée), optimisé.",
+            "Une fois la fusion évolutive effectuée, la quête est validée."
+        ],
+        where: "Équipe / Stockage / Pension → fiche d'un Pokémon prêt à évoluer dont vous possédez déjà l'évolution → Évoluer."
+    },
+    story_rebirth: {
+        title: "Renaissance — Premier prestige",
+        steps: [
+            "Le prestige est une des bases de l'optimisation de vos Pokémons. Lors du prestige, le pokémon conserve ses IVs, son talent, son ultime et son attaque.",
+            "En échange d'un retour au niveau 1, le pokémon gagne 25% de statistiques ( Additive ) et la possibilité de monter 10 niveaux plus haut",
+            "En plus de ça, chaque prestige octroie un jeton à dépenser dans l'une des statistiques du Pokémon, offrant +5% de stats (multiplicative)",
+            "Validez le prestige : la quête « Renaissance » se valide au premier prestige effectué."
+        ],
+        where: "Onglet Équipe → cliquer sur un Pokémon → dans la fiche détaillée, bouton Prestige / Renaissance (niveau max requis)."
+    },
+    story_collection_synergy: {
+        title: "Collection Pokédex",
+        steps: [
+            "Ouvrez le Pokédex, puis le sous-onglet « Collection ».",
+            "Les Collections vous permettent de gagner des bonus selon les prestiges des Pokémons de la collection.",
+            "Pour activer une collection : posséder tous les Pokémon de la famille et avoir au moins 1 prestige sur chacun.",
+            "Le niveau de la collection est égale au plus petit prestige de la collection."
+        ],
+        where: "Pokédex → Synergies ; compléter une famille (tous les membres avec prestige ≥ 1) puis combattre."
+    },
+    story_arena_third: {
+        title: "Troisième Arène — Maîtriser les mécaniques avancées",
+        steps: [
+            "Ouvrez l'onglet Arènes (menu principal).",
+            "Vérifiez que vous avez déjà remporté les deux premières arènes (2 badges).",
+            "Préparez une équipe optimisée : synergies d’équipe, objets tenus pertinents, quelques prestiges ou bonnes IVs.",
+            "Lancez la troisième arène et remportez le combat pour décrocher votre troisième badge."
+        ],
+        where: "Onglet Arènes → troisième arène → lancer le combat et gagner pour atteindre 3 badges au total."
+    },
+    story_first_expedition: {
+        title: "Délocalisation — Lancer une expédition",
+        steps: [
+            "Ouvrez l'onglet Expéditions. Des missions apparaissent de temps en temps, elles seront un précieux moyen de gagner certaines ressources",
+            "Pour partir en expéditions, les pokémons doivent forcément se trouver dans le stockage et ne seront plus disponibles tant qu'ils ne seront pas rentrés.",
+            "La puissance du pokémon est calculer à partir de ses statistiques."
+        ],
+        where: "Onglet Expéditions → choisir une mission → sélectionner des Pokémon → Lancer."
     }
 };
 
@@ -3940,15 +5332,15 @@ const DUST_SHOP_ITEMS = {
 const ZONES = {
     // DÉBUT (Badge 1)
     1: { name: "Bourg Palette", levelRange: [2, 5], multiplier: 1, maxTier: 10 },
-    2: { name: "Route 22", levelRange: [3, 6], multiplier: 1.5, maxTier: 15 },
-    3: { name: "Route 2", levelRange: [4, 7], multiplier: 2, maxTier: 20 },
-    4: { name: "Forêt de Jade", levelRange: [5, 9], multiplier: 3, maxTier: 25, requiredEpics: 1 },
+    2: { name: "Route 22", levelRange: [3, 6], multiplier: 4, maxTier: 15 },
+    3: { name: "Route 2", levelRange: [4, 7], multiplier: 8, maxTier: 20 },
+    4: { name: "Forêt de Jade", levelRange: [5, 9], multiplier: 16, maxTier: 25, requiredEpics: 1 },
 
     // AZURIA (Badge 2)
-    5: { name: "Route 3 (Vers Mont)", levelRange: [8, 12], multiplier: 5, maxTier: 30 },
-    6: { name: "Mont Sélénite", levelRange: [10, 15], multiplier: 8, maxTier: 35, requiredBosses: 1 },
-    7: { name: "Route 4 (Sortie)", levelRange: [12, 16], multiplier: 12, maxTier: 40 },
-    8: { name: "Pont Pépite (Route 24)", levelRange: [14, 18], multiplier: 18, maxTier: 45 },
+    5: { name: "Route 3 (Vers Mont)", levelRange: [8, 12], multiplier: 15, maxTier: 30 },
+    6: { name: "Mont Sélénite", levelRange: [10, 15], multiplier: 28, maxTier: 35, requiredBosses: 1 },
+    7: { name: "Route 4 (Sortie)", levelRange: [12, 16], multiplier: 53, maxTier: 40 },
+    8: { name: "Pont Pépite (Route 24)", levelRange: [14, 18], multiplier: 102, maxTier: 45 },
     9: { name: "Cap d'Azuria (Route 25)", levelRange: [15, 20], multiplier: 25, maxTier: 50 },
 
     // CARMIN (Badge 3)
