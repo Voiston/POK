@@ -791,5 +791,82 @@ window.addEventListener('load', () => {
 });
 </script>
 
+<!-- Mobile Bottom Navigation -->
+<div class="mobile-bottom-nav">
+    <button class="mobile-nav-btn" onclick="switchMobileTab('team')">
+        <span class="nav-icon">🐾</span>
+        <span class="nav-label">Équipe</span>
+    </button>
+    <button class="mobile-nav-btn active" onclick="switchMobileTab('combat')">
+        <span class="nav-icon">⚔️</span>
+        <span class="nav-label">Combat</span>
+    </button>
+    <button class="mobile-nav-btn" onclick="switchMobileTab('menu')">
+        <span class="nav-icon">🎒</span>
+        <span class="nav-label">Menu</span>
+    </button>
+</div>
+
+<script>
+    // Mobile Tab Switching Logic
+    function switchMobileTab(tab) {
+        // Only active on mobile (check if nav is visible or by screen width)
+        if (window.innerWidth > 768) return;
+
+        const teamArea = document.querySelector('.team-area');
+        const combatArea = document.querySelector('.combat-area');
+        const secondaryContent = document.querySelector('.secondary-content');
+        const navButtons = document.querySelectorAll('.mobile-nav-btn');
+
+        // Hide all
+        if(teamArea) teamArea.style.display = 'none';
+        if(combatArea) combatArea.style.display = 'none';
+        if(secondaryContent) secondaryContent.style.setProperty('display', 'none', 'important'); // Force override
+
+        // Deactivate buttons
+        navButtons.forEach(btn => btn.classList.remove('active'));
+
+        // Show selected
+        if (tab === 'team') {
+            if(teamArea) teamArea.style.setProperty('display', 'block', 'important');
+            navButtons[0].classList.add('active');
+        } else if (tab === 'combat') {
+            if(combatArea) combatArea.style.setProperty('display', 'flex', 'important');
+            navButtons[1].classList.add('active');
+        } else if (tab === 'menu') {
+            if(secondaryContent) secondaryContent.style.setProperty('display', 'flex', 'important');
+            navButtons[2].classList.add('active');
+        }
+    }
+
+    // Initial Mobile Setup on Load/Resize
+    function checkMobileView() {
+        if (window.innerWidth <= 768) {
+            // Default to combat view if no active state set
+            const activeBtn = document.querySelector('.mobile-nav-btn.active');
+            if (activeBtn) {
+                // Trigger click on active button to set initial state
+                activeBtn.click();
+            } else {
+                switchMobileTab('combat');
+            }
+        } else {
+            // Desktop: Reset displays
+            const teamArea = document.querySelector('.team-area');
+            const combatArea = document.querySelector('.combat-area');
+            const secondaryContent = document.querySelector('.secondary-content');
+            
+            if(teamArea) teamArea.style.display = '';
+            if(combatArea) combatArea.style.display = '';
+            // Secondary content has !important in CSS or inline, usually flex or block. 
+            // We just remove our manual override.
+            if(secondaryContent) secondaryContent.style.removeProperty('display');
+        }
+    }
+
+    window.addEventListener('load', checkMobileView);
+    window.addEventListener('resize', checkMobileView);
+</script>
+
 </body>
 </html>
