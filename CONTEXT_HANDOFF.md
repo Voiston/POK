@@ -8,7 +8,7 @@ Document pour enchaîner proprement dans un nouveau chat. À copier ou à réfé
 
 - **Jeu :** Pokémon Idle satirique (vanilla JS, pas React).
 - **Personnage récurrent :** Professeur Chen (narrateur, paresseux, brise le 4e mur).
-- **Dossier principal :** `c:\Users\David\Music\Game\Game\`
+- **Dossier principal :** `c:\Users\David\Desktop\POKETIME - Copie`
 
 ---
 
@@ -62,8 +62,13 @@ Document pour enchaîner proprement dans un nouveau chat. À copier ou à réfé
 
 ---
 
+## Références projet
+
+- **Carte des fichiers** : `.cursor/FILE_MAP.md` — rôles des fichiers, ordre de chargement (CSS : styles.css, compact-popup-style.css ; scripts head/body).
+- **Résumé technique** : `TECHNICAL_SUMMARY.md` — architecture, systèmes, sauvegarde.
+
 ## Pour repartir dans un nouveau chat
 
-1. Ouvrir ou mentionner ce fichier : `@c:\Users\David\Music\Game\Game\CONTEXT_HANDOFF.md`
+1. Ouvrir ou mentionner ce fichier : `@CONTEXT_HANDOFF.md` (ou chemin complet `c:\Users\David\Desktop\POKETIME - Copie\CONTEXT_HANDOFF.md`)
 2. Indiquer ce que tu veux faire (ex. : modifier le délai, ajouter une slide, changer un texte, corriger un bug).
 3. Si tu modifies le flux (slides, délais, starters), mettre à jour ce CONTEXT_HANDOFF.md dans le même échange.

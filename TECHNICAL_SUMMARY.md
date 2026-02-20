@@ -14,9 +14,10 @@ Ce projet est un jeu de combat/collection de type Pokémon idle développé en J
 
 | Fichier | Rôle |
 |---------|------|
-| `index.html` | Point d'entrée, HTML du layout, modals dans `<script type="text/html" id="modals-template">` (injection au load, sans fetch — fonctionne en file:// et avec serveur HTTP). Wrappers globaux (saveGame, loadGame, resetGame, changeZone), init Game au load. |
+| `index.html` | Point d'entrée, HTML du layout, modals dans `<script type="text/html" id="modals-template">` (injection au load via #modals-root, sans fetch — fonctionne en file:// et avec serveur HTTP). Wrappers globaux (saveGame, loadGame, resetGame, changeZone), init Game au load. Liens CSS : styles.css, compact-popup-style.css. |
 | `modals.html` | Copie de référence du HTML des modals (optionnel ; éditer le template dans index.html pour modifier). |
-| `styles.css` | Tous les styles CSS du jeu. |
+| `styles.css` | Tous les styles CSS du jeu (layout, composants, combat, Pokédex, boutiques). |
+| `compact-popup-style.css` | Styles des popups/modals compacts. |
 | `game.js` | Classe **Game** — logique métier principale : boucle de jeu, équipe, inventaire, tour, expéditions, quêtes, modals (délégation rendu → uiManager), etc. Délègue à zoneSystem, combatSystem, shopSystem, saveSystem, questSystem, expeditionSystem, towerSystem. |
 | `constants.js` | Base de données statique : TYPES, RARITY, MOVES_DB, POKEMON_POOL, POKEMON_SECONDARY_TYPES, TYPE_EFFECTIVENESS, POKEMON_DEFAULT_MOVES, CATCH_RATES, BALLS, HELD_ITEMS, EVOLUTIONS, STATUS_EFFECTS, TEAM_SYNERGIES, COLLECTION_SYNERGIES, boutiques (POKEMART_ITEMS, SHOP_ITEMS, TOWER_SHOP_ITEMS, DUST_SHOP_ITEMS), quêtes, succès, etc. |
 | `Creature.js` | Classes `Creature` et `Egg`. Creature : stats, IV, combat, XP, sérialisation, statuts, ultimes, talents. |
@@ -35,27 +36,13 @@ Ce projet est un jeu de combat/collection de type Pokémon idle développé en J
 | `narrativeData.js` | Données narratives Professeur Chen : INTRO, INTRO_PARTS, INFLATION_RANT, INFLATION_RANT_PARTS, POST_CHOICE_RANT, POST_CHOICE_RANTPARTS, POST_CHOICE_STARTER_RECEIVED, MILESTONE_*, BILLION_*, ACHIEVEMENT_DATA, NARRATIVE_FAKE_STARTERS, NARRATIVE_REAL_STARTERS, NARRATIVE_MILESTONES, CHEN_SPRITE_URL. |
 | `narrativeManager.js` | Moteur narratif Professeur Chen : startIntro, giveStarterToPlayer (starter.isStarter = true), startGameEngineOnly, renderPostChoiceContent, finishIntro, scheduleFirstStoryQuestIntro, showFirstStoryQuestIfAny, showStoryQuestIntro, showStoryQuestCompletionSummary (récap quête terminée), showInfoModal (ex. canne à pêche), showMilestoneModal, checkMilestones, startBillionFinale. Overlay narratif (modals avec sprite Chen). |
 
-### Ordre de Chargement des Scripts
-```
-1. constants.js
-2. formatters.js
-3. pokemonStats.js
-4. creature.js (Creature.js)
-5. gameManager.js
-6. narrativeData.js
-7. narrativeManager.js
-8. uiManager.js
-9. shopSystem.js
-10. combatSystem.js
-11. questSystem.js
-12. saveSystem.js
-13. expeditionSystem.js
-14. towerSystem.js
-15. zoneSystem.js
-16. toastManager.js (dans le body)
-17. game.js (classe Game)
-18. Script inline (index.html) : wrappers + au load : injection du template #modals-template dans body → new Game() → updateZoneInfo()
-```
+### Ordre de Chargement
+
+**CSS (head)** : `styles.css` → `compact-popup-style.css`.
+
+**Scripts (head)** : constants.js, formatters.js, pokemonStats.js, creature.js, gameManager.js, narrativeData.js, narrativeManager.js, uiManager.js, shopSystem.js, combatSystem.js, questSystem.js, saveSystem.js, expeditionSystem.js, towerSystem.js, zoneSystem.js.
+
+**Scripts (body)** : toastManager.js, game.js. Puis script inline : wrappers (saveGame, loadGame, resetGame, changeZone) + au load : injection du template #modals-template dans body via #modals-root → new Game() → updateZoneInfo().
 Pas de modules ES6 : tout passe par globaux / `window`. Voir `.cursor/FILE_MAP.md` pour la carte détaillée.
 
 ---
@@ -379,7 +366,7 @@ const GAME_SPEEDS = {
 
 **Modals** : Le HTML des modals est embarqué dans `index.html` dans un bloc `<script type="text/html" id="modals-template">`. Au chargement, le script inline injecte ce contenu dans le body (sans fetch — fonctionne en **file://** et avec un serveur HTTP). Le **rendu** des modals métier (créature, œuf, sélection d'objet) est délégué à `uiManager.js` : `renderCreatureModalContent`, `renderEggHatchModalContent`, `showEggHatchModalUI`, `showItemSelectModalUI`, `closeEggHatchModalUI`, `closeCreatureModalUI`. La **logique** (données, décisions) reste dans Game (`game.js`).
 
-**Fichiers** : `index.html` (layout + template modals), `styles.css` (tous les styles).
+**Fichiers** : `index.html` (layout + template modals), `styles.css` (tous les styles), `compact-popup-style.css` (popups compacts).
 - **Toasts** : `toastManager.js` (notifications visuelles)
 - **Panels** : Combat, Équipe, Inventaire, Boutique (Épicerie, Améliorations, Jetons, Tour, Recycleur), etc.
 - **Floating Combat Text** : `showFloatingText` (uiManager)

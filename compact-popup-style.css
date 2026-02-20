@@ -1,0 +1,429 @@
+﻿/* === COMPACT POPUPS - STYLE HARMONISÉ === */
+
+/* Remplacer le style précédent des compact-popup */
+.compact-popup {
+    position: fixed;
+    /* Style Quest Completion Modal application (Earth/RPG) */
+    background: linear-gradient(165deg, #5c5042 0%, #4a4035 45%, #3d352b 100%);
+    border: 4px solid #5d4a3e;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2),
+        0 6px 0 #5d4a3e,
+        0 8px 24px rgba(0, 0, 0, 0.25);
+    padding: 0;
+    z-index: 1000;
+    display: none;
+    max-width: 350px;
+    max-height: 70vh;
+    overflow-y: auto;
+    backdrop-filter: blur(5px);
+}
+
+.compact-popup.show {
+    display: block;
+    animation: popupSlideIn 0.3s ease-out;
+}
+
+@keyframes popupSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Position très proche du bouton Auto (bas-gauche) */
+/* Position très proche du bouton Auto (bas-gauche, décalage léger) */
+#autoSettingsModal.compact-popup {
+    bottom: 150px;
+    left: 200px;
+}
+
+/* Position très proche du bouton Capture */
+#captureTargetWrapper.compact-popup {
+    bottom: 150px;
+    left: 200px;
+}
+
+/* Header harmonisé - style plus neutre/sombre comme quest modal */
+/* Header harmonisé - style plus neutre/sombre comme quest modal */
+.compact-popup .stats-header {
+    background: rgba(60, 50, 40, 0.3);
+    /* Transparent dark brown */
+    padding: 15px 20px;
+    border-radius: 9px 9px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.compact-popup .stats-header h2 {
+    font-size: 18px;
+    margin: 0;
+    color: #fef3c7;
+    /* Jaune pâle demandé */
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.compact-popup .stats-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 20px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s, filter 0.2s;
+    font-weight: bold;
+}
+
+.compact-popup .stats-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+/* Contenu */
+.compact-popup .popup-content {
+    padding: 16px;
+    color: #e8e8e8;
+}
+
+.compact-popup p {
+    font-size: 13px;
+    color: #b8b8b8;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+/* Auto settings items */
+.compact-popup .auto-setting-item {
+    padding: 11px;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s, filter 0.2s;
+}
+
+.compact-popup .auto-setting-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(217, 119, 6, 0.4);
+}
+
+.compact-popup .auto-setting-label strong {
+    font-size: 14px;
+    color: #fff;
+}
+
+.compact-popup .auto-setting-label small {
+    font-size: 11px;
+    color: #aaa;
+    line-height: 1.3;
+}
+
+/* Toggle master section */
+.compact-popup .master-toggle-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: rgba(100, 80, 60, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.compact-popup .auto-master-item span#autoMasterLabel {
+    font-weight: 700;
+    color: #fef3c7;
+    font-size: 15px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.compact-popup .auto-master-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    margin-bottom: 5px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Capture target grid */
+.compact-popup .capture-target-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
+    gap: 10px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.compact-popup .target-slot {
+    width: 65px;
+    height: 65px;
+}
+
+/* Suppression du rond bleu/bordure de sélection sur les cibles 
+   (La couleur est gérée dans styles.css maintenant) */
+#captureTargetGrid .selected,
+#captureTargetGrid div.selected {
+    /* On laisse styles.css appliquer la couleur verte */
+    outline: none !important;
+}
+
+/* Scrollbar custom pour les popups */
+.compact-popup::-webkit-scrollbar {
+    width: 8px;
+}
+
+.compact-popup::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0 16px 16px 0;
+}
+
+.compact-popup::-webkit-scrollbar-thumb {
+    background: rgba(217, 119, 6, 0.5);
+    border-radius: 4px;
+}
+
+.compact-popup::-webkit-scrollbar-thumb:hover {
+    background: rgba(217, 119, 6, 0.7);
+}
+
+/* === BADGES SUR BOUTONS === */
+
+.auto-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #666;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+    z-index: 10;
+}
+
+.auto-badge.active {
+    background: #4CAF50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+    animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+.capture-badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 10px;
+    background: #d97706;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    z-index: 10;
+}
+
+.capture-badge.show {
+    display: flex;
+}
+
+/* === TOOLTIP ENRICHI === */
+
+.auto-tooltip,
+.capture-tooltip,
+.forfeit-tooltip {
+    position: fixed;
+    bottom: 140px;
+    left: 10px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid rgba(217, 119, 6, 0.6);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: white;
+    font-size: 12px;
+    line-height: 1.6;
+    display: none;
+    z-index: 999;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    min-width: 200px;
+    pointer-events: none;
+}
+
+.auto-tooltip.show,
+.capture-tooltip.show,
+.forfeit-tooltip.show {
+    display: block;
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(250px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auto-tooltip .tooltip-header {
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: #d97706;
+    font-size: 13px;
+}
+
+.auto-tooltip .tooltip-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+    padding-left: 8px;
+}
+
+.auto-tooltip .tooltip-item::before {
+    content: '';
+    color: #666;
+    font-size: 10px;
+}
+
+.auto-tooltip .tooltip-item:last-child::before {
+    content: '';
+}
+
+.auto-tooltip .tooltip-status {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.auto-tooltip .tooltip-status.off {
+    color: #999;
+}
+
+/* === ANIMATIONS DE TOGGLE === */
+
+.auto-setting-item input[type=\"checkbox\"] {
+    transition: transform 0.2s ease;
+}
+
+.auto-setting-item input[type=\"checkbox\"]:checked {
+    animation: checkboxPop 0.3s ease;
+}
+
+@keyframes checkboxPop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.toggle-switch input:checked+.toggle-slider {
+    animation: toggleActivate 0.4s ease;
+}
+
+@keyframes toggleActivate {
+    0% {
+        background-color: #ccc;
+    }
+
+    50% {
+        background-color: #81C784;
+    }
+
+    100% {
+        background-color: #4CAF50;
+    }
+}
+
+.auto-setting-item {
+    transition: background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auto-setting-item:active {
+    transform: scale(0.98);
+}
+
+/* Effet de checkmark animé */
+.auto-setting-item input[type=\"checkbox\"]::after {
+    content: '';
+    position: absolute;
+    color: #4CAF50;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0;
+    transform: scale(0);
+    transition: background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auto-setting-item input[type=\"checkbox\"]:checked::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* === Master Toggle Item (Harmonisé) === */
+.compact-popup .auto-master-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: rgba(217, 119, 6, 0.1);
+    border: 1px solid rgba(217, 119, 6, 0.3);
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.compact-popup .auto-master-item span#autoMasterLabel {
+    font-weight: 700;
+    color: #fff;
+    font-size: 15px;
+}
+
+/* Suppression de l'ancien style de section */
+.compact-popup .master-toggle-section {
+    display: none;
+}

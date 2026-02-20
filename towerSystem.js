@@ -43,7 +43,14 @@ function startTowerRunLogic(game) {
         currentFloor: 1,
         currentEnemyIndex: 0,
         enemyTeam: generateTowerEnemyTeamLogic(game, 1),
-        buffs: { attack_mult: 1, defense_mult: 1, lifesteal: 0, crit_chance: 0 }
+        buffs: { attack_mult: 1, defense_mult: 1, lifesteal: 0, crit_chance: 0 },
+        runStats: {
+            startMarques: game.marquesDuTriomphe || 0,
+            marksGained: 0,
+            items: {},
+            eggs: {},
+            floorsCleared: 0
+        }
     };
 
     game.currentEnemy = game.towerState.enemyTeam[0];
@@ -118,7 +125,11 @@ function endTowerRunLogic(game, isForfeit = false) {
         game.towerRecord = floorsCleared;
         game.pokedollars += floorsCleared * 100;
     }
-    if (typeof game.checkSpecialQuests === 'function') game.checkSpecialQuests('towerFloor');
+    if (game.checkSpecialQuests) game.checkSpecialQuests('towerFloor');
+
+    if (game.towerState.runStats) {
+        game.towerState.runStats.floorsCleared = floorsCleared;
+    }
 
     showTowerCompletionModalLogic(game, floorsCleared, isNewRecord, isForfeit);
 
@@ -166,16 +177,31 @@ function offerTowerRelicLogic(game) {
         if (!choices.some(c => c.key === k)) choices.push({ key: k, rarity: rollRarity() });
     }
 
+    let html = '';
     choices.forEach(choice => {
         const relic = TOWER_RELICS[choice.key];
         const value = relic.values[choice.rarity];
         const desc = relic.getDescription(value);
-        const card = document.createElement('div');
-        card.className = `relic-card relic-${choice.rarity}`;
-        card.innerHTML = `<div class="relic-badge badge-${choice.rarity}">${choice.rarity}</div><div style="font-size: 30px; margin-top: 10px;">${relic.icon}</div><div style="font-weight:bold; margin:5px 0;">${relic.name}</div><div style="font-size:12px; color:#555;">${desc}</div>`;
-        card.onclick = () => selectTowerRelicLogic(game, choice.key, choice.rarity);
-        grid.appendChild(card);
+        html += `<div class="relic-card relic-${choice.rarity}" data-key="${choice.key}" data-rarity="${choice.rarity}">
+            <div class="relic-badge badge-${choice.rarity}">${choice.rarity}</div>
+            <div style="font-size: 26px; margin-top: 6px;">${relic.icon}</div>
+            <div style="font-weight:bold; margin:4px 0; color:#fff;">${relic.name}</div>
+            <div style="font-size:11px; color:#ccc; line-height: 1.3;">${desc}</div>
+        </div>`;
     });
+    grid.innerHTML = html;
+
+    // Ajout d'une délégation d'événement unique (si ce n'est pas déjà fait via modals.html)
+    if (!grid.dataset.delegated) {
+        grid.dataset.delegated = 'true';
+        grid.addEventListener('click', (e) => {
+            const card = e.target.closest('.relic-card');
+            if (card) {
+                selectTowerRelicLogic(game, card.dataset.key, card.dataset.rarity);
+            }
+        });
+    }
+
     modal.classList.add('show');
 }
 
@@ -196,10 +222,55 @@ function showTowerCompletionModalLogic(game, floor, isNewRecord, isForfeit) {
     const rewardsDiv = document.getElementById('towerCompletionRewards');
     if (!modal || !infoDiv || !rewardsDiv) return;
 
-    let title = isForfeit ? "🏳️ RETRAITE STRATÉGIQUE" : "💀 FIN DE L'ASCENSION";
-    let message = isNewRecord ? `<div style="color:#ffd700; font-weight:bold; margin:10px 0;">⭐ NOUVEAU RECORD ! ⭐</div>` : "";
-    infoDiv.innerHTML = `<div style="font-size: 48px; margin: 20px 0;">${isForfeit ? '🎒' : '🪦'}</div><h2 style="color: #333;">${title}</h2>${message}<p style="font-size: 18px;">Vous avez atteint l'étage <strong>${floor}</strong></p>`;
-    rewardsDiv.innerHTML = `<div style="padding: 15px; background: #e8f5e9; border-radius: 8px; color: #2e7d32; font-weight: bold;">✅ Toutes les Marques et Pokédollars collectés durant l'ascension ont été sécurisés dans votre inventaire.</div>`;
+    let title = isForfeit ? "Retraite stratégique" : "Fin de l'ascension";
+    let recordBadge = isNewRecord
+        ? `<div style="color:#facc15; font-weight:bold; margin:10px 0; text-transform:uppercase;">NOUVEAU RECORD</div>`
+        : "";
+
+    infoDiv.innerHTML = `<h2 style="margin: 10px 0 5px 0;">${title}</h2>${recordBadge}<p style="font-size: 16px;">Vous avez atteint l'étage <strong>${floor}</strong>.</p>`;
+
+    const stats = game.towerState && game.towerState.runStats ? game.towerState.runStats : {};
+    const marksGained = stats.marksGained || 0;
+    const floorsCleared = stats.floorsCleared || floor;
+    const eggs = stats.eggs || {};
+    const items = stats.items || {};
+
+    let eggsLines = '';
+    const eggEntries = Object.keys(eggs).filter(k => eggs[k] > 0);
+    if (eggEntries.length > 0) {
+        eggsLines =
+            '<div style="margin-top: 8px;"><strong>Œufs obtenus :</strong><ul style="margin: 4px 0 0 18px; padding:0;">' +
+            eggEntries.map(rarity => `<li>Œuf ${rarity} x${eggs[rarity]}</li>`).join('') +
+            '</ul></div>';
+    }
+
+    let itemsLines = '';
+    const itemEntries = Object.keys(items).filter(k => items[k] > 0);
+    if (itemEntries.length > 0) {
+        itemsLines =
+            '<div style="margin-top: 8px;"><strong>Objets trouvés :</strong><ul style="margin: 4px 0 0 18px; padding:0;">' +
+            itemEntries.map(key => {
+                let label = key;
+                try {
+                    if (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[key]) {
+                        label = ALL_ITEMS[key].name || key;
+                    }
+                } catch (e) { /* ignore */ }
+                return `<li>${label} x${items[key]}</li>`;
+            }).join('') +
+            '</ul></div>';
+    }
+
+    rewardsDiv.innerHTML =
+        `<div style="padding: 15px; background: rgba(0,0,0,0.18); border-radius: 10px; border: 1px solid rgba(180,155,100,0.35); font-size: 14px;">` +
+        `<div style="font-weight:bold; margin-bottom:6px;">Récapitulatif de l'ascension</div>` +
+        `<div>Étages complétés : <strong>${floorsCleared}</strong></div>` +
+        `<div><img src="img/marque-triomphe.png" class="marque-triomphe-inline" alt="" style="width:16px;height:16px;"> Marques du Triomphe gagnées : <strong>+${marksGained}</strong></div>` +
+        eggsLines +
+        itemsLines +
+        `<div style="margin-top: 10px; font-size: 12px; opacity: 0.9;">Toutes les récompenses ont été ajoutées à votre inventaire.</div>` +
+        `</div>`;
+
     modal.classList.add('show');
     const closeBtn = document.getElementById('closeTowerBtn');
     if (closeBtn) closeBtn.onclick = () => modal.classList.remove('show');
@@ -211,6 +282,10 @@ function updateTowerDisplayLogic(game) {
         if (document.getElementById('combatTickets')) document.getElementById('combatTickets').textContent = game.combatTickets;
         if (document.getElementById('marquesDuTriomphe')) document.getElementById('marquesDuTriomphe').textContent = game.marquesDuTriomphe;
     }
+    var startBtn = document.getElementById('towerStartBtn');
+    if (startBtn) {
+        startBtn.disabled = (game.combatTickets <= 0);
+    }
 }
 
 function updateTowerBuffsDisplayLogic(game) {
@@ -221,28 +296,83 @@ function updateTowerBuffsDisplayLogic(game) {
         return;
     }
     container.style.display = 'flex';
-    container.innerHTML = '<div style="width:100%; text-align:center; font-size:10px; color:#666; margin-bottom:5px;">RELIQUES ACTIVES</div>';
+    let html = '<div class="tower-buffs-title">RELIQUES ACTIVES</div>';
     const buffs = game.towerState.buffs;
     let hasBuffs = false;
-    const createChip = (text, type, icon) => {
-        const chip = document.createElement('div');
-        chip.className = `tower-buff-chip buff-${type}`;
-        chip.innerHTML = `${icon} ${text}`;
-        container.appendChild(chip);
+
+    const createChipHtml = (text, type, icon, tooltipTitle, tooltipDesc) => {
+        const safeTitle = tooltipTitle.replace(/"/g, '&quot;');
+        const safeDesc = tooltipDesc.replace(/"/g, '&quot;');
+        html += `<div class="tower-buff-chip buff-${type}" data-tooltip-title="${safeTitle}" data-tooltip-desc="${safeDesc}">
+            <span>${icon}</span><span>${text}</span>
+        </div>`;
         hasBuffs = true;
     };
-    if (buffs.speed_mult && buffs.speed_mult !== 1) createChip(`SPD +${Math.round((buffs.speed_mult - 1) * 100)}%`, 'speed', '👟');
-    if (buffs.dodge_chance > 0) createChip(`DODGE ${Math.round(buffs.dodge_chance * 100)}%`, 'special', '👻');
-    if (buffs.reflect_percent > 0) createChip(`THORNS ${Math.round(buffs.reflect_percent * 100)}%`, 'def', '🌵');
-    if (buffs.status_dmg_bonus > 0) createChip(`PREDATOR +${Math.round(buffs.status_dmg_bonus * 100)}%`, 'atk', '🐯');
-    if (buffs.max_hp_mult && buffs.max_hp_mult !== 1) createChip(`HP +${Math.round((buffs.max_hp_mult - 1) * 100)}%`, 'life', '🤎');
-    if (buffs.regen_percent > 0) createChip(`REGEN ${Math.round(buffs.regen_percent * 100)}%`, 'life', '💍');
-    if (buffs.attack_mult && buffs.attack_mult !== 1) createChip(`ATK +${Math.round((buffs.attack_mult - 1) * 100)}%`, 'atk', '⚔️');
-    if (buffs.defense_mult && buffs.defense_mult !== 1) createChip(`DEF +${Math.round((buffs.defense_mult - 1) * 100)}%`, 'def', '🛡️');
-    if (buffs.lifesteal > 0) createChip(`LIFE +${Math.round(buffs.lifesteal * 100)}%`, 'special', '❤️');
-    if (buffs.crit_chance > 0) createChip(`CRIT +${Math.round(buffs.crit_chance * 100)}%`, 'atk', '💥');
-    if (buffs.execute_percent > 0) createChip(`EXEC ${Math.round(buffs.execute_percent * 100)}%`, 'special', '⚡');
-    if (!hasBuffs) container.innerHTML += '<div style="font-size:11px; color:#999; font-style:italic;">Aucun effet actif</div>';
+
+    if (buffs.speed_mult && buffs.speed_mult !== 1) {
+        const val = Math.round((buffs.speed_mult - 1) * 100);
+        createChipHtml(`VIT +${val}%`, 'speed', '👟', 'Vitesse', `Augmente la vitesse de vos créatures de ${val}%.`);
+    }
+    if (buffs.dodge_chance > 0) {
+        const val = Math.round(buffs.dodge_chance * 100);
+        createChipHtml(`Esquive ${val}%`, 'special', '👻', 'Esquive', `Chance d'éviter complètement les attaques (${val}%).`);
+    }
+    if (buffs.reflect_percent > 0) {
+        const val = Math.round(buffs.reflect_percent * 100);
+        createChipHtml(`Épines ${val}%`, 'def', '🌵', 'Dégâts de riposte', `Renvoie ${val}% des dégâts subis à l'ennemi.`);
+    }
+    if (buffs.status_dmg_bonus > 0) {
+        const val = Math.round(buffs.status_dmg_bonus * 100);
+        createChipHtml(`Prédateur +${val}%`, 'atk', '🐯', 'Prédateur', `Augmente les dégâts infligés aux ennemis affectés par un statut (${val}%).`);
+    }
+    if (buffs.max_hp_mult && buffs.max_hp_mult !== 1) {
+        const val = Math.round((buffs.max_hp_mult - 1) * 100);
+        createChipHtml(`PV +${val}%`, 'life', '🤎', 'Points de vie', `Augmente les PV max de votre équipe de ${val}%.`);
+    }
+    if (buffs.regen_percent > 0) {
+        const val = Math.round(buffs.regen_percent * 100);
+        createChipHtml(`Regen ${val}%`, 'life', '💍', 'Régénération', `Vos créatures régénèrent ${val}% de leurs PV à chaque combat.`);
+    }
+    if (buffs.attack_mult && buffs.attack_mult !== 1) {
+        const val = Math.round((buffs.attack_mult - 1) * 100);
+        createChipHtml(`ATK +${val}%`, 'atk', '⚔️', 'Attaque', `Augmente l'attaque de votre équipe de ${val}%.`);
+    }
+    if (buffs.defense_mult && buffs.defense_mult !== 1) {
+        const val = Math.round((buffs.defense_mult - 1) * 100);
+        createChipHtml(`DEF +${val}%`, 'def', '🛡️', 'Défense', `Réduit les dégâts subis de ${val}%.`);
+    }
+    if (buffs.lifesteal > 0) {
+        const val = Math.round(buffs.lifesteal * 100);
+        createChipHtml(`Vol de vie ${val}%`, 'special', '❤️', 'Vol de vie', `Une partie des dégâts infligés vous soigne (${val}%).`);
+    }
+    if (buffs.crit_chance > 0) {
+        const val = Math.round(buffs.crit_chance * 100);
+        createChipHtml(`Crit ${val}%`, 'atk', '💥', 'Critique', `Augmente la chance de coup critique de ${val}%.`);
+    }
+    if (buffs.execute_percent > 0) {
+        const val = Math.round(buffs.execute_percent * 100);
+        createChipHtml(`Exécution ${val}%`, 'special', '⚡', 'Exécution', `Permet d'achever instantanément les ennemis sous un certain seuil de PV (${val}%).`);
+    }
+    if (!hasBuffs) html += '<div class="tower-buffs-empty">Aucun effet actif</div>';
+
+    container.innerHTML = html;
+
+    // Délégation d'événement
+    if (!container.dataset.delegated) {
+        container.dataset.delegated = 'true';
+        container.addEventListener('mouseover', (ev) => {
+            const chip = ev.target.closest('.tower-buff-chip');
+            if (chip && game.scheduleTooltip) {
+                game.scheduleTooltip(ev, chip.dataset.tooltipTitle, chip.dataset.tooltipDesc);
+            }
+        });
+        container.addEventListener('mouseout', (ev) => {
+            const chip = ev.target.closest('.tower-buff-chip');
+            if (chip && game.hideTooltip) {
+                game.hideTooltip();
+            }
+        });
+    }
 }
 
 function buyTowerShopItemLogic(game, itemKey) {

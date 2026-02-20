@@ -1,5 +1,9 @@
 # UI Refinement Implementation Plan
 
+**État du projet** : Rounds 3–5 décrits ci-dessous. Fichiers UI actuels : `styles.css`, `compact-popup-style.css`, `index.html`, `uiManager.js`, `game.js`. Référence technique : `TECHNICAL_SUMMARY.md`, `.cursor/FILE_MAP.md`.
+
+---
+
 ## Round 3: UI Polish & Consistency
 
 ### Objectives
@@ -67,3 +71,7 @@
 - Update `updateUpgradesDisplayUI` to use `rgba(255,255,255,0.7)` for "Bonus actuel" text.
 - Simplify upgrade descriptions where possible.
 - Add icons to upgrade titles for visual clarity.
+
+---
+
+*Dernière mise à jour : aligné avec l’état du projet (fév. 2025).*

@@ -68,7 +68,7 @@ function isZoneMasteredLogic(game, zoneId) {
     const tiers = progress.pokemonTiers || {};
     const maxTier = zone.maxTier || 50;
 
-    return pokemonInZone.every(function(name) { return (tiers[name] || 0) >= maxTier; });
+    return pokemonInZone.every(function (name) { return (tiers[name] || 0) >= maxTier; });
 }
 
 /**
@@ -98,7 +98,7 @@ function updateZoneSelectorLogic(game) {
 
     if (selector.options.length !== zoneIds.length) {
         selector.innerHTML = '';
-        zoneIds.forEach(function(zoneId) {
+        zoneIds.forEach(function (zoneId) {
             const zId = parseInt(zoneId);
             const option = document.createElement('option');
             option.value = zId;
@@ -106,7 +106,7 @@ function updateZoneSelectorLogic(game) {
         });
     }
 
-    Array.from(selector.options).forEach(function(option) {
+    Array.from(selector.options).forEach(function (option) {
         const zId = parseInt(option.value);
         const zone = ZONES[zId];
         const isUnlocked = isZoneUnlockedLogic(game, zId);
@@ -137,7 +137,7 @@ function changeZoneLogic(game, zoneId) {
     if (!isZoneUnlockedLogic(game, zId)) {
         const prevZone = zId - 1;
         const prevZoneName = ZONES[prevZone] ? ZONES[prevZone].name : "précédente";
-        if (typeof toast !== 'undefined') toast.error("Zone Verrouillée", "Terminez d'abord : " + prevZoneName);
+        if (toast) toast.error("Zone Verrouillée", "Terminez d'abord : " + prevZoneName);
         updateZoneSelectorLogic(game);
         return;
     }
@@ -150,13 +150,13 @@ function changeZoneLogic(game, zoneId) {
     logMessage("Voyage vers : " + ZONES[currentZone].name);
 
     updateZoneSelectorLogic(game);
-    if (typeof game.updateCaptureTargetList === 'function') game.updateCaptureTargetList();
+    if (game.updateCaptureTargetList) game.updateCaptureTargetList();
     if (typeof updateZoneInfo === 'function') updateZoneInfo();
 
     if (!game.sessionStats.zonesVisited) game.sessionStats.zonesVisited = new Set();
     game.sessionStats.zonesVisited.add(zId);
-    if (typeof game.checkSpecialQuests === 'function') game.checkSpecialQuests('zone_visited');
-    if (zId === 2 && typeof game.checkSpecialQuests === 'function') game.checkSpecialQuests('zone_2_visited');
+    if (game.checkSpecialQuests) game.checkSpecialQuests('zone_visited');
+    if (zId === 2 && game.checkSpecialQuests) game.checkSpecialQuests('zone_2_visited');
 
     if (!game.items) game.items = {};
     if (!game.completedStoryQuests) game.completedStoryQuests = [];
@@ -171,7 +171,7 @@ function changeZoneLogic(game, zoneId) {
     if (storyTriggered && game.quests && game.quests.length < 10) {
         logMessage("📜 ÉVÉNEMENT : Une nouvelle quête majeure est disponible !");
         game.nextQuestTimer = 1000;
-        if (typeof game.updateQuestTimerDisplay === 'function') game.updateQuestTimerDisplay();
+        if (game.updateQuestTimerDisplay) game.updateQuestTimerDisplay();
     }
 }
 
@@ -191,8 +191,8 @@ function createBossLogic(game) {
         name = localPool[Math.floor(Math.random() * localPool.length)];
     }
     const level = zone.levelRange[1] + 10;
-    const type = typeof game.findTypeForPokemon === 'function' ? game.findTypeForPokemon(name) : 'normal';
-    const secondaryType = (typeof POKEMON_SECONDARY_TYPES !== 'undefined' && POKEMON_SECONDARY_TYPES[name]) || null;
+    const type = game.findTypeForPokemon ? game.findTypeForPokemon(name) : 'normal';
+    const secondaryType = POKEMON_SECONDARY_TYPES[name] || null;
     const enemy = new Creature(name, type, level, RARITY.LEGENDARY, true, false, secondaryType, true, false);
     enemy.zoneMultiplier = zone.multiplier * 30;
     enemy.recalculateStats();
@@ -213,8 +213,8 @@ function createEpicLogic(game) {
         name = localPool[Math.floor(Math.random() * localPool.length)];
     }
     const level = zone.levelRange[1] + 5;
-    const type = typeof game.findTypeForPokemon === 'function' ? game.findTypeForPokemon(name) : 'normal';
-    const secondaryType = (typeof POKEMON_SECONDARY_TYPES !== 'undefined' && POKEMON_SECONDARY_TYPES[name]) || null;
+    const type = game.findTypeForPokemon ? game.findTypeForPokemon(name) : 'normal';
+    const secondaryType = POKEMON_SECONDARY_TYPES[name] || null;
     const enemy = new Creature(name, type, level, RARITY.EPIC, true, false, secondaryType, false, true);
     enemy.zoneMultiplier = zone.multiplier * 15;
     enemy.recalculateStats();
@@ -233,8 +233,8 @@ function getOrCreateEnemyLogic(game) {
     if (game.pendingRoamer) {
         var name = game.pendingRoamer;
         game.pendingRoamer = null;
-        var type = typeof game.findTypeForPokemon === 'function' ? game.findTypeForPokemon(name) : 'normal';
-        var secondaryType = (typeof POKEMON_SECONDARY_TYPES !== 'undefined' && POKEMON_SECONDARY_TYPES[name]) || null;
+        var type = game.findTypeForPokemon ? game.findTypeForPokemon(name) : 'normal';
+        var secondaryType = POKEMON_SECONDARY_TYPES[name] || null;
         var zone = ZONES[currentZone];
         var level = zone ? zone.levelRange[1] + 5 : 50;
         var roamer = new Creature(name, type, level, RARITY.LEGENDARY, true, false, secondaryType, true, false);
@@ -266,10 +266,10 @@ function getOrCreateEnemyLogic(game) {
         enemyPool = ['Magikarp'];
     }
     var randomName = enemyPool[Math.floor(Math.random() * enemyPool.length)];
-    var randomType = typeof game.findTypeForPokemon === 'function' ? game.findTypeForPokemon(randomName) : 'normal';
-    var secondaryType = (typeof POKEMON_SECONDARY_TYPES !== 'undefined' && POKEMON_SECONDARY_TYPES[randomName]) || null;
+    var randomType = game.findTypeForPokemon ? game.findTypeForPokemon(randomName) : 'normal';
+    var secondaryType = POKEMON_SECONDARY_TYPES[randomName] || null;
     var level = Math.floor(Math.random() * (zone.levelRange[1] - zone.levelRange[0] + 1)) + zone.levelRange[0];
-    var trueRarity = typeof game.getNaturalRarity === 'function' ? game.getNaturalRarity(randomName) : RARITY.COMMON;
+    var trueRarity = game.getNaturalRarity ? game.getNaturalRarity(randomName) : RARITY.COMMON;
     var enemy = new Creature(randomName, randomType, level, trueRarity, true, false, secondaryType);
     var savedTier = (game.zoneProgress && game.zoneProgress[currentZone] && game.zoneProgress[currentZone].pokemonTiers && game.zoneProgress[currentZone].pokemonTiers[enemy.name]) || 0;
     enemy.tier = savedTier;

@@ -9,23 +9,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="pokedex-fixes.css">
+    <link rel="stylesheet" href="compact-popup-style.css">
     <!-- Scripts JavaScript du jeu -->
-    <script src="constants.js"></script>
-    <script src="formatters.js"></script>
-    <script src="pokemonStats.js"></script>
-    <script src="creature.js"></script>
-    <script src="gameManager.js"></script>
-    <script src="narrativeData.js"></script>
-    <script src="narrativeManager.js"></script>
-    <script src="uiManager.js"></script>
-    <script src="shopSystem.js"></script>
-    <script src="combatSystem.js"></script>
-    <script src="questSystem.js"></script>
-    <script src="saveSystem.js"></script>
-    <script src="expeditionSystem.js"></script>
-    <script src="towerSystem.js"></script>
-    <script src="zoneSystem.js"></script>
+    <script src="constants.js" defer></script>
+    <script src="formatters.js" defer></script>
+    <script src="pokemonStats.js" defer></script>
+    <script src="creature.js" defer></script>
+    <script src="gameManager.js" defer></script>
+    <script src="narrativeData.js" defer></script>
+    <script src="narrativeManager.js" defer></script>
+    <script src="uiManager.js" defer></script>
+    <script src="shopSystem.js" defer></script>
+    <script src="combatSystem.js" defer></script>
+    <script src="questSystem.js" defer></script>
+    <script src="saveSystem.js" defer></script>
+    <script src="expeditionSystem.js" defer></script>
+    <script src="towerSystem.js" defer></script>
+    <script src="zoneSystem.js" defer></script>
 
 </head>
 
@@ -36,43 +36,37 @@
             <div class="header-unified-row">
 
                 <div class="combat-stats-group">
-                    <div class="stat-chip" id="headerStatHP" data-stat="hp"
-                        onmouseenter="game.showBoostTooltip(event, 'hp')" onmouseleave="game.hideTooltip()">
+                    <div class="stat-chip header-stat-chip" id="headerStatHP" data-stat="hp">
                         <span class="stat-label">HP :</span>
                         <span class="stat-value">0</span>
                         <span class="stat-chip-boost-icon" title="">⚡</span>
                         <span class="stat-sub-info">(<span id="playerHPGain">+0/s</span>)</span>
                     </div>
-                    <div class="stat-chip" id="headerStatAtk" data-stat="attack"
-                        onmouseenter="game.showBoostTooltip(event, 'attack')" onmouseleave="game.hideTooltip()">
+                    <div class="stat-chip header-stat-chip" id="headerStatAtk" data-stat="attack">
                         <span class="stat-label">ATK :</span>
                         <span class="stat-value">0</span>
                         <span class="stat-chip-boost-icon" title="">⚡</span>
                         <span class="stat-sub-info">(<span id="playerAttackGain">+0/s</span>)</span>
                     </div>
-                    <div class="stat-chip" id="headerStatSpAtk" data-stat="spattack"
-                        onmouseenter="game.showBoostTooltip(event, 'spattack')" onmouseleave="game.hideTooltip()">
+                    <div class="stat-chip header-stat-chip" id="headerStatSpAtk" data-stat="spattack">
                         <span class="stat-label">ATK SP :</span>
                         <span class="stat-value">0</span>
                         <span class="stat-chip-boost-icon" title="">⚡</span>
                         <span class="stat-sub-info">(<span id="playerSpAttackGain">+0/s</span>)</span>
                     </div>
-                    <div class="stat-chip" id="headerStatDef" data-stat="defense"
-                        onmouseenter="game.showBoostTooltip(event, 'defense')" onmouseleave="game.hideTooltip()">
+                    <div class="stat-chip header-stat-chip" id="headerStatDef" data-stat="defense">
                         <span class="stat-label">DEF :</span>
                         <span class="stat-value">0</span>
                         <span class="stat-chip-boost-icon" title="">⚡</span>
                         <span class="stat-sub-info">(<span id="playerDefenseGain">+0/s</span>)</span>
                     </div>
-                    <div class="stat-chip" id="headerStatSpDef" data-stat="spdefense"
-                        onmouseenter="game.showBoostTooltip(event, 'spdefense')" onmouseleave="game.hideTooltip()">
+                    <div class="stat-chip header-stat-chip" id="headerStatSpDef" data-stat="spdefense">
                         <span class="stat-label">DEF SP :</span>
                         <span class="stat-value">0</span>
                         <span class="stat-chip-boost-icon" title="">⚡</span>
                         <span class="stat-sub-info">(<span id="playerSpDefenseGain">+0/s</span>)</span>
                     </div>
-                    <div class="stat-chip" id="headerStatSpd" data-stat="speed"
-                        onmouseenter="game.showBoostTooltip(event, 'speed')" onmouseleave="game.hideTooltip()">
+                    <div class="stat-chip header-stat-chip" id="headerStatSpd" data-stat="speed">
                         <span class="stat-label">SPD :</span>
                         <span class="stat-value">0</span>
                         <span class="stat-chip-boost-icon" title="">⚡</span>
@@ -84,21 +78,21 @@
 
                 <div class="resources-group">
                     <div class="resource-chip" id="headerStatMoney">
-                        <span class="resource-icon">💰</span>
+                        <img src="img/pokedollars.png" class="resource-icon resource-icon-img" alt="Pokédollars">
                         <div>
                             <div class="resource-val">0</div>
                             <div class="resource-name">Dollars</div>
                         </div>
                     </div>
                     <div class="resource-chip" id="headerStatTokens">
-                        <span class="resource-icon">🎫</span>
+                        <img src="img/quest-token.png" class="resource-icon resource-icon-img" alt="Jetons">
                         <div>
                             <div class="resource-val">0</div>
                             <div class="resource-name">Jetons</div>
                         </div>
                     </div>
                     <div class="resource-chip" id="headerStatMarques">
-                        <span class="resource-icon">Ⓜ️</span>
+                        <img src="img/marque-triomphe.png" class="resource-icon resource-icon-img" alt="Marques">
                         <div>
                             <div class="resource-val">0</div>
                             <div class="resource-name">Marques</div>
@@ -132,114 +126,160 @@
 
 
 
-            <div class="battle-display" id="battleDisplay">
-                <div class="creature-display" id="playerSpriteContainer">
-                    <div class="sprite-platform player"></div>
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png"
-                        class="battle-sprite" id="playerSprite">
+            <div class="battle-screen">
+                <div class="battle-display" id="battleDisplay">
+                    <div class="creature-display" id="playerSpriteContainer">
+                        <div class="sprite-platform player"></div>
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png"
+                            class="battle-sprite" id="playerSprite">
+                    </div>
+
+                    <div class="creature-display" id="enemySpriteContainer">
+                        <div class="sprite-platform enemy"></div>
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"
+                            class="battle-sprite" id="enemySprite">
+                    </div>
+
+                    <!-- Barre de commandes montée dans le battle-display -->
+                    <div class="combat-controls-wrapper">
+                        <!-- Menu radial bas-gauche : deux parts de "camembert" Auto / Capture -->
+                        <div class="menu-angle-gauche">
+                            <button id="autoSelectBtn" class="cmd-btn bouton-part bouton-auto auto-select-btn"
+                                onclick="game.openAutoSettings()" onmouseenter="game.showAutoTooltip()"
+                                onmouseleave="game.hideAutoTooltip()">
+                                <span>AUTO</span>
+                                <div class="auto-badge" id="autoBadge"></div>
+                            </button>
+
+                            <button id="captureModeBtn" class="cmd-btn bouton-part bouton-capture capture-off"
+                                onclick="game.cycleCaptureMode()" onmouseenter="game.showCaptureTooltip()"
+                                onmouseleave="game.hideCaptureTooltip()">
+                                <span id="captureTextShort">CAPT<br>OFF</span>
+                                <div class="capture-badge" id="captureBadge">0</div>
+                            </button>
+                        </div>
+
+                        <div class="combat-controls-right">
+                            <button id="forfeitBtn" class="cmd-btn forfeit" onclick="game.forfeitCombat()"
+                                onmouseenter="game.showForfeitTooltip()" onmouseleave="game.hideForfeitTooltip()">
+                                <span class="cmd-icon">🏳️</span>
+                                <span>Fuir</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="creature-display" id="enemySpriteContainer">
-                    <div class="sprite-platform enemy"></div>
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"
-                        class="battle-sprite" id="enemySprite">
-                </div>
-            </div>
+                <div class="battle-hud" id="battleHud">
+                    <div class="hud-player" style="position: relative;">
 
-            <div class="battle-hud" id="battleHud">
-                <div class="hud-player" style="position: relative;">
+                        <div class="hud-header-row">
+                            <div class="creature-name" id="playerCreatureName">-</div>
+                            <button id="ultimateButton" class="ult-rect-btn" onclick="game.activateUltimate()" disabled>
+                                <div class="ult-rect-fill" id="ultFill"></div>
+                                <div class="ult-rect-content">
+                                    <span id="ultText" style="font-weight:800; font-size:9px;">0%</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="creature-level" id="playerCreatureLevel">Niveau -</div>
 
-                    <div class="hud-header-row">
-                        <div class="creature-name" id="playerCreatureName">-</div>
-                        <button id="ultimateButton" class="ult-rect-btn" onclick="game.activateUltimate()" disabled>
-                            <div class="ult-rect-fill" id="ultFill"></div>
-                            <div class="ult-rect-content">
-                                <span id="ultText" style="font-weight:800; font-size:9px;">0%</span>
+                        <div class="health-bar">
+                            <div class="health-fill" id="playerHealthFill" style="width: 100%"></div>
+                            <div class="health-text" id="playerHealthText">- / -</div>
+                        </div>
+
+                        <div class="atb-bar-container" style="position: relative;">
+
+                            <div id="playerATB" class="atb-fill"></div>
+
+                            <div id="playerATBStack" class="atb-stack-badge" style="display:none;">x2</div>
+
+                        </div>
+
+                        <div class="status-icons-container" id="playerStatusIcons"></div>
+                        <div class="hud-stats" id="playerHudStats">
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">ATK</div>
+                                <div class="hud-stat-value" id="playerHudAtk">0</div>
                             </div>
-                        </button>
-                    </div>
-                    <div class="creature-level" id="playerCreatureLevel">Niveau -</div>
-
-                    <div class="health-bar">
-                        <div class="health-fill" id="playerHealthFill" style="width: 100%"></div>
-                        <div class="health-text" id="playerHealthText">- / -</div>
-                    </div>
-
-                    <div class="atb-bar-container" style="position: relative;">
-
-                        <div id="playerATB" class="atb-fill"></div>
-
-                        <div id="playerATBStack" class="atb-stack-badge" style="display:none;">x2</div>
-
-                    </div>
-
-                    <div class="status-icons-container" id="playerStatusIcons"></div>
-                    <div class="hud-stats" id="playerHudStats"></div>
-                </div>
-
-                <div class="hud-enemy">
-                    <div class="hud-name-row">
-                        <div class="creature-name" id="enemyCreatureName">-</div>
-                        <div id="effectivenessIndicator" class="effectiveness-indicator"></div>
-                    </div>
-
-                    <div class="creature-level" id="enemyCreatureLevel">Niveau -</div>
-
-                    <div class="health-bar">
-                        <div class="health-fill" id="enemyHealthFill" style="width: 100%"></div>
-                        <div class="health-text" id="enemyHealthText">- / -</div>
-                    </div>
-
-                    <div class="atb-bar-container">
-                        <div id="enemyATB" class="atb-fill"></div>
-                    </div>
-
-                    <div class="status-icons-container" id="enemyStatusIcons"></div>
-
-                    <div class="hud-stats" id="enemyHudStats"></div>
-                </div>
-            </div>
-
-            <div class="combat-controls-wrapper">
-
-                <button id="autoSelectBtn" class="cmd-btn auto-select-btn" onclick="game.toggleAutoSelect()">
-                    <span class="cmd-icon">🎯</span>
-                    <span>Auto</span>
-                </button>
-
-                <div class="capture-wrapper" style="display:flex; flex-direction:column; width:100%; gap:5px;">
-
-                    <button id="captureModeBtn" class="cmd-btn capture-off" style="width:100%; flex:1;"
-                        onclick="game.cycleCaptureMode()">
-                        <span id="captureIcon" class="cmd-icon" style="font-size:16px;">🕸️</span>
-                        <span id="captureText">Capture : OFF</span>
-                    </button>
-
-                    <div id="captureTargetWrapper" class="target-grid-wrapper">
-                        <div id="captureTargetGrid" class="target-grid">
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">ATK SP</div>
+                                <div class="hud-stat-value" id="playerHudSpAtk">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">DEF</div>
+                                <div class="hud-stat-value" id="playerHudDef">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">DEF SP</div>
+                                <div class="hud-stat-value" id="playerHudSpDef">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">SPD</div>
+                                <div class="hud-stat-value" id="playerHudSpd">0</div>
+                            </div>
                         </div>
                     </div>
 
+                    <div class="hud-enemy">
+                        <div class="hud-name-row">
+                            <div class="creature-name" id="enemyCreatureName">-</div>
+                            <div id="effectivenessIndicator" class="effectiveness-indicator"></div>
+                        </div>
+
+                        <div class="creature-level" id="enemyCreatureLevel">Niveau -</div>
+
+                        <div class="health-bar">
+                            <div class="health-fill" id="enemyHealthFill" style="width: 100%"></div>
+                            <div class="health-text" id="enemyHealthText">- / -</div>
+                        </div>
+
+                        <div class="atb-bar-container">
+                            <div id="enemyATB" class="atb-fill"></div>
+                        </div>
+
+                        <div class="status-icons-container" id="enemyStatusIcons"></div>
+                        <div class="hud-stats" id="enemyHudStats">
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">ATK</div>
+                                <div class="hud-stat-value" id="enemyHudAtk">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">ATK SP</div>
+                                <div class="hud-stat-value" id="enemyHudSpAtk">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">DEF</div>
+                                <div class="hud-stat-value" id="enemyHudDef">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">DEF SP</div>
+                                <div class="hud-stat-value" id="enemyHudSpDef">0</div>
+                            </div>
+                            <div class="hud-stat">
+                                <div class="hud-stat-pill">SPD</div>
+                                <div class="hud-stat-value" id="enemyHudSpd">0</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <button id="forfeitBtn" class="cmd-btn forfeit" onclick="game.forfeitCombat()">
-                    <span class="cmd-icon">🏳️</span>
-                    <span>Fuir</span>
-                </button>
             </div>
-
 
         </div>
 
         <div class="team-area">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <h2 style="margin: 0;">Equipe Principale (<span id="teamCount">0</span>)</h2>
+                    <h2 style="margin: 0;">Equipe Principale (<span id="teamCount">0</span>)
+                        <span class="info-icon"
+                            style="font-size: 12px; cursor: help; color: #888; background: #2a2a2a; border-radius: 50%; width: 16px; height: 16px; display: inline-flex; justify-content: center; align-items: center; margin-left: 5px; border: 1px solid #444;"
+                            onmouseenter="game.showTeamContributionTooltip(event)"
+                            onmouseleave="game.hideTooltip()">?</span>
+                    </h2>
 
-                    <button id="synergyBtn" class="zone-details-btn"
-                        style="font-size: 12px; background: #8b5cf6; transition: all 0.3s;"
+                    <button id="synergyBtn" class="synergy-btn" type="button" title="Synergies"
                         onclick="game.openSynergyListModal()">
-                        ✨ Synergies
+                        <img src="img/synergy-off.png" class="synergy-btn-sprite" alt="Synergies">
                     </button>
                 </div>
             </div>
@@ -247,8 +287,12 @@
             <div class="team-list" id="teamList"></div>
             <div id="activeTalentsDisplay"></div>
 
-            <h3 style="margin-top: 20px; cursor: pointer;" onclick="togglePension()">
-                Pension (<span id="pensionCount">0/0</span>) <span id="pensionToggleIcon">▼</span>
+            <h3 style="margin-top: 20px; display: flex; align-items: center; gap: 8px;">
+                <span style="cursor: pointer;" onclick="togglePension()">Pension (<span id="pensionCount">0/0</span>)
+                    <span id="pensionToggleIcon">▼</span></span>
+                <span class="info-icon"
+                    style="font-size: 10px; cursor: help; color: #888; background: #2a2a2a; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; justify-content: center; align-items: center; border: 1px solid #444;"
+                    onmouseenter="game.showPensionContributionTooltip(event)" onmouseleave="game.hideTooltip()">?</span>
             </h3>
 
             <div id="pensionContainer">
@@ -364,6 +408,11 @@
                         </div>
                     </div>
                 </div>
+                <h3>🐣 Incubateurs</h3>
+                <p style="font-size:12px; color:#64748b; margin:0 0 10px 0;">Placez un œuf dans un incubateur pour
+                    l'incuber. Une fois le temps écoulé, cliquez pour ouvrir.</p>
+                <div class="incubators-container" id="incubatorsContainer"></div>
+
                 <h3>Inventaire d'oeufs (<span id="ballCount">0</span>)</h3>
                 <div class="balls-container" id="ballsContainer"></div>
 
@@ -379,10 +428,14 @@
                 <div class="sub-tabs-container">
                     <button class="sub-tab-btn" onclick="switchShopSubTab('epicerie')">🏪 Épicerie</button>
 
-                    <button class="sub-tab-btn active" onclick="switchShopSubTab('pokedollars')">💰
+                    <button class="sub-tab-btn active" onclick="switchShopSubTab('pokedollars')"><img
+                            src="img/pokedollars.png" class="pokedollars-inline" alt="" style="width:18px;height:18px;">
                         Améliorations</button>
-                    <button class="sub-tab-btn" onclick="switchShopSubTab('jetons')">🎫 Boutique Jetons</button>
-                    <button class="sub-tab-btn" onclick="switchShopSubTab('marques')">Ⓜ️ Boutique Tour</button>
+                    <button class="sub-tab-btn" onclick="switchShopSubTab('jetons')"><img src="img/quest-token.png"
+                            class="quest-token-inline" alt="" style="width:18px;height:18px;"> Boutique Jetons</button>
+                    <button class="sub-tab-btn" onclick="switchShopSubTab('marques')"><img src="img/marque-triomphe.png"
+                            class="marque-triomphe-inline" alt="" style="width:18px;height:18px;"> Boutique
+                        Tour</button>
                     <button class="sub-tab-btn" onclick="switchShopSubTab('recycleur')">♻️ Recycleur</button>
                 </div>
 
@@ -403,9 +456,6 @@
 
                 <div class="sub-tab-content" id="shop-jetons">
                     <h3>Boutique Spéciale</h3>
-                    <div class="shop-wallet tokens">
-                        💰 <span id="shopTokens">0</span> Jetons
-                    </div>
                     <div class="shop-container" id="shopContainer">
                     </div>
                 </div>
@@ -418,7 +468,8 @@
                 </div>
                 <div class="sub-tab-content" id="shop-recycleur">
                     <div class="recycler-header">
-                        Total : <span class="essence-count" id="essenceDustCount">0</span> 💠 Poussière d'Essence
+                        Total : <img src="img/essence-dust.png" class="essence-dust-inline" alt=""> <span
+                            class="essence-count" id="essenceDustCount">0</span> Poussière d'Essence
                     </div>
 
                     <div class="recycler-container">
@@ -469,7 +520,8 @@
                 <div class="quest-stats">
                     <div class="quest-stat">
                         <div class="quest-stat-value" id="questTokens">0</div>
-                        <div class="quest-stat-label">Jetons</div>
+                        <div class="quest-stat-label"><img src="img/quest-token.png" class="quest-token-inline" alt=""
+                                style="width:16px;height:16px;"> Jetons</div>
                     </div>
                     <div class="quest-stat">
                         <div class="quest-stat-value" id="questCompleted">0</div>
@@ -495,7 +547,7 @@
                 </div>
 
                 <h3 style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                    🏆 Succès Permanents (<span id="achievementsCount">0</span>/<span id="achievementsTotal">0</span>)
+                    Succès Permanents (<span id="achievementsCount">0</span>/<span id="achievementsTotal">0</span>)
                 </h3>
                 <div class="quest-container" id="achievementsContainer">
                 </div>
@@ -509,10 +561,12 @@
                     <div class="tower-stats">
                         <div>Record Personnel : Étage <strong id="towerRecord">0</strong></div>
                         <div>🎟️ Tickets de Combat : <strong id="combatTickets">0</strong></div>
-                        <div>Ⓜ️ Marques du Triomphe : <strong id="marquesDuTriomphe">0</strong></div>
+                        <div><img src="img/marque-triomphe.png" class="marque-triomphe-inline" alt=""
+                                style="width:18px;height:18px;"> Marques du Triomphe : <strong
+                                id="marquesDuTriomphe">0</strong></div>
                     </div>
-                    <button class="btn btn-save" onclick="game.startTowerRun()">Lancer l'ascension (coûte 1
-                        ticket)</button>
+                    <button id="towerStartBtn" class="btn btn-save" onclick="game.startTowerRun()" disabled>Lancer
+                        l'ascension (coûte 1 ticket)</button>
                 </div>
             </div>
 
@@ -526,7 +580,7 @@
                             📜 Maîtrises
                         </button>
 
-                        <span style="font-size: 12px; background: #e2e8f0; padding: 5px 10px; border-radius: 15px;">
+                        <span class="expedition-slots" style="font-size: 12px; padding: 5px 10px; border-radius: 15px;">
                             Slots : <strong id="expeditionSlots">1/1</strong>
                         </span>
                     </div>
@@ -568,7 +622,7 @@
 
     </div> <!-- ✅ FERMETURE DE game-container -->
 
-    <script type="text/html" id="modals-template"><!-- Modals : même contenu que modals.html, embarqué pour file:// -->
+    <!-- Modals : même contenu que modals.html, embarqué pour file:// -->
     <!-- Modal de concept du jeu (avant le choix du starter) -->
     <div class="stats-modal game-concept-modal" id="gameConceptModal"
         style="background: rgba(0,0,0,0.92); z-index: 19999;">
@@ -600,19 +654,20 @@
             <button type="button" class="btn quest-guide-btn" onclick="game.closeQuestGuide()">J'ai compris</button>
         </div>
     </div>
-    <div class="quest-completion-modal" id="towerCompletionModal">
-        <div class="quest-completion-content">
-            <div class="quest-completion-title">🏆 FIN DE L'ASCENSION 🏆</div>
+    <div class="quest-completion-modal" id="towerCompletionModal"
+        onclick="document.getElementById('towerCompletionModal').classList.remove('show')">
+        <div class="quest-completion-content" onclick="event.stopPropagation()">
+            <button id="closeTowerBtn" class="stats-close" type="button" title="Fermer">&times;</button>
+            <div class="quest-completion-title"> FIN DE L'ASCENSION </div>
             <div id="towerCompletionInfo"></div>
             <div class="quest-completion-rewards" id="towerCompletionRewards"></div>
-            <button id="closeTowerBtn" class="btn btn-save" style="font-size: 18px; padding: 15px 30px;">Fermer</button>
         </div>
     </div>
     <div id="statsModal" class="stats-modal">
         <div class="stats-content">
             <div class="stats-header">
                 <h2>📊 Statistiques</h2>
-                <button class="stats-close" onclick="game.closeStatsModal()">Fermer</button>
+                <button class="stats-close" onclick="game.closeStatsModal()">&#10005;</button>
             </div>
             <div id="statsDisplay"></div>
         </div>
@@ -620,8 +675,8 @@
     <div id="bonusModal" class="stats-modal">
         <div class="stats-content" onclick="event.stopPropagation()">
             <div class="stats-header" style="border-bottom-color: #8b5cf6;">
-                <h2 style="color: #8b5cf6;">🎁 Bonus & Boutique</h2>
-                <button class="stats-close" onclick="game.closeBonusModal()">Fermer</button>
+                <h2 style="color: #8b5cf6;"> Bonus & Boutique</h2>
+                <button class="stats-close" onclick="game.closeBonusModal()">&#10005;</button>
             </div>
             <div id="bonusDisplay"></div>
         </div>
@@ -630,6 +685,18 @@
     <div class="quest-completion-modal" id="eggHatchModal" onclick="game.closeEggHatchModal()">
         <div class="quest-completion-content" id="eggHatchContent" onclick="event.stopPropagation()"></div>
     </div>
+    <div class="quest-completion-modal" id="chooseEggModal" onclick="game.closeChooseEggModal()">
+        <div class="quest-completion-content" id="chooseEggContent" onclick="event.stopPropagation()">
+            <div class="choose-egg-modal-title">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-egg.png" alt=""
+                    class="egg-icon">
+                <span>Choisir un œuf</span>
+            </div>
+            <p class="choose-egg-modal-subtitle">Sélectionnez la rareté de l'œuf à placer dans cet incubateur.</p>
+            <div id="chooseEggOptions" class="choose-egg-options"></div>
+            <button type="button" class="choose-egg-cancel" onclick="game.closeChooseEggModal()">Annuler</button>
+        </div>
+    </div>
     <div class="stats-modal" id="creatureModal" onclick="game.closeCreatureModal()">
         <div class="stats-content" id="creatureModalContent" onclick="event.stopPropagation()"></div>
     </div>
@@ -637,7 +704,7 @@
         <div class="stats-content" id="zoneTierModalContent" onclick="event.stopPropagation()">
             <div class="stats-header">
                 <h2 id="zoneTierModalTitle">Progression de la Zone</h2>
-                <button class="stats-close" onclick="closeZoneTierModal()">Fermer</button>
+                <button class="stats-close" onclick="closeZoneTierModal()">&#10005;</button>
             </div>
             <div class="team-list" id="zoneTierModalGrid"></div>
         </div>
@@ -646,7 +713,7 @@
         <div class="stats-content" onclick="event.stopPropagation()" style="max-width: 700px;">
             <div class="stats-header">
                 <h2>Guide des Synergies</h2>
-                <button class="stats-close" onclick="closeSynergyListModal()">Fermer</button>
+                <button class="stats-close" onclick="closeSynergyListModal()">&#10005;</button>
             </div>
             <div id="synergyListContent" class="synergy-list-grid"></div>
         </div>
@@ -657,10 +724,11 @@
     <div class="stats-modal" id="relicModal">
         <div class="stats-content" style="text-align: center;">
             <div class="stats-header">
-                <h2>🎁 Récompense d'Étage</h2>
+                <h2> Récompense d'Étage</h2>
             </div>
             <p style="margin-bottom: 20px;">Choisissez une relique pour la suite de l'ascension :</p>
-            <div id="relicOptionsGrid" class="items-grid"></div>
+            <div id="relicOptionsGrid"
+                style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 15px;"></div>
         </div>
     </div>
     <div class="quest-completion-modal" id="captureModal">
@@ -675,6 +743,129 @@
                 style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;"></div>
             <button class="btn" style="background: #ef4444; color: white; width: 100%;" onclick="game.skipCapture()">Ne
                 pas capturer (Partir)</button>
+        </div>
+    </div>
+    <!-- Modal de sélection des cibles de capture -->
+    <!-- Popup compact de sélection des cibles de capture -->
+    <div class="compact-popup" id="captureTargetWrapper">
+        <div class="stats-header">
+            <h2>Cibles de Capture</h2>
+            <button class="stats-close"
+                onclick="document.getElementById('captureTargetWrapper').classList.remove('show'); document.getElementById('captureTargetWrapper').style.display='none';">&#10005;</button>
+        </div>
+        <div class="popup-content">
+            <p style="text-align: center; margin-bottom: 8px;">
+                Cliquez sur les Pokémon à capturer automatiquement.
+            </p>
+            <span id="captureTargetLimit"
+                style="display: block; text-align: center; font-weight: bold; color: #d97706; font-size: 14px; margin-bottom: 12px;"></span>
+            <div id="captureTargetGrid" class="capture-target-grid"></div>
+        </div>
+    </div>
+
+    <!-- Tooltip enrichi pour le bouton Auto -->
+    <div class="auto-tooltip" id="autoTooltip">
+        <div
+            style="margin-bottom:6px; font-weight:bold; color:#fbbf24; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:4px;">
+            Statut Auto
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span>Mode Auto :</span>
+            <span id="tooltipStatus" class="tooltip-status">OFF</span>
+        </div>
+        <div class="tooltip-detail">
+            <span>Désavantage Switch :</span>
+            <span id="tooltipDisadvantage" class="tooltip-status off">OFF</span>
+        </div>
+        <div class="tooltip-detail">
+            <span>Endurance Switch :</span>
+            <span id="tooltipStamina" class="tooltip-status off">OFF</span>
+        </div>
+        <div class="tooltip-detail">
+            <span>Ultime Auto :</span>
+            <span id="tooltipUltimate" class="tooltip-status off">OFF</span>
+        </div>
+    </div>
+
+    <!-- Tooltip enrichi pour le bouton Capture -->
+    <div class="capture-tooltip" id="captureTooltip">
+        <div
+            style="margin-bottom:6px; font-weight:bold; color:#fbbf24; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:4px;">
+            Capture Ciblée
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span>État :</span>
+            <span id="tooltipCaptureStatus" class="tooltip-status">OFF</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; font-style:italic;">
+            Cliquez pour définir les cibles.
+        </div>
+    </div>
+
+    <!-- Tooltip enrichi pour le bouton Fuite -->
+    <div class="forfeit-tooltip" id="forfeitTooltip">
+        <div
+            style="margin-bottom:6px; font-weight:bold; color:#ef4444; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:4px;">
+            Abandon / Fuite
+        </div>
+        <div style="font-size:12px; color:#e5e7eb;">
+            Quitter le combat en cours.
+        </div>
+        <div style="font-size:11px; color:#aaa; font-style:italic; margin-top:4px;">
+            Compte comme une défaite.
+        </div>
+    </div>
+
+
+
+
+    <!-- Popup compact de configuration Auto -->
+    <div class="compact-popup" id="autoSettingsModal">
+        <div class="stats-header">
+            <h2>Mode Auto</h2>
+            <button class="stats-close" onclick="game.closeAutoSettings()">&#10005;</button>
+        </div>
+        <!-- Toggle principal ON/OFF -->
+
+        <div class="popup-content">
+            <!-- Toggle principal ON/OFF (Style harmonisé) -->
+            <div class="auto-master-item">
+                <span id="autoMasterLabel">Activer le Mode Auto</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="autoMasterToggle" onchange="game.toggleAutoMaster()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
+
+            <p style="text-align: center; margin-bottom: 12px; font-size: 12px; color: #aaa;">Fonctionnalités actives :
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label class="auto-setting-item">
+                    <input type="checkbox" id="autoSwitchDisadvantageCheck"
+                        onchange="game.toggleAutoSetting('disadvantage')" checked>
+                    <span class="auto-setting-label">
+                        <strong>🔄 Switch Désavantage</strong>
+                        <small>Remplace un Pokémon en désavantage de type</small>
+                    </span>
+                </label>
+                <label class="auto-setting-item">
+                    <input type="checkbox" id="autoSwitchStaminaCheck" onchange="game.toggleAutoSetting('stamina')"
+                        checked>
+                    <span class="auto-setting-label">
+                        <strong>⚡ Switch Endurance</strong>
+                        <small>Remplace un Pokémon à 0 endurance</small>
+                    </span>
+                </label>
+                <label class="auto-setting-item">
+                    <input type="checkbox" id="autoUltimateCheck" onchange="game.toggleAutoSetting('ultimate')" checked>
+                    <span class="auto-setting-label">
+                        <strong>🌟 Ultime Auto</strong>
+                        <small>Lance l'ultime quand la jauge est pleine</small>
+                    </span>
+                </label>
+            </div>
         </div>
     </div>
     <div class="stats-modal" id="starterModal" style="background: rgba(0,0,0,0.95); z-index: 20000;">
@@ -717,49 +908,52 @@
         <div class="stats-content" onclick="event.stopPropagation()" style="max-width: 500px; text-align: center;">
             <div class="stats-header">
                 <h2>☰ Menu Principal</h2>
-                <button class="stats-close" onclick="game.closeSaveManager()">Fermer</button>
+                <button class="stats-close" onclick="game.closeSaveManager()">&#10005;</button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
-                <button class="btn" onclick="game.openStatsModal(); game.closeSaveManager();"
-                    style="background: #3b82f6; color: white; padding: 15px 5px; font-size: 13px; display:flex; flex-direction:column; align-items:center; gap:5px;"><span
-                        style="font-size: 20px;">📊</span> Stats</button>
-                <button class="btn" onclick="game.openBonusModal(); game.closeSaveManager();"
-                    style="background: #8b5cf6; color: white; padding: 15px 5px; font-size: 13px; display:flex; flex-direction:column; align-items:center; gap:5px;"><span
-                        style="font-size: 20px;">🎁</span> Bonus</button>
-                <button class="btn" onclick="game.openLogModal(); game.closeSaveManager();"
-                    style="background: #10b981; color: white; padding: 15px 5px; font-size: 13px; display:flex; flex-direction:column; align-items:center; gap:5px;"><span
-                        style="font-size: 20px;">📜</span> Journal</button>
+                <button class="menu-btn" onclick="game.openStatsModal(); game.closeSaveManager();">
+                    <span style="font-size: 20px;">📊</span> Stats
+                </button>
+                <button class="menu-btn" onclick="game.openBonusModal(); game.closeSaveManager();">
+                    <span style="font-size: 20px;">🎁</span> Bonus
+                </button>
+                <button class="menu-btn" onclick="game.openLogModal(); game.closeSaveManager();">
+                    <span style="font-size: 20px;">📜</span> Journal
+                </button>
             </div>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <hr style="border: 0; border-top: 1px solid #3b3b3b; margin: 20px 0;">
             <h3
-                style="margin: 0 0 10px 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; text-align: left;">
-                💾 Données</h3>
+                style="margin: 0 0 10px 0; font-size: 13px; color: #cbd5e1; text-transform: uppercase; text-align: left;">
+                💾 Données
+            </h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <button class="btn btn-save" onclick="game.saveGame(); game.closeSaveManager();"
-                    style="grid-column: 1 / -1; padding: 12px;">Sauvegarder</button>
+                <button class="btn btn-save" onclick="game.handleSaveClick(this)"
+                    style="grid-column: 1 / -1; padding: 12px; background: #5d4a3e; border: 2px solid #3b3b3b; box-shadow: 0 3px 0 #3b3b3b;">Sauvegarder</button>
                 <button class="btn" onclick="game.exportSaveFile()"
-                    style="background: #0dcaf0; color: white; padding: 10px; font-size: 11px;">⬇️ Exporter</button>
+                    style="background: #475569; color: white; border: 2px solid #1e293b; padding: 10px; font-size: 11px;">⬇️
+                    Exporter</button>
                 <button class="btn" onclick="game.importSaveFile()"
-                    style="background: #ffc107; color: #333; padding: 10px; font-size: 11px;">⬆️ Importer</button>
+                    style="background: #d97706; color: white; border: 2px solid #78350f; padding: 10px; font-size: 11px;">⬆️
+                    Importer</button>
             </div>
-            <div
-                style="text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #94a3b8; text-transform: uppercase;">⚙️ Options
+            <div class="menu-section-dark">
+                <h3 style="margin: 0 0 10px 0; font-size: 13px; color: #cbd5e1; text-transform: uppercase;">⚙️ Options
                 </h3>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-size: 13px; color: #334155; font-weight:bold;">🧬 Smart Fusion</span>
+                    <span style="font-size: 13px; font-weight:bold;">🧬 Smart Fusion</span>
                     <button id="optSmartFusion" onclick="game.toggleSmartFusion()" class="btn"
-                        style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px;">?</button>
+                        style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px; background: #5d4a3e; border: 2px solid #1a1a1a;">?</button>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 13px; color: #334155; font-weight:bold;">🛑 Pause Rare</span>
+                    <span style="font-size: 13px; font-weight:bold;">🛑 Pause Rare</span>
                     <button id="optPauseRare" onclick="game.toggleRarePause()" class="btn"
-                        style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px;">?</button>
+                        style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px; background: #5d4a3e; border: 2px solid #1a1a1a;">?</button>
                 </div>
             </div>
-            <div style="background: #fff5f5; border: 1px solid #fecaca; border-radius: 10px; padding: 10px;">
+            <div class="menu-danger-zone">
                 <button class="btn btn-reset" onclick="resetGame()"
-                    style="width: 100%; font-size: 11px; padding: 8px;">🗑️ Réinitialiser le jeu</button>
+                    style="width: 100%; font-size: 11px; padding: 8px; background: #dc2626; color: white; border: 2px solid #991b1b;">🗑️
+                    Réinitialiser le jeu</button>
             </div>
             <div style="margin-top: 15px; font-size: 10px; color: #cbd5e1;">v1.0.3</div>
         </div>
@@ -770,7 +964,7 @@
             <div class="stats-header">
                 <h2>📜 Maîtrise des Biomes</h2>
                 <button class="stats-close"
-                    onclick="document.getElementById('masteryModal').classList.remove('show')">Fermer</button>
+                    onclick="document.getElementById('masteryModal').classList.remove('show')">&#10005;</button>
             </div>
             <p style="color:#666; font-size:13px; margin-bottom:20px;">Effectuez des expéditions pour monter de niveau
                 dans chaque biome et réduire la durée des trajets !</p>
@@ -829,11 +1023,8 @@
             </div>
         </div>
     </div>
-    </script>
-    <div id="modals-root"></div>
-
-    <script src="toastManager.js"></script>
-    <script src="game.js"></script>
+    <script src="toastManager.js" defer></script>
+    <script src="game.js" defer></script>
     <script>
         function saveGame() {
             if (window.game) return game.saveGame();
@@ -854,15 +1045,6 @@
         };
 
         window.addEventListener('load', () => {
-            var template = document.getElementById('modals-template');
-            var root = document.getElementById('modals-root');
-            if (template && root) {
-                root.innerHTML = template.textContent;
-                while (root.firstChild) {
-                    document.body.appendChild(root.firstChild);
-                }
-                root.remove();
-            }
             game = new Game();
             updateZoneInfo();
         });

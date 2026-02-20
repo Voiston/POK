@@ -20,9 +20,7 @@ function saveGameLogic(game) {
     // 1. Contrôle d'intégrité AVANT de toucher au LocalStorage
     if (!game.playerTeam || !Array.isArray(game.playerTeam) || game.playerTeam.length === 0) {
         console.error("⛔ SAUVEGARDE BLOQUÉE : L'équipe du joueur est vide ou corrompue !");
-        if (typeof toast !== 'undefined') {
-            toast.error("Erreur Sauvegarde", "Données corrompues détectées. Sauvegarde annulée pour protéger votre progression.");
-        }
+        toast.error("Erreur Sauvegarde", "Données corrompues détectées. Sauvegarde annulée pour protéger votre progression.");
         return false;
     }
 
@@ -37,10 +35,12 @@ function saveGameLogic(game) {
         playerTeam: game.playerTeam.map(creature => creature.serialize()),
         storage: game.storage.map(creature => creature.serialize()),
         pension: game.pension.map(creature => creature.serialize()),
-        
+
         // -- Stats & Ressources --
         playerMainStats: { ...game.playerMainStats },
         eggs: { ...game.eggs },
+        incubators: game.incubators ? game.incubators.map(slot => slot ? { ...slot } : null) : [null, null, null, null],
+        autoIncubation: game.autoIncubation ? JSON.parse(JSON.stringify(game.autoIncubation)) : null,
         shards: { ...game.shards },
         pokedollars: game.pokedollars,
         talentRerolls: game.talentRerolls,
@@ -49,14 +49,15 @@ function saveGameLogic(game) {
         combatTickets: game.combatTickets,
         marquesDuTriomphe: game.marquesDuTriomphe,
         questTokens: game.questTokens,
-        
+
         // -- Progression --
         pokedex: { ...game.pokedex },
         upgrades: { ...game.upgrades },
         towerRecord: game.towerRecord,
         stats: { ...game.stats },
         badges: { ...game.badges },
-        
+
+        achievements: { ...game.achievements },
         achievementsCompleted: { ...game.achievementsCompleted },
         currentZone: currentZone,
         maxReachedZone: maxReachedZone,
@@ -74,29 +75,33 @@ function saveGameLogic(game) {
         pauseOnRare: game.pauseOnRare,
         sortOrder: game.sortOrder,
         autoSelectEnabled: game.autoSelectEnabled,
+        autoSwitchDisadvantage: game.autoSwitchDisadvantage,
+        autoSwitchStamina: game.autoSwitchStamina,
+        autoUltimate: game.autoUltimate,
         isPensionCollapsed: game.isPensionCollapsed,
         captureMode: game.captureMode,
-        captureTarget: game.captureTargets,
-        
+        captureTargets: game.captureTargets,
+
         // -- Objets & Buffs --
-        items: game.items,
+        items: game.items ? { ...game.items } : {},
         activeVitamins: game.activeVitamins,
         activeStatBoosts: game.activeStatBoosts,
         activeBoosts: game.activeBoosts,
         permanentBoosts: game.permanentBoosts,
         hasAutoCatcher: game.hasAutoCatcher,
         autoCatcherSettings: game.autoCatcherSettings,
-        
-        // -- Zone Progress (Copie propre) --
+
+        // -- Zone Progress (Copie propre mais directe) --
         zoneProgress: Object.keys(game.zoneProgress).reduce((acc, zoneId) => {
+            const z = game.zoneProgress[zoneId];
             acc[zoneId] = {
-                pokemonTiers: { ...game.zoneProgress[zoneId].pokemonTiers },
-                bossesDefeated: game.zoneProgress[zoneId].bossesDefeated,
-                epicsDefeated: game.zoneProgress[zoneId].epicsDefeated
+                pokemonTiers: { ...z.pokemonTiers },
+                bossesDefeated: z.bossesDefeated,
+                epicsDefeated: z.epicsDefeated
             };
             return acc;
         }, {}),
-        
+
         // -- Quêtes (Copie légère) --
         quests: game.quests.map(quest => ({
             id: quest.id,
@@ -117,19 +122,19 @@ function saveGameLogic(game) {
             rewards: quest.rewards,
             dialogue: quest.dialogue
         })),
-        
+
         questsCompleted: game.questsCompleted,
         completedStoryQuests: game.completedStoryQuests || [],
         nextQuestTimer: game.nextQuestTimer,
         lastQuestUpdate: game.lastQuestUpdate,
-        
+
         // -- Narrative (Professor Chen) --
-        narrative: (typeof narrativeManager !== 'undefined' && narrativeManager.getSaveData) ? narrativeManager.getSaveData() : {},
+        narrative: (narrativeManager && narrativeManager.getSaveData) ? narrativeManager.getSaveData() : {},
 
         // -- Timers Système --
         lastSaveTime: Date.now(),
         saveTime: Date.now(),
-        
+
         // -- Arène --
         arenaState: {
             active: game.arenaState.active,
@@ -138,11 +143,11 @@ function saveGameLogic(game) {
             startTime: game.arenaState.startTime
         }
     };
-    
+
     try {
         const json = JSON.stringify(gameData);
         localStorage.setItem(SAVE_KEY, json);
-        
+
         const btn = document.getElementById('btnSave');
         if (btn) {
             btn.classList.add('save-active');
@@ -151,9 +156,7 @@ function saveGameLogic(game) {
         return true;
     } catch (error) {
         console.error("ERREUR FATALE SAUVEGARDE :", error);
-        if (typeof toast !== 'undefined') {
-            toast.error("Erreur Critique", "Impossible de sauvegarder (Quota de stockage dépassé ?).");
-        }
+        toast.error("Erreur Critique", "Impossible de sauvegarder (Quota de stockage dépassé ?).");
         return false;
     }
 }
@@ -166,46 +169,57 @@ function loadGameLogic(game) {
     try {
         const savedData = localStorage.getItem(SAVE_KEY);
         if (!savedData) return false;
-        
+
         const gameData = JSON.parse(savedData);
-        
+
         game.playerTeam = gameData.playerTeam.map(data => Creature.deserialize(data));
-        
+
         game.captureMode = gameData.captureMode || 0;
         game.captureTargets = gameData.captureTargets || null;
         game.updateCaptureButtonDisplay();
         game.updateCaptureTargetList();
-        
+
         // Charger le stockage
         game.storage = [];
         if (gameData.storage) {
             game.storage = gameData.storage.map(data => Creature.deserialize(data));
         }
-        
+
         // Charger la pension
         game.pension = [];
         if (gameData.pension) {
             game.pension = gameData.pension.map(data => Creature.deserialize(data));
         }
-        
-        game.expeditionMastery = gameData.expeditionMastery || { 
-            FOREST: 0, CAVE: 0, CITY: 0, DARK: 0, VOLCANO: 0, 
-            ICE: 0, SKY: 0 
+
+        game.expeditionMastery = gameData.expeditionMastery || {
+            FOREST: 0, CAVE: 0, CITY: 0, DARK: 0, VOLCANO: 0,
+            ICE: 0, SKY: 0
         };
-        
+
         if (gameData.pauseOnRare !== undefined) game.pauseOnRare = gameData.pauseOnRare;
-        
+
         game.hasAutoCatcher = gameData.hasAutoCatcher || false;
         if (gameData.autoCatcherSettings) {
             game.autoCatcherSettings = gameData.autoCatcherSettings;
         }
-        
+
         game.availableExpeditions = gameData.availableExpeditions || [];
         game.expeditionTimer = gameData.expeditionTimer || game.EXPEDITION_GEN_TIME;
-        game.maxExpeditionSlots = 3;
-        
+
         game.playerMainStats = { ...gameData.playerMainStats };
         game.eggs = { ...gameData.eggs };
+        // Incubateurs : 4 slots max, chaque slot = null ou { rarity, startTime, durationMs }
+        game.incubators = Array.isArray(gameData.incubators)
+            ? gameData.incubators.slice(0, 4).map(s => {
+                if (!s || !s.rarity) return null;
+                const startTime = Number(s.startTime);
+                const durationMs = Number(s.durationMs);
+                if (isNaN(startTime) || isNaN(durationMs) || durationMs <= 0) return null;
+                return { rarity: s.rarity, startTime, durationMs };
+            })
+            : [null, null, null, null];
+        while (game.incubators.length < 4) game.incubators.push(null);
+        game.autoIncubation = game.normalizeAutoIncubationState ? game.normalizeAutoIncubationState(gameData.autoIncubation) : gameData.autoIncubation;
         game.shards = gameData.shards || {};
         game.pokedollars = gameData.pokedollars || 0;
         game.talentRerolls = gameData.talentRerolls || 0;
@@ -214,7 +228,7 @@ function loadGameLogic(game) {
         game.badges = gameData.badges || {};
         game.essenceDust = gameData.essenceDust || 0;
         game.activeExpeditions = gameData.activeExpeditions || [];
-        game.maxExpeditionSlots = gameData.maxExpeditionSlots || 1;
+        game.maxExpeditionSlots = gameData.maxExpeditionSlots || 3;
 
         const now = Date.now();
         let completedOffline = 0;
@@ -224,7 +238,7 @@ function loadGameLogic(game) {
         if (completedOffline > 0) {
             logMessage(`🌍 ${completedOffline} expédition(s) se sont terminées pendant votre absence !`);
         }
-        
+
         if (gameData.upgrades) {
             Object.keys(game.upgrades).forEach(key => {
                 if (gameData.upgrades[key]) {
@@ -234,7 +248,7 @@ function loadGameLogic(game) {
         }
         game.achievements = gameData.achievements || {};
         game.completedStoryQuests = gameData.completedStoryQuests || [];
-        
+
         if (gameData.quests) {
             game.quests = gameData.quests.map(questData => {
                 const template = {
@@ -274,19 +288,19 @@ function loadGameLogic(game) {
             currentEnemyIndex: 0,
             enemyTeam: []
         };
-        
+
         if (gameData.activeBoosts) {
             game.activeBoosts = gameData.activeBoosts.filter(boost => boost.endTime > Date.now());
         }
-        
+
         if (gameData.permanentBoosts) {
             game.permanentBoosts = gameData.permanentBoosts;
             game.permanentBoosts.pensionSlots = game.permanentBoosts.pensionSlots || 0;
         } else {
             game.permanentBoosts = { xp: 0, team_contribution: 0, pensionSlots: 0 };
         }
-        
-        game.items = gameData.items || {};
+
+        game.items = (gameData.items && typeof gameData.items === 'object') ? { ...gameData.items } : {};
         game.activeVitamins = gameData.activeVitamins || {
             hp: 0, attack: 0, spattack: 0, defense: 0, spdefense: 0, speed: 0, all: 0
         };
@@ -296,12 +310,16 @@ function loadGameLogic(game) {
         } else {
             game.activeStatBoosts = [];
         }
-        
+
         game.activeCreatureIndex = gameData.activeCreatureIndex || 0;
         game.sortBy = gameData.sortBy || 'none';
         game.sortOrder = gameData.sortOrder || 'desc';
         game.autoSelectEnabled = gameData.autoSelectEnabled || false;
-        
+        game.autoSwitchDisadvantage = gameData.autoSwitchDisadvantage !== undefined ? gameData.autoSwitchDisadvantage : true;
+        game.autoSwitchStamina = gameData.autoSwitchStamina !== undefined ? gameData.autoSwitchStamina : true;
+        game.autoUltimate = gameData.autoUltimate !== undefined ? gameData.autoUltimate : true;
+        game.isPensionCollapsed = gameData.isPensionCollapsed || false;
+
         if (gameData.stats) {
             game.stats = { ...game.stats, ...gameData.stats };
         }
@@ -332,30 +350,26 @@ function loadGameLogic(game) {
                 }
             });
         }
-        
+
         if (game.activeCreatureIndex >= game.playerTeam.length) {
             game.activeCreatureIndex = 0;
         }
-        
+
         if (game.sortBy !== 'none' && game.storage.length > 0) {
             game.sortStorage(game.sortBy);
         }
-        
+
         if (gameData.currentZone) {
             currentZone = gameData.currentZone;
-            if (typeof window !== 'undefined') window.currentZone = currentZone;
+            window.currentZone = currentZone;
             const zoneSelect = document.getElementById('zoneSelect');
             if (zoneSelect) zoneSelect.value = currentZone;
             if (typeof updateZoneInfo === 'function') updateZoneInfo();
         }
-        
-        if (gameData.maxReachedZone) {
-            maxReachedZone = gameData.maxReachedZone;
-        } else {
-            maxReachedZone = currentZone;
-        }
-        if (typeof window !== 'undefined') window.maxReachedZone = maxReachedZone;
-        
+
+        maxReachedZone = gameData.maxReachedZone || currentZone;
+        window.maxReachedZone = maxReachedZone;
+
         if (gameData.badges) {
             game.badges = { ...gameData.badges };
         }
@@ -366,7 +380,7 @@ function loadGameLogic(game) {
 
         game.applyAccountTalents();
         game.initAchievements();
-        
+
         let maxLvlFound = 0;
         game.playerTeam.forEach(c => { if (c.level > maxLvlFound) maxLvlFound = c.level; });
         if (game.storage) game.storage.forEach(c => { if (c.level > maxLvlFound) maxLvlFound = c.level; });
@@ -374,11 +388,11 @@ function loadGameLogic(game) {
             game.stats.highestLevelReached = maxLvlFound;
             setTimeout(() => game.checkAchievements('highestLevelReached'), 1000);
         }
-        
+
         if (gameData.lastSaveTime) {
             const offlineTime = Date.now() - gameData.lastSaveTime;
             const offlineSeconds = Math.floor(offlineTime / 1000);
-            
+
             if (offlineSeconds > 0) {
                 for (const creature of game.playerTeam) {
                     creature.currentStamina = creature.maxStamina;
@@ -393,8 +407,28 @@ function loadGameLogic(game) {
                 } else {
                     logMessage("Progression hors ligne : " + offlineSeconds + " secondes appliquee !");
                 }
+
+                if (game.simulateIncubatorsForElapsedOffline) {
+                    const offlineStats = {
+                        simulated: 0,
+                        won: 0,
+                        lost: 0,
+                        xp: 0,
+                        money: 0,
+                        items: {},
+                        captured: 0,
+                        capturedPokemonList: [],
+                        time: offlineTime,
+                        incubation: game.createOfflineIncubationStats ? game.createOfflineIncubationStats() : null
+                    };
+                    game.simulateIncubatorsForElapsedOffline(offlineTime, offlineStats);
+                    game.offlineIncubationLastReport = offlineStats.incubation;
+                    if (offlineTime >= 30000 && offlineStats.incubation && offlineStats.incubation.hatchedTotal > 0 && game.showOfflineReport) {
+                        setTimeout(() => game.showOfflineReport(offlineStats), 200);
+                    }
+                }
             }
-            
+
             if (offlineTime > 0 && game.nextQuestTimer > 0) {
                 game.nextQuestTimer = Math.max(0, game.nextQuestTimer - offlineTime);
                 let questsGenerated = 0;
@@ -409,14 +443,14 @@ function loadGameLogic(game) {
                 }
             }
         }
-        
+
         setTimeout(() => {
             game.updateCaptureButtonDisplay();
             if (game.captureMode === 2) {
                 game.updateCaptureTargetList();
             }
         }, 100);
-        
+
         return true;
     } catch (error) {
         console.error('Erreur de chargement:', error);
@@ -430,10 +464,9 @@ function loadGameLogic(game) {
 
 function exportSaveLogic(game) {
     if (!saveGameLogic(game)) return;
-    
-    const saveData = localStorage.getItem(SAVE_KEY);
+
     if (!saveData) {
-        if (typeof toast !== 'undefined') toast.error("Erreur", "Aucune donnée à exporter.");
+        toast.error("Erreur", "Aucune donnée à exporter.");
         return;
     }
 
@@ -449,15 +482,15 @@ function exportSaveLogic(game) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    if (typeof toast !== 'undefined') toast.success("Export Réussi", "Fichier de sauvegarde téléchargé !");
+
+    toast.success("Export Réussi", "Fichier de sauvegarde téléchargé !");
 }
 
 function importSaveLogic(game) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    
+
     input.onchange = e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -471,11 +504,11 @@ function importSaveLogic(game) {
                     throw new Error("Format de sauvegarde invalide (Clés manquantes).");
                 }
                 localStorage.setItem(SAVE_KEY, content);
-                if (typeof toast !== 'undefined') toast.success("Import Réussi", "Le jeu va recharger...");
+                toast.success("Import Réussi", "Le jeu va recharger...");
                 setTimeout(() => location.reload(), 1000);
             } catch (err) {
                 console.error("Erreur Import :", err);
-                if (typeof toast !== 'undefined') toast.error("Fichier Invalide", "Ce fichier n'est pas une sauvegarde compatible.");
+                toast.error("Fichier Invalide", "Ce fichier n'est pas une sauvegarde compatible.");
             }
         };
         reader.readAsText(file);

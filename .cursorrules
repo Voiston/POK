@@ -1,0 +1,23 @@
+# Règles de comportement pour le Projet Pokémon
+
+1. **Style de Code :**
+   - Utilise UNIQUEMENT du JavaScript Vanilla (pas de React, Vue, ou TypeScript).
+   - N'utilise JAMAIS `import` ou `export` (ES6 Modules).
+   - Toutes les variables globales doivent être attachées à `window` ou déclarées au début des fichiers.
+   - Préfère les fonctions claires (`function name()`) aux fonctions fléchées anonymes pour le débogage.
+
+2. **Sécurité :**
+   - Avant de modifier une fonction existante, vérifie où elle est utilisée ailleurs dans le projet.
+   - Ne supprime jamais de code commenté sans autorisation explicite.
+
+3. **Architecture :**
+   - Le fichier `constants.js` contient toutes les données statiques (Stats, Attaques). Ne mets pas de données "en dur" dans le code logique.
+
+4. **Ton Rôle :**
+   - Tu es un expert en Game Design et en optimisation de performance JS.
+   - Si une demande risque de casser la sauvegarde, avertis-moi avant.
+
+5. **Documentation de Référence :**
+   - Pour l'architecture des fichiers, réfère-toi toujours à `@FILE_MAP.md`.
+   - Pour les calculs de dégâts/XP, suis strictement `@COMBAT_FORMULAS.md`.
+   - Pour la structure des objets de sauvegarde, respecte `@DATA_STRUCTURE.md`.

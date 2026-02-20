@@ -14,6 +14,14 @@ class ToastManager {
             document.body.appendChild(this.container);
         }
 
+        // --- NEW: Délégation d'événements unique pour tout le conteneur ---
+        this.container.addEventListener('click', (e) => {
+            const toastEl = e.target.closest('.toast');
+            if (toastEl) {
+                this.remove(toastEl);
+            }
+        });
+
         this.toasts = [];
         this.maxToasts = 5;
     }
@@ -47,16 +55,8 @@ class ToastManager {
         this.container.appendChild(toast);
         this.toasts.push(toast);
 
-        if (closable) {
-            const closeBtn = toast.querySelector('.toast-close');
-            closeBtn.addEventListener('click', () => this.remove(toast));
-        }
-
-        toast.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('toast-close')) {
-                this.remove(toast);
-            }
-        });
+        this.container.appendChild(toast);
+        this.toasts.push(toast);
 
         if (duration > 0) {
             setTimeout(() => this.remove(toast), duration);
@@ -66,8 +66,9 @@ class ToastManager {
     }
 
     remove(toast) {
-        if (!toast || !toast.parentElement) return;
+        if (!toast || !toast.parentElement || toast.dataset.removing) return;
 
+        toast.dataset.removing = 'true';
         toast.classList.add('removing');
 
         setTimeout(() => {

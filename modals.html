@@ -1,31 +1,29 @@
 <!-- Fragments de modals injectés dans index.html au chargement -->
 
-<div class="quest-completion-modal" id="towerCompletionModal">
-    <div class="quest-completion-content">
-        <div class="quest-completion-title">🏆 FIN DE L'ASCENSION 🏆</div>
+<div class="quest-completion-modal js-modal-overlay" id="towerCompletionModal">
+    <div class="quest-completion-content js-modal-content">
+        <button id="closeTowerBtn" class="stats-close js-close-modal" type="button">&times;</button>
+        <div class="quest-completion-title">FIN DE L'ASCENSION</div>
         <div id="towerCompletionInfo"></div>
         <div class="quest-completion-rewards" id="towerCompletionRewards"></div>
-        <button id="closeTowerBtn" class="btn btn-save" style="font-size: 18px; padding: 15px 30px;">
-            Fermer
-        </button>
     </div>
 </div>
 
-<div id="statsModal" class="stats-modal">
-    <div class="stats-content">
+<div id="statsModal" class="stats-modal js-modal-overlay">
+    <div class="stats-content js-modal-content">
         <div class="stats-header">
             <h2>📊 Statistiques</h2>
-            <button class="stats-close" onclick="game.closeStatsModal()">Fermer</button>
+            <button class="stats-close js-close-modal">Fermer</button>
         </div>
         <div id="statsDisplay"></div>
     </div>
 </div>
 
-<div id="bonusModal" class="stats-modal">
-    <div class="stats-content" onclick="event.stopPropagation()">
+<div id="bonusModal" class="stats-modal js-modal-overlay">
+    <div class="stats-content js-modal-content">
         <div class="stats-header" style="border-bottom-color: #8b5cf6;">
             <h2 style="color: #8b5cf6;">🎁 Bonus & Boutique</h2>
-            <button class="stats-close" onclick="game.closeBonusModal()">Fermer</button>
+            <button class="stats-close js-close-modal">Fermer</button>
         </div>
         <div id="bonusDisplay"></div>
     </div>
@@ -33,31 +31,31 @@
 
 <div id="toastContainer" class="toastContainer"></div>
 
-<div class="quest-completion-modal" id="eggHatchModal" onclick="game.closeEggHatchModal()">
-    <div class="quest-completion-content" id="eggHatchContent" onclick="event.stopPropagation()">
+<div class="quest-completion-modal js-modal-overlay" id="eggHatchModal">
+    <div class="quest-completion-content js-modal-content" id="eggHatchContent">
     </div>
 </div>
 
-<div class="stats-modal" id="creatureModal" onclick="game.closeCreatureModal()">
-    <div class="stats-content" id="creatureModalContent" onclick="event.stopPropagation()">
+<div class="stats-modal js-modal-overlay" id="creatureModal">
+    <div class="stats-content js-modal-content" id="creatureModalContent">
     </div>
 </div>
 
-<div class="stats-modal" id="zoneTierModal" onclick="closeZoneTierModal()">
-    <div class="stats-content" id="zoneTierModalContent" onclick="event.stopPropagation()">
+<div class="stats-modal js-modal-overlay" id="zoneTierModal">
+    <div class="stats-content js-modal-content" id="zoneTierModalContent">
         <div class="stats-header">
             <h2 id="zoneTierModalTitle">Progression de la Zone</h2>
-            <button class="stats-close" onclick="closeZoneTierModal()">Fermer</button>
+            <button class="stats-close js-close-modal">Fermer</button>
         </div>
         <div class="team-list" id="zoneTierModalGrid"></div>
     </div>
 </div>
 
-<div class="stats-modal" id="synergyListModal" onclick="closeSynergyListModal()">
-    <div class="stats-content" onclick="event.stopPropagation()" style="max-width: 700px;">
+<div class="stats-modal js-modal-overlay" id="synergyListModal">
+    <div class="stats-content js-modal-content" style="max-width: 700px;">
         <div class="stats-header">
             <h2>Guide des Synergies</h2>
-            <button class="stats-close" onclick="closeSynergyListModal()">Fermer</button>
+            <button class="stats-close js-close-modal">Fermer</button>
         </div>
         <div id="synergyListContent" class="synergy-list-grid"></div>
     </div>
@@ -81,7 +79,8 @@
             <h3 id="captureName" style="margin-top: 10px;"></h3>
             <p id="captureChanceText" style="color: #666; font-size: 14px;"></p>
         </div>
-        <div id="captureButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;"></div>
+        <div id="captureButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+        </div>
         <button class="btn" style="background: #ef4444; color: white; width: 100%;" onclick="game.skipCapture()">
             Ne pas capturer (Partir)
         </button>
@@ -89,13 +88,17 @@
 </div>
 
 <div class="stats-modal" id="starterModal" style="background: rgba(0,0,0,0.95); z-index: 20000;">
-    <div class="stats-content" style="max-width: 900px; text-align: center; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+    <div class="stats-content"
+        style="max-width: 900px; text-align: center; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
         <h1 style="color: #333; margin-bottom: 10px; font-size: 32px;">Bienvenue, Dresseur !</h1>
-        <p style="color: #666; margin-bottom: 30px; font-size: 18px;">Le monde des créatures vous attend. Choisissez votre premier compagnon pour débuter l'aventure.</p>
-        <div class="starter-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <p style="color: #666; margin-bottom: 30px; font-size: 18px;">Le monde des créatures vous attend. Choisissez
+            votre premier compagnon pour débuter l'aventure.</p>
+        <div class="starter-container"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
             <div class="starter-card" onclick="game.selectStarter('grass')">
                 <div class="starter-bg grass"></div>
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png" class="starter-sprite">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"
+                    class="starter-sprite">
                 <h2 style="color: #2e7d32;">Bulbasaur</h2>
                 <div class="type-badge type-grass">Plante</div>
                 <div class="type-badge type-poison">Poison</div>
@@ -103,14 +106,16 @@
             </div>
             <div class="starter-card" onclick="game.selectStarter('fire')">
                 <div class="starter-bg fire"></div>
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png" class="starter-sprite">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png"
+                    class="starter-sprite">
                 <h2 style="color: #c62828;">Charmander</h2>
                 <div class="type-badge type-fire">Feu</div>
                 <p>Une puissance offensive redoutable une fois évolué.</p>
             </div>
             <div class="starter-card" onclick="game.selectStarter('water')">
                 <div class="starter-bg water"></div>
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png" class="starter-sprite">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png"
+                    class="starter-sprite">
                 <h2 style="color: #1565c0;">Squirtle</h2>
                 <div class="type-badge type-water">Eau</div>
                 <p>Une défense solide pour résister aux assauts.</p>
@@ -119,53 +124,54 @@
     </div>
 </div>
 
-<div class="stats-modal" id="saveManagerModal" onclick="game.closeSaveManager()">
-    <div class="stats-content" onclick="event.stopPropagation()" style="max-width: 500px; text-align: center;">
+<div class="stats-modal js-modal-overlay" id="saveManagerModal">
+    <div class="stats-content js-modal-content" style="max-width: 500px; text-align: center;">
         <div class="stats-header">
             <h2>☰ Menu Principal</h2>
-            <button class="stats-close" onclick="game.closeSaveManager()">Fermer</button>
+            <button class="stats-close js-close-modal">Fermer</button>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;">
-            <button class="btn" onclick="game.openStatsModal(); game.closeSaveManager();" style="background: #3b82f6; color: white; padding: 15px 5px; font-size: 13px; display:flex; flex-direction:column; align-items:center; gap:5px;">
+        <div class="modal-grid-3">
+            <button class="modal-menu-btn blue js-close-modal" onclick="game.openStatsModal();">
                 <span style="font-size: 20px;">📊</span> Stats
             </button>
-            <button class="btn" onclick="game.openBonusModal(); game.closeSaveManager();" style="background: #8b5cf6; color: white; padding: 15px 5px; font-size: 13px; display:flex; flex-direction:column; align-items:center; gap:5px;">
+            <button class="modal-menu-btn purple js-close-modal" onclick="game.openBonusModal();">
                 <span style="font-size: 20px;">🎁</span> Bonus
             </button>
-            <button class="btn" onclick="game.openLogModal(); game.closeSaveManager();" style="background: #10b981; color: white; padding: 15px 5px; font-size: 13px; display:flex; flex-direction:column; align-items:center; gap:5px;">
+            <button class="modal-menu-btn green js-close-modal" onclick="game.openLogModal();">
                 <span style="font-size: 20px;">📜</span> Journal
             </button>
         </div>
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; text-align: left;">💾 Données</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-            <button class="btn btn-save" onclick="game.saveGame(); game.closeSaveManager();" style="grid-column: 1 / -1; padding: 12px;">Sauvegarder</button>
-            <button class="btn" onclick="game.exportSaveFile()" style="background: #0dcaf0; color: white; padding: 10px; font-size: 11px;">⬇️ Exporter</button>
-            <button class="btn" onclick="game.importSaveFile()" style="background: #ffc107; color: #333; padding: 10px; font-size: 11px;">⬆️ Importer</button>
+        <h3 class="modal-section-title">💾 Données</h3>
+        <div class="modal-grid-2">
+            <button class="modal-action-btn js-close-modal" onclick="game.saveGame();"
+                style="grid-column: 1 / -1; background: #1e293b; color: white; padding: 12px;">Sauvegarder</button>
+            <button class="modal-action-btn cyan" onclick="game.exportSaveFile()">⬇️ Exporter</button>
+            <button class="modal-action-btn yellow" onclick="game.importSaveFile()">⬆️ Importer</button>
         </div>
-        <div style="text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-            <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #94a3b8; text-transform: uppercase;">⚙️ Options</h3>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span style="font-size: 13px; color: #334155; font-weight:bold;">🧬 Smart Fusion</span>
-                <button id="optSmartFusion" onclick="game.toggleSmartFusion()" class="btn" style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px;">?</button>
+        <div class="modal-options-box">
+            <h3 class="modal-section-title">⚙️ Options</h3>
+            <div class="modal-option-row">
+                <span class="modal-option-label">🧬 Smart Fusion</span>
+                <button id="optSmartFusion" onclick="game.toggleSmartFusion()" class="modal-info-btn">?</button>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 13px; color: #334155; font-weight:bold;">🛑 Pause Rare</span>
-                <button id="optPauseRare" onclick="game.toggleRarePause()" class="btn" style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px;">?</button>
+            <div class="modal-option-row">
+                <span class="modal-option-label">🛑 Pause Rare</span>
+                <button id="optPauseRare" onclick="game.toggleRarePause()" class="modal-info-btn">?</button>
             </div>
         </div>
-        <div style="background: #fff5f5; border: 1px solid #fecaca; border-radius: 10px; padding: 10px;">
-            <button class="btn btn-reset" onclick="resetGame()" style="width: 100%; font-size: 11px; padding: 8px;">🗑️ Réinitialiser le jeu</button>
+        <div class="modal-danger-box">
+            <button class="modal-reset-btn" onclick="resetGame()">🗑️ Réinitialiser le jeu</button>
         </div>
         <div style="margin-top: 15px; font-size: 10px; color: #cbd5e1;">v1.0.3</div>
     </div>
 </div>
 
-<div class="stats-modal" id="masteryModal" onclick="document.getElementById('masteryModal').classList.remove('show')">
-    <div class="stats-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+<div class="stats-modal js-modal-overlay" id="masteryModal">
+    <div class="stats-content js-modal-content" style="max-width: 600px;">
         <div class="stats-header">
             <h2>📜 Maîtrise des Biomes</h2>
-            <button class="stats-close" onclick="document.getElementById('masteryModal').classList.remove('show')">Fermer</button>
+            <button class="stats-close js-close-modal">Fermer</button>
         </div>
         <p style="color:#666; font-size:13px; margin-bottom:20px;">
             Effectuez des expéditions pour monter de niveau dans chaque biome et réduire la durée des trajets !
@@ -176,11 +182,12 @@
 
 <div id="customTooltip" class="custom-tooltip"></div>
 
-<div id="logModal" class="modal">
-    <div class="modal-content log-modal-content">
+<div id="logModal" class="modal js-modal-overlay">
+    <div class="modal-content log-modal-content js-modal-content">
         <div class="modal-header-logs">
             <h2>📜 Journal d'Aventure</h2>
-            <button class="close-btn" onclick="game.closeLogModal()" style="background:none; border:none; color:#e2e8f0; font-size:28px; cursor:pointer; line-height:1;">&times;</button>
+            <button class="close-btn js-close-modal"
+                style="background:none; border:none; color:#e2e8f0; font-size:28px; cursor:pointer; line-height:1;">&times;</button>
         </div>
         <div id="gameLog" class="log-console-scroll">
             <div class="log-entry" style="color:#94a3b8; font-style:italic; text-align:center; padding-top:20px;">
@@ -188,21 +195,23 @@
             </div>
         </div>
         <div class="modal-footer-logs">
-            <button class="btn" onclick="game.clearLogs()" style="background: #ef4444; color: white; border:none; padding: 8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition: background 0.2s;">
+            <button class="btn" onclick="game.clearLogs()"
+                style="background: #ef4444; color: white; border:none; padding: 8px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition: background 0.2s;">
                 🗑️ Effacer l'historique
             </button>
         </div>
     </div>
 </div>
 
-<div id="offlineModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
+<div id="offlineModal" class="modal-overlay js-modal-overlay" style="display: none;">
+    <div class="modal-content js-modal-content">
         <div class="modal-header">
             <h2>💤 Rapport de Veille</h2>
-            <span class="close-modal" onclick="closeOfflineModal()">&times;</span>
+            <span class="close-modal js-close-modal">&times;</span>
         </div>
         <div class="modal-body">
-            <p class="offline-time-text">Vous avez été absent pendant <span id="offlineTimeDisplay" class="highlight">00h 00m</span></p>
+            <p class="offline-time-text">Vous avez été absent pendant <span id="offlineTimeDisplay"
+                    class="highlight">00h 00m</span></p>
             <div class="offline-stats-grid">
                 <div class="stat-box">
                     <span class="stat-icon">⚔️</span>
@@ -239,7 +248,7 @@
                     <span id="offlineGold" class="reward-value gold-color">+0 $</span>
                 </div>
             </div>
-            <button class="modal-btn" onclick="closeOfflineModal()">Récupérer les gains</button>
+            <button class="modal-btn js-close-modal">Récupérer les gains</button>
         </div>
     </div>
 </div>

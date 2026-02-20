@@ -9,6 +9,12 @@
  * logMessage, toast
  */
 
+// Cache static HTML string for GC optimization
+const _staticCompletedProgressHTML = `<div class="quest-progress-container" style="margin: 10px 0;"><div class="quest-progress-bar"><div class="quest-progress-fill" style="width: 100%; background: #22c55e;"></div></div><div class="quest-progress-text" style="color:#22c55e; font-weight:bold;">Terminée !</div></div>`;
+const _staticEmptyActiveHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px; font-style: italic; border: 2px dashed #e2e8f0; border-radius: 10px;">Aucune expédition en cours...</p>';
+const _staticEmptyAvailableHTML = '<p style="text-align:center; color:#999;">Aucune mission disponible.</p>';
+const _staticFullTableHTML = `<div style="text-align:center; font-size:12px; color:#e74c3c; margin-bottom:10px;">Tableau des missions complet ! (6/6)</div>`;
+
 function updateExpeditionsDisplayLogic(game) {
     const slotsUI = document.getElementById('expeditionSlots');
     if (slotsUI) slotsUI.textContent = `${game.activeExpeditions.length}/${game.maxExpeditionSlots}`;
@@ -22,7 +28,8 @@ function updateExpeditionsDisplayLogic(game) {
 
     activeContainer.innerHTML = '';
     if (game.activeExpeditions.length === 0) {
-        activeContainer.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px; font-style: italic; border: 2px dashed #e2e8f0; border-radius: 10px;">Aucune expédition en cours...</p>';
+        activeContainer.innerHTML = _staticEmptyActiveHTML;
+        if (typeof game.updateTabBadges === 'function') game.updateTabBadges();
         return;
     }
 
@@ -64,7 +71,8 @@ function updateExpeditionsDisplayLogic(game) {
             actionHTML = `<button class="quest-btn" disabled style="background: #cbd5e1; color: #64748b; cursor: wait; width:100%;">⏳ En cours...</button>`;
         } else {
             statusClass = 'completed';
-            progressHTML = `<div class="quest-progress-container" style="margin: 10px 0;"><div class="quest-progress-bar"><div class="quest-progress-fill" style="width: 100%; background: #22c55e;"></div></div><div class="quest-progress-text" style="color:#22c55e; font-weight:bold;">Terminée !</div></div>`;
+            // Use cached static strings for completed state to avoid allocations
+            progressHTML = _staticCompletedProgressHTML;
             actionHTML = `<button class="quest-btn quest-btn-claim" onclick="game.claimExpedition(${index})">🎁 Récupérer les récompenses</button>`;
         }
 
@@ -72,6 +80,8 @@ function updateExpeditionsDisplayLogic(game) {
         card.innerHTML = `<div class="quest-header"><div class="quest-title" style="display:flex; align-items:center; gap:10px;"><img src="${spriteUrl}" style="width:32px; height:32px; vertical-align:middle;"><span>${expeditionDef.name}</span></div></div><div class="quest-description"><strong>${creatureName}</strong> ${levelText} explorent cette zone.</div>${progressHTML}${actionHTML}`;
         activeContainer.appendChild(card);
     });
+
+    if (typeof game.updateTabBadges === 'function') game.updateTabBadges();
 }
 
 function updateAvailableExpeditionsListLogic(game) {
@@ -84,13 +94,16 @@ function updateAvailableExpeditionsListLogic(game) {
         const seconds = Math.floor((game.expeditionTimer % 60000) / 1000);
         container.innerHTML = `<div style="text-align:center; font-size:12px; color:#666; margin-bottom:10px;">Prochaine mission dans : <strong>${minutes}m ${seconds}s</strong></div>`;
     } else {
-        container.innerHTML = `<div style="text-align:center; font-size:12px; color:#e74c3c; margin-bottom:10px;">Tableau des missions complet ! (6/6)</div>`;
+        container.innerHTML = _staticFullTableHTML;
     }
 
     if (game.availableExpeditions.length === 0) {
-        container.innerHTML += '<p style="text-align:center; color:#999;">Aucune mission disponible.</p>';
+        container.innerHTML += _staticEmptyAvailableHTML;
         return;
     }
+
+    // Builder pour réduire les concaténations multiples (plus friendly pour le GC)
+    let finalHTML = container.innerHTML;
 
     game.availableExpeditions.forEach(inst => {
         const exp = EXPEDITION_DEFINITIONS[inst.defId];
@@ -114,9 +127,41 @@ function updateAvailableExpeditionsListLogic(game) {
             reqText = `<div style="margin-top:8px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;"><span style="font-size:11px; font-weight:bold; color:#333;">Requis:</span> ${badges}</div>`;
         }
         const canLaunch = game.activeExpeditions.length < game.maxExpeditionSlots;
-        card.innerHTML = `<div class="quest-header"><div class="quest-title">${exp.name}</div><div class="quest-badge badge-medium">Nv ${exp.requiredLevel}+</div></div><div class="quest-description">${exp.description}${reqText}</div><div class="quest-rewards" style="justify-content: space-between; margin-top:5px;"><span style="font-size:12px; color:#666;">🕒 ${formatTimeString(exp.duration)}</span><span>${lootIcons}</span></div><button class="quest-btn btn-accept" onclick="game.showCreatureSelectForExpedition('${inst.uid}', '${inst.defId}')" ${canLaunch ? '' : 'disabled style="background:#ccc; cursor:not-allowed;"'}>${canLaunch ? 'Choisir une équipe' : 'Actifs (3/3)'}</button>`;
-        container.appendChild(card);
+
+        finalHTML += `
+            <div class="quest-card">
+            <div class="quest-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="quest-title">${exp.name}</div>
+                    <div class="quest-badge badge-medium">Nv ${exp.requiredLevel}+</div>
+                </div>
+                <button type="button"
+                        class="stats-close"
+                        style="position: static; width:24px; height:24px; font-size:14px;"
+                        onclick="game.confirmDeleteAvailableExpedition('${inst.uid}')">
+                    ✕
+                </button>
+            </div>
+            <div class="quest-description">
+                ${exp.description}${reqText}
+            </div>
+            <div class="quest-rewards" style="justify-content: space-between; margin-top:5px;">
+                <span style="font-size:12px; color:#666;">🕒 ${formatTimeString(exp.duration)}</span>
+                <div class="expedition-rewards-strip">
+                    ${lootIcons}
+                </div>
+            </div>
+            <button class="quest-btn btn-accept"
+                    onclick="game.showCreatureSelectForExpedition('${inst.uid}', '${inst.defId}')"
+                    ${canLaunch ? '' : 'disabled style="background:#ccc; cursor:not-allowed;"'}>
+                ${canLaunch ? 'Choisir une équipe' : 'Actifs (3/3)'}
+            </button>
+            </div>
+        `;
     });
+
+    // Un seul set de innerHTML pour éviter les reflows et multiples destructions d'objets DOM
+    container.innerHTML = finalHTML;
 }
 
 function updateExpeditionTimerLogic(game, deltaTime) {
@@ -242,7 +287,7 @@ function startExpeditionLogic(game, storageIndices, expeditionUid, expeditionId)
     if (typeof game.checkSpecialQuests === 'function') game.checkSpecialQuests('expeditionLaunched');
 
     const names = squad.map(c => c.name).join(', ');
-    let chanceStr = successRate >= 1 ? " (Succès Garanti)" : ` (${Math.floor(successRate*100)}%)`;
+    let chanceStr = successRate >= 1 ? " (Succès Garanti)" : ` (${Math.floor(successRate * 100)}%)`;
     logMessage(`🗺️ Départ : ${names} vers ${expeditionDef.name}${chanceStr}`);
     if (typeof toast !== 'undefined') toast.info("Expédition Lancée", `Retour dans ${formatTimeString(duration)}.`);
 
@@ -407,13 +452,48 @@ function showCreatureSelectForExpeditionLogic(game, expeditionUid, expeditionId)
 
     const modal = document.createElement('div');
     modal.id = 'creatureSelectModal';
-    modal.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;`;
-    modal.addEventListener('click', function(e) { if (e.target === modal) document.body.removeChild(modal); });
+    modal.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(
+            ellipse 80% 70% at 50% 45%,
+            rgba(255, 248, 240, 0.15) 0%,
+            rgba(72, 62, 52, 0.5) 50%,
+            rgba(58, 50, 42, 0.92) 100%
+        );
+        backdrop-filter: blur(4px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+    modal.addEventListener('click', function (e) { if (e.target === modal) document.body.removeChild(modal); });
 
     const content = document.createElement('div');
-    content.style.cssText = `background: white; padding: 20px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative;`;
+    content.className = 'creature-select-content';
+    content.style.cssText = `
+        background: linear-gradient(165deg, #5c5042 0%, #4a4035 45%, #3d352b 100%);
+        border: 1px solid rgba(180, 155, 100, 0.35);
+        border-radius: 12px;
+        padding: 24px 20px 18px;
+        max-width: 520px;
+        width: 90%;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: relative;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+        color: #f1f5f9;
+    `;
 
-    let html = `<h3 style="margin-top:0; color:#333;">${expeditionDef.name}</h3><p style="color:#666; font-size:12px;">Sélectionnez <strong><span id="squadCount">0</span>/${teamSize}</strong> Pokémon.</p><div id="squadList" style="display:grid; gap:10px; padding-bottom: 80px;">`;
+    let html = `
+        <h3 style="margin:0 0 6px 0; color:#fef3c7; font-weight:800; letter-spacing:0.03em;">${expeditionDef.name}</h3>
+        <p style="color:#e5e7eb; font-size:12px; margin:0 0 12px 0;">
+            Sélectionnez <strong><span id="squadCount">0</span>/${teamSize}</strong> Pokémon.
+        </p>
+        <div id="squadList" style="display:grid; gap:10px; padding-bottom: 4px; overflow-y:auto; max-height:50vh;">
+    `;
     if (candidates.length === 0) {
         let reqsHTML = expeditionDef.rewardPool.requirements ? expeditionDef.rewardPool.requirements.map(r => (r.type === 'type' ? `Type <strong>${r.value}</strong>` : r.type === 'talent' ? `Talent <strong>${r.value}</strong>` : '')).join(" OU ") : "Aucune restriction";
         html += `<div style="text-align:center; padding:20px; color:#ef4444;">Aucun Pokémon compatible.<br><small>${reqsHTML}</small></div>`;
@@ -422,11 +502,52 @@ function showCreatureSelectForExpeditionLogic(game, expeditionUid, expeditionId)
             const c = cand.creature;
             const spriteUrl = getPokemonSpriteUrl(c.name, c.isShiny);
             const divId = `cand-${cand.index}`;
-            html += `<div id="${divId}" onclick="game.toggleSquadSelection(${cand.index}, ${teamSize}, '${divId}', '${expeditionId}')" style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; transition:0.2s; background:white;"><img src="${spriteUrl}" style="width:48px; height:48px;"><div style="flex:1;"><div style="font-weight:bold; font-size:14px;">${c.name} <span style="font-size:11px; color:#666;">Niv.${c.level}</span></div><div style="font-size:11px; color:#666;">Puissance: ${formatNumber(cand.individualScore)}</div></div></div>`;
+            html += `
+            <div id="${divId}"
+                 onclick="game.toggleSquadSelection(${cand.index}, ${teamSize}, '${divId}', '${expeditionId}')"
+                 style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; transition:0.2s; background:white;">
+                <img src="${spriteUrl}" style="width:48px; height:48px;">
+                <div style="flex:1;">
+                    <div style="font-weight:bold; font-size:14px;">
+                        ${c.name} <span style="font-size:11px; color:#666;">Niv.${c.level}</span>
+                    </div>
+                    <div style="font-size:11px; color:#666;">
+                        Puissance: ${formatNumber(cand.individualScore)}
+                    </div>
+                </div>
+            </div>
+        `;
         });
     }
-    html += `</div><div id="launchButtonContainer" class="squad-counter" style="display:flex; justify-content:space-between; width:90%; max-width:400px;"><div style="display:flex; flex-direction:column;"><span style="font-size:10px; color:#ccc;">CHANCES DE RÉUSSITE</span><span id="squadSuccessText" style="font-weight:bold; font-size:16px; color:#ef4444;">0%</span></div><button id="btnLaunchExpedition" class="btn" disabled style="background:#ccc; color:white; border:none; padding:8px 20px; border-radius:20px; font-weight:bold; transition:0.3s;" onclick="game.finalizeSquadStart('${expeditionUid}', '${expeditionId}')">SÉLECTIONNER (${teamSize})</button></div>`;
-    html += `<button onclick="document.body.removeChild(document.getElementById('creatureSelectModal'))" style="width:100%; padding:12px; margin-top:10px; background:#f1f5f9; color:#64748b; border:none; border-radius:8px; cursor:pointer;">Annuler</button>`;
+    html += `
+        </div>
+        <div id="launchButtonContainer"
+             style="margin-top:12px; padding-top:10px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="display:flex; flex-direction:column;">
+                <span style="font-size:10px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.05em;">
+                    Chances de réussite
+                </span>
+                <span id="squadSuccessText"
+                      style="font-weight:800; font-size:18px; color:#ef4444;">
+                    0%
+                </span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button"
+                        onclick="document.body.removeChild(document.getElementById('creatureSelectModal'))"
+                        style="padding:10px 16px; background:#e5e7eb; color:#4b5563; border:none; border-radius:999px; font-weight:600; font-size:13px; cursor:pointer;">
+                    Annuler
+                </button>
+                <button id="btnLaunchExpedition"
+                        class="btn"
+                        disabled
+                        style="background:#9ca3af; color:white; border:none; padding:10px 20px; border-radius:999px; font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; cursor:not-allowed; transition:0.2s;"
+                        onclick="game.finalizeSquadStart('${expeditionUid}', '${expeditionId}')">
+                    Lancer !
+                </button>
+            </div>
+        </div>
+    `;
     content.innerHTML = html;
     modal.appendChild(content);
     document.body.appendChild(modal);
@@ -483,7 +604,7 @@ function showExpeditionSendModalLogic(game, storageIndex) {
     const modal = document.createElement('div');
     modal.id = 'expeditionSendModal';
     modal.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;`;
-    modal.addEventListener('click', function(e) { if (e.target === modal) document.body.removeChild(modal); });
+    modal.addEventListener('click', function (e) { if (e.target === modal) document.body.removeChild(modal); });
 
     const content = document.createElement('div');
     content.style.cssText = `background: white; padding: 30px; border-radius: 15px; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5); position: relative;`;
