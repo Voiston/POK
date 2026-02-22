@@ -160,11 +160,17 @@ function changeZoneLogic(game, zoneId) {
 
     if (!game.items) game.items = {};
     if (!game.completedStoryQuests) game.completedStoryQuests = [];
+    if (!game.completedTeamRocketQuests) game.completedTeamRocketQuests = [];
 
     var storyTriggered = false;
     if (typeof ensureStoryQuestProgress === 'function' && game.quests && game.quests.length < 10) {
         const beforeCount = game.quests.length;
         ensureStoryQuestProgress(game);
+        if (game.quests.length > beforeCount) storyTriggered = true;
+    }
+    if (typeof ensureTeamRocketQuestProgress === 'function' && game.quests && game.quests.length < 10) {
+        const beforeCount = game.quests.length;
+        ensureTeamRocketQuestProgress(game);
         if (game.quests.length > beforeCount) storyTriggered = true;
     }
 

@@ -63,7 +63,7 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
                         const maxHp = game.getPlayerMaxHp();
                         const heal = Math.floor(maxHp * ult.effect.selfHeal);
                         attacker.mainAccountCurrentHp = Math.min(maxHp, attacker.mainAccountCurrentHp + heal);
-                        if (window.showFloatingText) window.showFloatingText(`+${heal}`, document.getElementById('playerSpriteContainer'), 'ft-heal');
+                        if (showFloatingText) showFloatingText(`+${heal}`, document.getElementById('playerSpriteContainer'), 'ft-heal');
                     } else {
                         const max = attacker.maxHp || (attacker.stats ? attacker.stats.HP : 100);
                         const heal = Math.floor(max * ult.effect.selfHeal);
@@ -107,23 +107,23 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
     }
 
     // Contrôles (Confusion, Stun, Esquive)
-    if (attacker.hasStatusEffect() && attacker.statusEffect && attacker.statusEffect.type === (typeof STATUS_EFFECTS !== 'undefined' ? STATUS_EFFECTS.CONFUSED : 'confused') && Math.random() < 0.30) {
+    if (attacker.hasStatusEffect() && attacker.statusEffect && attacker.statusEffect.type === STATUS_EFFECTS.CONFUSED && Math.random() < 0.30) {
         const selfDamage = Math.floor(effectiveAttacker.attack * 0.5);
         attacker.takeDamage(selfDamage, playerMainStats);
-        if (window.showFloatingText) window.showFloatingText("😵", document.getElementById('playerSpriteContainer'), 'ft-status');
+        if (showFloatingText) showFloatingText("😵", document.getElementById('playerSpriteContainer'), 'ft-status');
         logMessage(attacker.name + " est confus et se blesse !");
         return false;
     }
 
     if (!attacker.canAttack()) {
-        if (window.showFloatingText) window.showFloatingText("🚫", document.getElementById('playerSpriteContainer'), 'ft-status');
+        if (showFloatingText) showFloatingText("🚫", document.getElementById('playerSpriteContainer'), 'ft-status');
         if (attacker.statusEffect.duration > 0) attacker.statusEffect.duration--;
         return false;
     }
 
-    if (target.hasStatusEffect() && target.statusEffect && target.statusEffect.type === (typeof STATUS_EFFECTS !== 'undefined' ? STATUS_EFFECTS.AGILE : 'agile') && target.statusEffect.dodgeCount < 2 && Math.random() < 0.30) {
+    if (target.hasStatusEffect() && target.statusEffect && target.statusEffect.type === STATUS_EFFECTS.AGILE && target.statusEffect.dodgeCount < 2 && Math.random() < 0.30) {
         target.statusEffect.dodgeCount++;
-        if (window.showFloatingText) window.showFloatingText("Miss", document.getElementById('enemySpriteContainer'), '');
+        if (showFloatingText) showFloatingText("Miss", document.getElementById('enemySpriteContainer'), '');
         logMessage(target.name + " esquive l'attaque !");
         return false;
     }
@@ -139,7 +139,7 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
         if (buffs.execute_percent && (healthRatio < 0.5)) bonusDamageMult *= (1 + buffs.execute_percent);
         if (buffs.lifesteal) ultimateLifesteal += buffs.lifesteal;
         if (buffs.crit_chance && Math.random() < buffs.crit_chance) isCriticalHit = true;
-        const collSyn = game.getCollectionSynergyBonuses ? game.getCollectionSynergyBonuses() : {};
+        const collSyn = game.getCollectionBonuses ? game.getCollectionBonuses() : {};
         if ((collSyn.life_steal || 0) > 0) ultimateLifesteal += collSyn.life_steal;
     }
 
@@ -161,7 +161,7 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
         if (game.upgrades && game.upgrades['precision']) critChance += (game.upgrades['precision'] * 0.02);
         if (game.towerState.isActive && game.towerState.buffs?.crit_chance) critChance += game.towerState.buffs.crit_chance;
         if (attacker.passiveTalent === 'sniper') critChance += 0.20;
-        const collSyn = game.getCollectionSynergyBonuses ? game.getCollectionSynergyBonuses() : {};
+        const collSyn = game.getCollectionBonuses ? game.getCollectionBonuses() : {};
         if ((collSyn.crit_chance || 0) > 0) critChance += collSyn.crit_chance;
         if (!isCriticalHit) isCriticalHit = Math.random() < critChance;
     } else {
@@ -170,8 +170,9 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
 
     let totalDamage = 0;
     let isDead = false;
+    let attackerPushedToDeath = false;
 
-    const moveName = POKEMON_DEFAULT_MOVES[attacker.name] || 'Charge';
+    const moveName = attacker.getMove ? attacker.getMove() : 'Charge';
     const move = MOVES_DB[moveName];
 
     for (let i = 0; i < ultimateHits; i++) {
@@ -187,7 +188,7 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
         });
 
         if (!attacker.isEnemy && target.isEnemy) {
-            const dmgBonus = (game.getAccountTalentBonus ? game.getAccountTalentBonus('damage_mult') : 0) + ((game.getCollectionSynergyBonuses ? game.getCollectionSynergyBonuses() : {}).damage_mult || 0);
+            const dmgBonus = (game.getAccountTalentBonus ? game.getAccountTalentBonus('damage_mult') : 0) + ((game.getCollectionBonuses ? game.getCollectionBonuses() : {}).damage_mult || 0);
             damage = Math.floor(damage * (1 + dmgBonus));
         }
         if (attacker.isEnemy && !target.isEnemy) {
@@ -199,11 +200,18 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
         if (target.hasStatusEffect() && target.statusEffect.type === STATUS_EFFECTS.THORNY) {
             const thornsDmg = Math.floor(damage * 0.15);
             if (thornsDmg > 0) {
-                if (!attacker.isEnemy) {
-                    attacker.mainAccountCurrentHp = Math.max(0, attacker.mainAccountCurrentHp - thornsDmg);
-                    if (window.showFloatingText) window.showFloatingText(`-${thornsDmg}`, document.getElementById('playerSpriteContainer'), 'ft-damage-player');
-                } else {
-                    attacker.currentHP = Math.max(0, (attacker.currentHP || 0) - thornsDmg);
+                // Apply thorns damage correctly and check if attacker dies
+                const attackerDied = attacker.takeDamage(thornsDmg, playerMainStats, false, 'physical');
+                if (showFloatingText) {
+                    const containerId = attacker.isEnemy ? 'enemySpriteContainer' : 'playerSpriteContainer';
+                    showFloatingText(`💢 ${thornsDmg}`, document.getElementById(containerId), attacker.isEnemy ? 'ft-damage-enemy' : 'ft-damage-player');
+                }
+
+                if (attackerDied) {
+                    isDead = true;
+                    attackerPushedToDeath = true;
+                    // Stop attacking if attacker died to thorns
+                    break;
                 }
             }
             damage = Math.floor(damage * 0.67);
@@ -222,36 +230,40 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
         if (!target.isEnemy && game.towerState.isActive && game.towerState.buffs && game.towerState.buffs.reflect_percent) {
             const reflectDmg = Math.floor(damage * game.towerState.buffs.reflect_percent);
             if (reflectDmg > 0) {
-                attacker.currentHp = Math.max(0, attacker.currentHp - reflectDmg);
-                window.showFloatingText(`💢 ${reflectDmg}`, document.getElementById('enemySpriteContainer'), 'ft-damage-enemy');
+                const attackerDied = attacker.takeDamage(reflectDmg, playerMainStats, false, 'special');
+                if (showFloatingText) showFloatingText(`💢 ${reflectDmg}`, document.getElementById('enemySpriteContainer'), 'ft-damage-enemy');
+
+                if (attackerDied) {
+                    isDead = true;
+                    attackerPushedToDeath = true;
+                    break;
+                }
             }
         }
 
         if (attacker.heldItem === 'life_orb') {
-            // Recul basé sur les PV max du porteur, en respectant le mode (Arène vs normal/Tour)
-            if (!attacker.isEnemy) {
-                const isArena = game.arenaState.active;
-                if (isArena) {
-                    const recoil = Math.floor(attacker.maxHp * 0.10);
-                    attacker.currentHp = Math.max(0, attacker.currentHp - recoil);
-                    window.showFloatingText(
-                        "-" + (typeof formatFloatingNumber === 'function' ? formatFloatingNumber(recoil) : recoil),
-                        document.getElementById('playerSpriteContainer'),
-                        'ft-damage-player'
-                    );
-                } else {
-                    const recoil = Math.floor(game.getPlayerMaxHp() * 0.10);
-                    attacker.mainAccountCurrentHp = Math.max(0, attacker.mainAccountCurrentHp - recoil);
-                    window.showFloatingText(
-                        "-" + (typeof formatFloatingNumber === 'function' ? formatFloatingNumber(recoil) : recoil),
-                        document.getElementById('playerSpriteContainer'),
-                        'ft-damage-player'
-                    );
-                }
-            } else {
-                const max = attacker.maxHp || (attacker.stats ? attacker.stats.HP : 100);
-                const recoil = Math.floor(max * 0.10);
-                attacker.currentHP = Math.max(0, (attacker.currentHP || 0) - recoil);
+            const max = attacker.maxHp || (attacker.stats ? attacker.stats.HP : 100);
+            let recoilBase = max;
+            if (!attacker.isEnemy && !game.arenaState.active && game.getPlayerMaxHp) {
+                recoilBase = game.getPlayerMaxHp();
+            }
+
+            const recoil = Math.floor(recoilBase * 0.10);
+            const attackerDied = attacker.takeDamage(recoil, playerMainStats, false, 'special');
+
+            if (showFloatingText) {
+                const containerId = attacker.isEnemy ? 'enemySpriteContainer' : 'playerSpriteContainer';
+                showFloatingText(
+                    "-" + formatFloatingNumber(recoil),
+                    document.getElementById(containerId),
+                    attacker.isEnemy ? 'ft-damage-enemy' : 'ft-damage-player'
+                );
+            }
+
+            if (attackerDied) {
+                isDead = true;
+                attackerPushedToDeath = true;
+                break;
             }
         }
 
@@ -266,8 +278,8 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
                     const maxHp = game.getPlayerMaxHp();
                     attacker.mainAccountCurrentHp = Math.min(maxHp, attacker.mainAccountCurrentHp + heal);
                 }
-                window.showFloatingText(
-                    "+" + (typeof formatFloatingNumber === 'function' ? formatFloatingNumber(heal) : heal),
+                if (showFloatingText) showFloatingText(
+                    "+" + formatFloatingNumber(heal),
                     document.getElementById('playerSpriteContainer'),
                     'ft-heal'
                 );
@@ -282,7 +294,7 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
             if (!attacker.isEnemy) {
                 const maxHp = game.getPlayerMaxHp();
                 attacker.mainAccountCurrentHp = Math.min(maxHp, attacker.mainAccountCurrentHp + healAmount);
-                window.showFloatingText("+" + (typeof formatFloatingNumber === 'function' ? formatFloatingNumber(healAmount) : healAmount), document.getElementById('playerSpriteContainer'), 'ft-heal');
+                if (showFloatingText) showFloatingText("+" + formatFloatingNumber(healAmount), document.getElementById('playerSpriteContainer'), 'ft-heal');
             } else {
                 const max = attacker.maxHp || (attacker.stats ? attacker.stats.HP : 100);
                 attacker.currentHP = Math.min(max, (attacker.currentHP || 0) + healAmount);
@@ -291,21 +303,29 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
 
         if (ultimateRecoil > 0) {
             const recoilAmount = Math.floor(damage * ultimateRecoil);
-            if (!attacker.isEnemy) {
-                attacker.mainAccountCurrentHp = Math.max(1, attacker.mainAccountCurrentHp - recoilAmount);
-            } else {
-                attacker.currentHP = Math.max(1, (attacker.currentHP || 0) - recoilAmount);
+            if (recoilAmount > 0) {
+                const attackerDied = attacker.takeDamage(recoilAmount, playerMainStats, false, 'special');
+                if (showFloatingText) {
+                    const containerId = attacker.isEnemy ? 'enemySpriteContainer' : 'playerSpriteContainer';
+                    showFloatingText(`-${recoilAmount}`, document.getElementById(containerId), attacker.isEnemy ? 'ft-damage-enemy' : 'ft-damage-player');
+                }
+
+                if (attackerDied) {
+                    isDead = true;
+                    attackerPushedToDeath = true;
+                    break;
+                }
             }
         }
     }
 
     if (attacker.currentStamina > 0 && !wasUltimate) attacker.currentStamina--;
-    if (attacker.hasStatusEffect() && attacker.statusEffect && attacker.statusEffect.type === (typeof STATUS_EFFECTS !== 'undefined' ? STATUS_EFFECTS.PUNCHER : 'puncher')) attacker.clearStatusEffect();
+    if (attacker.hasStatusEffect() && attacker.statusEffect && attacker.statusEffect.type === STATUS_EFFECTS.PUNCHER) attacker.clearStatusEffect();
     if (attacker.passiveTalent === 'berserker' && (attacker.berserkStacks || 0) < 10) {
         attacker.berserkStacks = (attacker.berserkStacks || 0) + 1;
     }
 
-    let message = attacker.name + " attaque " + target.name + " pour <span class=\"damage-" + attacker.type + "\">" + (typeof formatNumber === 'function' ? formatNumber(totalDamage) : totalDamage) + " degats</span>";
+    let message = attacker.name + " attaque " + target.name + " pour <span class=\"damage-" + attacker.type + "\">" + formatNumber(totalDamage) + " degats</span>";
     if (wasUltimate) message += " [ULTIME]";
     if (isCriticalHit) message += " [CRITIQUE]";
     logMessage(message);
@@ -351,16 +371,24 @@ function performAttackWithBonusLogic(game, attacker, target, playerMainStats, is
         if (game.towerState.isActive && game.towerState.buffs && game.towerState.buffs.regen_percent) {
             regenPercent += game.towerState.buffs.regen_percent;
         }
-        const collSyn = game.getCollectionSynergyBonuses ? game.getCollectionSynergyBonuses() : {};
+        const collSyn = game.getCollectionBonuses ? game.getCollectionBonuses() : {};
         if ((collSyn.hp_regen_per_turn || 0) > 0) regenPercent += collSyn.hp_regen_per_turn;
         if (regenPercent > 0) {
             const maxHp = game.getPlayerMaxHp();
             const regenAmount = Math.floor(maxHp * regenPercent);
             if (regenAmount > 0 && attacker.mainAccountCurrentHp < maxHp) {
                 attacker.mainAccountCurrentHp = Math.min(maxHp, attacker.mainAccountCurrentHp + regenAmount);
-                window.showFloatingText(`+${typeof formatFloatingNumber === 'function' ? formatFloatingNumber(regenAmount) : regenAmount}`, document.getElementById('playerSpriteContainer'), 'ft-heal');
+                if (showFloatingText) showFloatingText(`+${formatFloatingNumber(regenAmount)}`, document.getElementById('playerSpriteContainer'), 'ft-heal');
             }
         }
+    }
+
+    if (attackerPushedToDeath) {
+        // Intercept logic for when attacker dies to recoil/thorns.
+        // Return structured response or just true based on function usage.
+        // For performAttackWithBonusLogic, returning true means target died. But if attacker died, we need special handling.
+        // Easiest is to set attacker hp to 0, which the execution loop should catch on next turn, OR we forcefully call it.
+        return { isDead: isDead, attackerDied: true };
     }
 
     return isDead;
@@ -375,7 +403,7 @@ function winCombatLogic(game) {
         console.warn("⚠️ winCombat appelé sans ennemi actif. Ignoré.");
         return;
     }
-    const isSimulation = typeof window.logMessage === 'function' && window.logMessage.toString().includes('function() {}');
+    const isSimulation = window.logMessage && window.logMessage.toString().includes('function() {}');
 
     game.stats.combatsWon++;
     game.checkAchievements('combatsWon');
@@ -470,7 +498,7 @@ function playerCreatureFaintedLogic(game) {
         game.checkSpecialQuests('combat_lost');
         game.combatState = 'dead';
         game.lastCombatTime = Date.now();
-        if (typeof toast !== 'undefined') toast.error('Défaite', 'Toute votre équipe est KO !', 2000);
+        if (toast) toast.error('Défaite', 'Toute votre équipe est KO !', 2000);
         logMessage("Équipe hors de combat ! Récupération...");
         game.updateTeamDisplay();
         game.updateCombatDisplay();
@@ -543,8 +571,7 @@ function updateATBLogic(game, deltaTime) {
     }
 
     const maxSpeed = Math.max(playerSpeed, enemySpeed, 1);
-    let baseTimeRef = 1000;
-    if (typeof GAME_SPEEDS !== 'undefined') baseTimeRef = GAME_SPEEDS.BASE_TURN_TIME;
+    let baseTimeRef = GAME_SPEEDS ? GAME_SPEEDS.BASE_TURN_TIME : 1000;
     let BASE_TURN_TIME = (game.arenaState.active || game.towerState.active) ? baseTimeRef * 1.5 : baseTimeRef;
 
     const pThreshold = game.currentPlayerCreature.actionThreshold || 10000;
@@ -591,8 +618,8 @@ function processPendingAttacksLogic(game) {
 }
 
 function executeCreatureTurnLogic(game, attacker, target, isPlayer, now) {
-    const PRE_DELAY = (typeof GAME_SPEEDS !== 'undefined') ? GAME_SPEEDS.PRE_ATTACK_DELAY : 500;
-    const ANIM_DELAY = (typeof GAME_SPEEDS !== 'undefined') ? GAME_SPEEDS.ANIMATION_LOCK : 800;
+    const PRE_DELAY = GAME_SPEEDS ? GAME_SPEEDS.PRE_ATTACK_DELAY : 500;
+    const ANIM_DELAY = GAME_SPEEDS ? GAME_SPEEDS.ANIMATION_LOCK : 800;
     const threshold = attacker.actionThreshold || 10000;
 
     if (attacker.actionGauge >= threshold) {
@@ -610,7 +637,7 @@ function executeCreatureTurnLogic(game, attacker, target, isPlayer, now) {
             else if (type === 'sleep') icon = "💤";
             const containerId = isPlayer ? 'playerSpriteContainer' : 'enemySpriteContainer';
             const container = document.getElementById(containerId);
-            if (container && window.showFloatingText) window.showFloatingText(icon, container, 'ft-status');
+            if (container && showFloatingText) showFloatingText(icon, container, 'ft-status');
             logMessage(`${attacker.name} est bloqué (${type}) et passe son tour !`);
             if (attacker.statusEffect.duration > 0) {
                 attacker.statusEffect.duration--;
@@ -627,20 +654,59 @@ function executeCreatureTurnLogic(game, attacker, target, isPlayer, now) {
             return;
         }
 
-        const isDead = performAttackWithBonusLogic(game, attacker, target, game.arenaState.active ? null : game.playerMainStats, isPlayer, false);
+        // 🌟 AUTO-ULTIME : Lancer l'ultime automatiquement si prêt (tour du joueur)
+        if (isPlayer && game.autoSelectEnabled && game.autoUltimate && attacker.ultimateAbility) {
+            const ult = attacker.ultimateAbility;
+            if (attacker.ultimateCharge >= ult.chargeNeeded && !attacker.ultimateActive) {
+                game.activateUltimate();
+            }
+        }
+
+        const attackResult = performAttackWithBonusLogic(game, attacker, target, game.arenaState.active ? null : game.playerMainStats, isPlayer, false);
+
+        let isTargetDead = false;
+        let isAttackerDead = false;
+
+        if (typeof attackResult === 'object') {
+            isTargetDead = attackResult.isDead;
+            isAttackerDead = attackResult.attackerDied;
+        } else {
+            isTargetDead = attackResult;
+        }
 
         setTimeout(() => {
-            if (isDead) {
+            if (isAttackerDead) {
+                game.isAttacking = false;
+                // L'attaquant est mort de ses propres dégâts de recul / épines
+                if (isPlayer) {
+                    playerCreatureFaintedLogic(game);
+                } else {
+                    winCombatLogic(game);
+                }
+            } else if (isTargetDead) {
                 game.isAttacking = false;
                 if (isPlayer) winCombatLogic(game);
                 else playerCreatureFaintedLogic(game);
             } else {
                 game.isAttacking = false;
+
+                // 🤖 AUTO-CHECKS après l'attaque (si auto activé et combat en cours)
+                if (game.autoSelectEnabled && game.currentEnemy && game.combatState === 'fighting') {
+                    if (isPlayer) {
+                        // ⚡ Vérifier l'endurance après l'attaque du joueur
+                        game.autoCheckStamina();
+                    } else {
+                        // 🔄 Vérifier le désavantage de type après l'attaque ennemie
+                        game.autoCheckDisadvantage();
+                    }
+                }
+
                 processPendingAttacksLogic(game);
             }
         }, ANIM_DELAY);
     }
 }
+
 
 // ============================================================
 // HANDLE COMBAT (State Machine)
@@ -663,13 +729,15 @@ function handleCombatLogic(game) {
                 creature.currentStamina = creature.maxStamina;
                 creature.actionGauge = 0;
             }
+            game.faintedThisCombat = new Set();
             game.currentPlayerCreature = game.getFirstAliveCreature();
             if (game.currentPlayerCreature) {
                 game.activeCreatureIndex = game.playerTeam.indexOf(game.currentPlayerCreature);
                 game.currentPlayerCreature.mainAccountCurrentHp = game.getPlayerMaxHp();
             }
             logMessage("Récupération terminée !");
-            game.updateDisplay();
+            game.updateTeamDisplay();
+            game.updateCombatDisplay();
         }
         return;
     }
@@ -710,7 +778,8 @@ function handleSpecialModeVictoryLogic(game) {
             game.currentEnemy = game.towerState.enemyTeam[game.towerState.currentEnemyIndex];
             game.combatState = 'starting';
             game.combatStartTime = Date.now();
-            game.updateDisplay();
+            game.updateCombatDisplay();
+            game.updateTeamDisplay();
         } else {
             game.nextTowerFloor();
         }
@@ -736,7 +805,7 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
     if (Math.random() < recycleChance) {
         ballSaved = true;
         logMessage(`♻️ ${ballType} recyclée avec succès !`);
-        if (typeof toast !== 'undefined') toast.success("Recyclage !", `${ballType} économisée ♻️`);
+        if (toast) toast.success("Recyclage !", `${ballType} économisée ♻️`);
     }
     if (!ballSaved) game.items[ballType]--;
     if (game.updateItemsDisplay) game.updateItemsDisplay();
@@ -747,8 +816,8 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
         return;
     }
 
-    const ballDef = (typeof BALLS !== 'undefined') ? BALLS[ballType] : { catchMult: 1, name: 'Ball', img: '' };
-    const baseChance = (typeof CATCH_RATES !== 'undefined' ? CATCH_RATES[enemy.rarity] : 0.1) || 0.1;
+    const ballDef = BALLS ? BALLS[ballType] : { catchMult: 1, name: 'Ball', img: '' };
+    const baseChance = (CATCH_RATES ? CATCH_RATES[enemy.rarity] : 0.1) || 0.1;
     let charmBonus = (game.currentPlayerCreature && game.currentPlayerCreature.passiveTalent === 'charmeur') ? 1.25 : 1.0;
     let catchRate = baseChance * ballDef.catchMult * charmBonus;
     if (ballType === 'masterball') catchRate = 1.0;
@@ -785,6 +854,9 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
         capturedCreature.ivSpAttack = enemy.ivSpAttack; capturedCreature.ivSpDefense = enemy.ivSpDefense;
         capturedCreature.ivDefense = enemy.ivDefense; capturedCreature.ivSpeed = enemy.ivSpeed;
         capturedCreature.recalculateStats();
+        if (typeof game.addRocketTrustProgress === 'function') {
+            game.addRocketTrustProgress('capture', 1, { species: capturedCreature.name });
+        }
 
         game.stats.creaturesObtained++;
         if (capturedCreature.isShiny) {
@@ -819,7 +891,7 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
             let msg = `🧬 CAPTURE FUSION : +${result.shards} Shards.`;
             if (result.ivImproved) msg += " IVs Améliorés !";
             logMessage(msg);
-            if (typeof toast !== 'undefined') toast.success("Capture Fusion", `+${result.shards} Shards` + (result.ivImproved ? " & Stats Up" : ""));
+            if (toast) toast.success("Capture Fusion", `+${result.shards} Shards` + (result.ivImproved ? " & Stats Up" : ""));
         } else {
             const maxTeamSize = 6 + game.getAccountTalentBonus('team_slot');
             if (game.playerTeam.length < maxTeamSize) {
@@ -834,9 +906,9 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
             if (capturedCreature.rarity === 'rare' || trueRarity === RARITY.RARE) {
                 game.checkSpecialQuests('rareObtained', { rarity: 'rare' });
             }
-            if (trueRarity === RARITY.LEGENDARY && typeof toast !== 'undefined') toast.legendary("LÉGENDAIRE", `${capturedCreature.name} capturé !`);
-            else if (trueRarity === RARITY.EPIC && typeof toast !== 'undefined') toast.info("EPIC", `${capturedCreature.name} capturé !`);
-            else if (typeof toast !== 'undefined') toast.success("Capture Réussie", `${capturedCreature.name} ajouté !`);
+            if (trueRarity === RARITY.LEGENDARY && toast) toast.legendary("LÉGENDAIRE", `${capturedCreature.name} capturé !`);
+            else if (trueRarity === RARITY.EPIC && toast) toast.info("EPIC", `${capturedCreature.name} capturé !`);
+            else if (toast) toast.success("Capture Réussie", `${capturedCreature.name} ajouté !`);
         }
         game.finalizeCombat(true);
     } else {
@@ -851,7 +923,7 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
             if (reflexLevel > 0 && Math.random() < reflexLevel * 0.01) {
                 game.reflexActive = true;
                 logMessage(`⚡ RÉFLEXE ACTIVÉ ! Choisissez une nouvelle Ball !`);
-                if (typeof toast !== 'undefined') toast.info("Réflexe Éclair", "Seconde chance ! Choisissez une Ball ⚡");
+                if (toast) toast.info("Réflexe Éclair", "Seconde chance ! Choisissez une Ball ⚡");
                 if (buttonsDiv) { buttonsDiv.style.pointerEvents = 'auto'; buttonsDiv.style.opacity = '1'; }
                 return;
             }
@@ -859,7 +931,7 @@ async function tryCaptureLogic(game, ballType, isBonusThrow) {
         game.reflexActive = false;
         document.getElementById('captureModal').classList.remove('show');
         if (buttonsDiv) { buttonsDiv.style.pointerEvents = 'auto'; buttonsDiv.style.opacity = '1'; }
-        if (typeof toast !== 'undefined') toast.error("Échec...", failMsg);
+        if (toast) toast.error("Échec...", failMsg);
         logMessage(`💨 ${failMsg}`);
         game.finalizeCombat(false);
     }

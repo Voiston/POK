@@ -19,7 +19,7 @@ Ce projet est un jeu de combat/collection de type Pokémon idle développé en J
 | `styles.css` | Tous les styles CSS du jeu (layout, composants, combat, Pokédex, boutiques). |
 | `compact-popup-style.css` | Styles des popups/modals compacts. |
 | `game.js` | Classe **Game** — logique métier principale : boucle de jeu, équipe, inventaire, tour, expéditions, quêtes, modals (délégation rendu → uiManager), etc. Délègue à zoneSystem, combatSystem, shopSystem, saveSystem, questSystem, expeditionSystem, towerSystem. |
-| `constants.js` | Base de données statique : TYPES, RARITY, MOVES_DB, POKEMON_POOL, POKEMON_SECONDARY_TYPES, TYPE_EFFECTIVENESS, POKEMON_DEFAULT_MOVES, CATCH_RATES, BALLS, HELD_ITEMS, EVOLUTIONS, STATUS_EFFECTS, TEAM_SYNERGIES, COLLECTION_SYNERGIES, boutiques (POKEMART_ITEMS, SHOP_ITEMS, TOWER_SHOP_ITEMS, DUST_SHOP_ITEMS), quêtes, succès, etc. |
+| `constants.js` | Base de données statique : TYPES, RARITY, MOVES_DB, POKEMON_POOL, POKEMON_SECONDARY_TYPES, TYPE_EFFECTIVENESS, POKEMON_DEFAULT_MOVES, CATCH_RATES, BALLS, HELD_ITEMS, EVOLUTIONS, STATUS_EFFECTS, TEAM_SYNERGIES, COLLECTION_BONUSES, boutiques (POKEMART_ITEMS, SHOP_ITEMS, TOWER_SHOP_ITEMS, DUST_SHOP_ITEMS), quêtes, succès, etc. |
 | `Creature.js` | Classes `Creature` et `Egg`. Creature : stats, IV, combat, XP, sérialisation, statuts, ultimes, talents. |
 | `pokemonStats.js` | POKEMON_BASE_STATS, getPokemonBaseStats(name, level). Stats de base (Gen 1–4). |
 | `formatters.js` | formatNumber, formatTime, getShardKey, etc. |
@@ -231,10 +231,10 @@ const TEAM_SYNERGIES = {
 };
 ```
 
-### 4.6 Synergies de Collection (`COLLECTION_SYNERGIES`)
+### 4.6 Bonus de collection (`COLLECTION_BONUSES`)
 Bonus passifs **"Maillon Faible"** : évolution finale requise par famille, niveau = `min(prestige)` parmi tous les membres. Si un Pokémon manque ou a prestige 0 → bonus famille = 0.
 
-**Source :** `constants.js` (`COLLECTION_SYNERGIES`), `game.js` (`getCollectionSynergyBonuses`, `getCollectionSynergyDetails`, `updateCollectionSynergiesDisplay`, `switchPokedexSubTab`).
+**Source :** `constants.js` (`COLLECTION_BONUSES`), `game.js` (`getCollectionBonuses`, `getCollectionBonusDetails`, `updateCollectionBonusesDisplay`, `switchPokedexSubTab`).
 
 **Familles (évolutions finales uniquement) :**
 | Famille | Effet par prestige |

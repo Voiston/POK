@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-02-21T16:48:52.912Z",
+  "autoChecks": {
+    "file": "qa-regression-tests.js",
+    "success": true,
+    "exitCode": 0
+  },
+  "manualSmoke": {
+    "status": "pass",
+    "checklistFile": "QA_RELEASE_GATE_CHECKLIST.md"
+  },
+  "verdict": "GO",
+  "nextSteps": [
+    "Release gate validated.",
+    "You can prepare your release/changelog now."
+  ]
+}

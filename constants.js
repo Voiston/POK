@@ -21,10 +21,32 @@ const TYPES = {
     BUG: 'bug',
     GHOST: 'ghost',
     ICE: 'ice',
-    FAIRY: 'fairy' 
+    FAIRY: 'fairy'
 };
 
-       const TYPE_EFFECTIVENESS = {
+/** Couleurs par type (fond + texte pour contraste) — modale créature, pillule move, etc. */
+const TYPE_COLORS = {
+    [TYPES.FIRE]: { bg: '#ff6b35', text: '#1a1a1a' },
+    [TYPES.WATER]: { bg: '#4dabf7', text: '#1a1a1a' },
+    [TYPES.GRASS]: { bg: '#51cf66', text: '#1a1a1a' },
+    [TYPES.ELECTRIC]: { bg: '#ffd43b', text: '#1a1a1a' },
+    [TYPES.NORMAL]: { bg: '#868e96', text: '#fafafa' },
+    [TYPES.ROCK]: { bg: '#b8860b', text: '#fafafa' },
+    [TYPES.FLYING]: { bg: '#87ceeb', text: '#1a1a1a' },
+    [TYPES.PSYCHIC]: { bg: '#ff1493', text: '#fafafa' },
+    [TYPES.DARK]: { bg: '#2c1e3f', text: '#fafafa' },
+    [TYPES.STEEL]: { bg: '#b0b0b0', text: '#1a1a1a' },
+    [TYPES.DRAGON]: { bg: '#7038f8', text: '#fafafa' },
+    [TYPES.FIGHTING]: { bg: '#c03028', text: '#fafafa' },
+    [TYPES.POISON]: { bg: '#a040a0', text: '#fafafa' },
+    [TYPES.GROUND]: { bg: '#e0c068', text: '#1a1a1a' },
+    [TYPES.BUG]: { bg: '#a8b820', text: '#1a1a1a' },
+    [TYPES.GHOST]: { bg: '#705898', text: '#fafafa' },
+    [TYPES.ICE]: { bg: '#98d8d8', text: '#1a1a1a' },
+    [TYPES.FAIRY]: { bg: '#ee99ac', text: '#1a1a1a' }
+};
+
+const TYPE_EFFECTIVENESS = {
     [TYPES.NORMAL]: { [TYPES.ROCK]: 0.75, [TYPES.GHOST]: 0, [TYPES.STEEL]: 0.75 },
     [TYPES.FIRE]: { [TYPES.GRASS]: 1.5, [TYPES.ICE]: 1.5, [TYPES.BUG]: 1.5, [TYPES.STEEL]: 1.5, [TYPES.FIRE]: 0.75, [TYPES.WATER]: 0.75, [TYPES.ROCK]: 0.75, [TYPES.DRAGON]: 0.75 },
     [TYPES.WATER]: { [TYPES.FIRE]: 1.5, [TYPES.ROCK]: 1.5, [TYPES.GROUND]: 1.5, [TYPES.WATER]: 0.75, [TYPES.GRASS]: 0.75, [TYPES.DRAGON]: 0.75 },
@@ -45,51 +67,67 @@ const TYPES = {
     [TYPES.FAIRY]: { [TYPES.FIGHTING]: 1.5, [TYPES.DRAGON]: 1.5, [TYPES.DARK]: 1.5, [TYPES.FIRE]: 0.75, [TYPES.POISON]: 0.75, [TYPES.STEEL]: 0.75 },
 };
 
-        const RARITY = {
-            COMMON: 'common',
-            RARE: 'rare', 
-            EPIC: 'epic',
-            LEGENDARY: 'legendary'
-        };
+const RARITY = {
+    COMMON: 'common',
+    RARE: 'rare',
+    EPIC: 'epic',
+    LEGENDARY: 'legendary'
+};
 
-        const RARITY_MULTIPLIERS = {
-            [RARITY.COMMON]: 1.0,
-            [RARITY.RARE]: 1.1,
-            [RARITY.EPIC]: 1.2,
-            [RARITY.LEGENDARY]: 1.3
-        };
+/** Durées d'incubation de base par rareté (en millisecondes). Réduites par l'amélioration "Incubation rapide". */
+const EGG_INCUBATION_BASE_MS = {
+    [RARITY.COMMON]: 1 * 60 * 1000,           // 30 s (ex-5 min / 10)
+    [RARITY.RARE]: 3 * 60 * 1000,             // 1 min 30 (ex-15 min / 10)
+    [RARITY.EPIC]: 12 * 60 * 1000,       // 4 min 30 (ex-45 min / 10)
+    [RARITY.LEGENDARY]: 60 * 60 * 1000    // 12 min (ex-2 h / 10)
+};
+
+const AUTO_INCUBATION_DEFAULT_PRIORITY = [
+    RARITY.LEGENDARY,
+    RARITY.EPIC,
+    RARITY.RARE,
+    RARITY.COMMON
+];
+const OFFLINE_INCUBATION_PREVIEW_LIMIT = 12;
+
+const RARITY_MULTIPLIERS = {
+    [RARITY.COMMON]: 1.0,
+    [RARITY.RARE]: 1.1,
+    [RARITY.EPIC]: 1.2,
+    [RARITY.LEGENDARY]: 1.3
+};
 
 const XP_CURVE_MULTIPLIERS = {
     [RARITY.COMMON]: 1.0,
-    [RARITY.RARE]: 1.1,      
-    [RARITY.EPIC]: 1.2,     
-    [RARITY.LEGENDARY]: 1.3   
+    [RARITY.RARE]: 1.1,
+    [RARITY.EPIC]: 1.2,
+    [RARITY.LEGENDARY]: 1.3
 };
 
-        const RARITY_STAMINA_BONUS = {
-            [RARITY.COMMON]: 1,
-            [RARITY.RARE]: 1.25,
-            [RARITY.EPIC]: 1.50,
-            [RARITY.LEGENDARY]: 1.75
-        };
+const RARITY_STAMINA_BONUS = {
+    [RARITY.COMMON]: 1,
+    [RARITY.RARE]: 1.25,
+    [RARITY.EPIC]: 1.50,
+    [RARITY.LEGENDARY]: 1.75
+};
 
-        const RARITY_CHANCES = {
-            [RARITY.COMMON]: 81.5,
-            [RARITY.RARE]: 15,
-            [RARITY.EPIC]: 3,
-            [RARITY.LEGENDARY]: 0.5
-        };
+const RARITY_CHANCES = {
+    [RARITY.COMMON]: 81.5,
+    [RARITY.RARE]: 15,
+    [RARITY.EPIC]: 3,
+    [RARITY.LEGENDARY]: 0.5
+};
 
-        
-		
-	const POKEMON_POOL = {
+
+
+const POKEMON_POOL = {
     [RARITY.COMMON]: {
         // --- CRITÈRES : Familles faibles, early-game, ou évolutions finales peu puissantes ---
         [TYPES.FIRE]: ['Slugma', 'Magcargo', 'Numel', 'Camerupt'],
-        [TYPES.WATER]: ['Marill', 'Azumarill', 'Carvanha','Sharpedo','Goldeen', 'Seaking', 'Remoraid', 'Octillery', 'Wingull', 'Pelipper', 'Barboach', 'Whiscash', 'Luvdisc', 'Shellos', 'Gastrodon', 'Finneon', 'Lumineon', 'Wooper', 'Quagsire', 'Krabby', 'Kingler', 'Corphish', 'Crawdaunt', 'Qwilfish'],
+        [TYPES.WATER]: ['Marill', 'Azumarill', 'Carvanha', 'Sharpedo', 'Goldeen', 'Seaking', 'Remoraid', 'Octillery', 'Wingull', 'Pelipper', 'Barboach', 'Whiscash', 'Luvdisc', 'Shellos', 'Gastrodon', 'Finneon', 'Lumineon', 'Wooper', 'Quagsire', 'Krabby', 'Kingler', 'Corphish', 'Crawdaunt', 'Qwilfish'],
         [TYPES.GRASS]: ['Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Carnivine', 'Paras', 'Parasect'],
         [TYPES.ELECTRIC]: ['Voltorb', 'Electrode', 'Plusle', 'Minun', 'Pachirisu', 'Illumise', 'Volbeat'], // Illumise/Volbeat souvent associés
-        [TYPES.NORMAL]: [ 'Granbull','Azurill', 'Snubbull','Rattata', 'Raticate', 'Sentret', 'Furret', 'Zigzagoon', 'Linoone', 'Bidoof', 'Bibarel', 'Hoothoot', 'Noctowl', 'Taillow', 'Swellow', 'Starly', 'Staravia', 'Staraptor', 'Meowth', 'Persian', 'Glameow', 'Purugly', 'Skitty', 'Delcatty', 'Buneary', 'Lopunny', 'Dunsparce', 'Castform', 'Kecleon', 'Spinda', 'Chatot', 'Stantler', 'Smeargle', 'Ditto', 'tch', 'Doduo', 'Dodrio', 'Spearow', 'Fearow', 'Lickitung', 'Lickilicky', 'Aipom', 'Ambipom'],
+        [TYPES.NORMAL]: ['Granbull', 'Azurill', 'Snubbull', 'Rattata', 'Raticate', 'Sentret', 'Furret', 'Zigzagoon', 'Linoone', 'Bidoof', 'Bibarel', 'Hoothoot', 'Noctowl', 'Taillow', 'Swellow', 'Starly', 'Staravia', 'Staraptor', 'Meowth', 'Persian', 'Glameow', 'Purugly', 'Skitty', 'Delcatty', 'Buneary', 'Lopunny', 'Dunsparce', 'Castform', 'Kecleon', 'Spinda', 'Chatot', 'Stantler', 'Smeargle', 'Ditto', "Farfetch'd", 'Cleffa', 'Igglybuff', 'Doduo', 'Dodrio', 'Spearow', 'Fearow', 'Lickitung', 'Lickilicky', 'Aipom', 'Ambipom'],
         [TYPES.POISON]: ['Ekans', 'Arbok', 'Gulpin', 'Swalot', 'Seviper', 'Koffing', 'Weezing', 'Grimer', 'Muk', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Croagunk', 'Toxicroak'],
         [TYPES.PSYCHIC]: ['Spoink', 'Grumpig', 'Chingling', 'Chimecho', 'Unown', 'Drowzee', 'Hypno'],
         [TYPES.ROCK]: ['Nosepass', 'Probopass', 'Sudowoodo', 'Bonsly', 'Lunatone', 'Solrock'],
@@ -109,10 +147,10 @@ const XP_CURVE_MULTIPLIERS = {
         [TYPES.FIRE]: ['Vulpix', 'Ninetales', 'Ponyta', 'Rapidash', 'Torkoal'],
         [TYPES.WATER]: ['Psyduck', 'Golduck', 'Wailmer', 'Wailord', 'Buizel', 'Floatzel', 'Mantyke', 'Mantine', 'Corsola', 'Relicanth', 'Clamperl', 'Huntail', 'Gorebyss', 'Chinchou', 'Lanturn'],
         [TYPES.GRASS]: ['Oddish', 'Gloom', 'Vileplume', 'Bellossom', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Shroomish', 'Breloom', 'Tropius'],
-        [TYPES.ELECTRIC]: ['Rotom','Electrike','Manectric'], // Rotom de base est Rare
-        [TYPES.NORMAL]: ['Pidgeotto', 'Jigglypuff', 'Wigglytuff','Clefairy', 'Clefable','Pidgey' ,'Pidgeot','Porygon', 'Porygon2', 'Porygon-Z', 'Miltank', 'Kangaskhan', 'Zangoose', 'Girafarig', 'Ursaring', 'Teddiursa', 'Whismur', 'Loudred', 'Exploud'],
+        [TYPES.ELECTRIC]: ['Rotom', 'Electrike', 'Manectric'], // Rotom de base est Rare
+        [TYPES.NORMAL]: ['Pidgeotto', 'Jigglypuff', 'Wigglytuff', 'Clefairy', 'Clefable', 'Pidgey', 'Pidgeot', 'Porygon', 'Porygon2', 'Porygon-Z', 'Miltank', 'Kangaskhan', 'Zangoose', 'Girafarig', 'Ursaring', 'Teddiursa', 'Whismur', 'Loudred', 'Exploud'],
         [TYPES.POISON]: ['Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Roselia', 'Budew', 'Roserade'],
-        [TYPES.PSYCHIC]: ['Natu', 'Xatu','Mr. Mime', 'Mime Jr.', 'Jynx', 'Smoochum', 'Wobbuffet', 'Wynaut'],
+        [TYPES.PSYCHIC]: ['Natu', 'Xatu', 'Mr. Mime', 'Mime Jr.', 'Jynx', 'Smoochum', 'Wobbuffet', 'Wynaut'],
         [TYPES.ROCK]: ['Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Lileep', 'Cradily', 'Anorith', 'Armaldo', 'Cranidos', 'Rampardos', 'Shieldon', 'Bastiodon'],
         [TYPES.BUG]: ['Pinsir', 'Heracross', 'Yanma', 'Yanmega', 'Pineco', 'Forretress', 'Shuckle'],
         [TYPES.GROUND]: ['Cubone', 'Marowak', 'Trapinch', 'Vibrava', 'Flygon', 'Gligar', 'Gliscor'],
@@ -132,9 +170,9 @@ const XP_CURVE_MULTIPLIERS = {
             'Cyndaquil', 'Quilava', 'Typhlosion',
             'Torchic', 'Combusken', 'Blaziken',
             'Chimchar', 'Monferno', 'Infernape',
-            'Growlithe', 'Arcanine','Flareon',
+            'Growlithe', 'Arcanine', 'Flareon',
             'Magby', 'Magmar', 'Magmortar'
-            
+
         ],
         [TYPES.WATER]: [
             'Squirtle', 'Wartortle', 'Blastoise',
@@ -142,7 +180,7 @@ const XP_CURVE_MULTIPLIERS = {
             'Mudkip', 'Marshtomp', 'Swampert',
             'Piplup', 'Prinplup', 'Empoleon',
             'Magikarp', 'Gyarados',
-			'Shellder', 'Cloyster',
+            'Shellder', 'Cloyster',
             'Feebas', 'Milotic',
             'Horsea', 'Seadra', 'Kingdra',
             'Spheal', 'Sealeo', 'Walrein',
@@ -150,7 +188,7 @@ const XP_CURVE_MULTIPLIERS = {
             'Poliwag', 'Poliwhirl', 'Poliwrath', 'Politoed',
             'Slowpoke', 'Slowbro', 'Slowking',
             'Tentacool', 'Tentacruel',
-			 'Staryu', 'Starmie',
+            'Staryu', 'Starmie',
             'Lotad', 'Lombre', 'Ludicolo'
         ],
         [TYPES.GRASS]: [
@@ -158,7 +196,7 @@ const XP_CURVE_MULTIPLIERS = {
             'Chikorita', 'Bayleef', 'Meganium',
             'Treecko', 'Grovyle', 'Sceptile',
             'Turtwig', 'Grotle', 'Torterra',
-			'Exeggcute', 'Exeggutor',
+            'Exeggcute', 'Exeggutor',
             'Leafeon', 'Snover', 'Abomasnow',
             'Seedot', 'Nuzleaf', 'Shiftry'
         ],
@@ -171,7 +209,7 @@ const XP_CURVE_MULTIPLIERS = {
             'Jolteon'
         ],
         [TYPES.NORMAL]: [
-            'Eevee', 'Snorlax', 'Munchlax', 'Chansey', 'Blissey', 'Happiny', 'Togepi', 'Togetic', 'Togekiss','Tauros','Vigoroth', 'Slakoth', 'Slaking'
+            'Eevee', 'Snorlax', 'Munchlax', 'Chansey', 'Blissey', 'Happiny', 'Togepi', 'Togetic', 'Togekiss', 'Tauros', 'Vigoroth', 'Slakoth', 'Slaking'
         ],
         [TYPES.POISON]: [
             'Gastly', 'Haunter', 'Gengar', 'Zubat', 'Golbat', 'Crobat'
@@ -183,7 +221,7 @@ const XP_CURVE_MULTIPLIERS = {
         ],
         [TYPES.ROCK]: [
             'Geodude', 'Graveler', 'Golem',
-			'Aerodactyl',
+            'Aerodactyl',
             'Rhyhorn', 'Rhydon', 'Rhyperior',
             'Aron', 'Lairon', 'Aggron',
             'Larvitar', 'Pupitar', 'Tyranitar',
@@ -211,15 +249,15 @@ const XP_CURVE_MULTIPLIERS = {
             'Dratini', 'Dragonair', 'Dragonite',
             'Bagon', 'Shelgon', 'Salamence'
         ],
-        [TYPES.DARK]: [], // Tyranocif est en Roche, Dimoret en Rare (choix d'équilibrage sinon trop de Dark en Epic), Houndoom en Rare.
+        [TYPES.DARK]: ['Umbreon'], // Tyranocif est en Roche, Dimoret en Rare (choix d'équilibrage sinon trop de Dark en Epic), Houndoom en Rare.
         [TYPES.STEEL]: [
             'Beldum', 'Metang', 'Metagross'
         ]
     },
 
     [RARITY.LEGENDARY]: {
-        [TYPES.FIRE]: ['Moltres', 'Ho-Oh', 'Heatran','Entei'],
-        [TYPES.WATER]: ['Kyogre', 'Palkia', 'Manaphy', 'Phione','Suicune'],
+        [TYPES.FIRE]: ['Moltres', 'Ho-Oh', 'Heatran', 'Entei'],
+        [TYPES.WATER]: ['Kyogre', 'Palkia', 'Manaphy', 'Phione', 'Suicune'],
         [TYPES.GRASS]: ['Celebi', 'Shaymin'],
         [TYPES.ELECTRIC]: ['Zapdos', 'Raikou'],
         [TYPES.NORMAL]: ['Arceus', 'Regigigas'],
@@ -253,7 +291,7 @@ const POKEMON_SECONDARY_TYPES = {
     'Geodude': TYPES.GROUND, 'Graveler': TYPES.GROUND, 'Golem': TYPES.GROUND,
     'Slowpoke': TYPES.PSYCHIC, 'Slowbro': TYPES.PSYCHIC,
     'Magnemite': TYPES.STEEL, 'Magneton': TYPES.STEEL,
-    'Farfetch': TYPES.FLYING, 'Doduo': TYPES.FLYING, 'Dodrio': TYPES.FLYING,
+    "Farfetch'd": TYPES.FLYING, 'Doduo': TYPES.FLYING, 'Dodrio': TYPES.FLYING,
     'Dewgong': TYPES.ICE, 'Cloyster': TYPES.ICE,
     'Gastly': TYPES.POISON, 'Haunter': TYPES.POISON, 'Gengar': TYPES.POISON,
     'Onix': TYPES.GROUND,
@@ -272,7 +310,7 @@ const POKEMON_SECONDARY_TYPES = {
     'Ledyba': TYPES.FLYING, 'Ledian': TYPES.FLYING,
     'Spinarak': TYPES.POISON, 'Ariados': TYPES.POISON,
     'Crobat': TYPES.FLYING, 'Chinchou': TYPES.ELECTRIC, 'Lanturn': TYPES.ELECTRIC,
-    'Igglybuff': TYPES.FAIRY, 'Togepi': TYPES.FAIRY, 'Togetic': TYPES.FAIRY,
+    'Cleffa': TYPES.FAIRY, 'Igglybuff': TYPES.FAIRY, 'Togepi': TYPES.FAIRY, 'Togetic': TYPES.FAIRY,
     'Natu': TYPES.FLYING, 'Xatu': TYPES.FLYING,
     'Azumarill': TYPES.FAIRY, 'Marill': TYPES.FAIRY,
     'Hoppip': TYPES.FLYING, 'Skiploom': TYPES.FLYING, 'Jumpluff': TYPES.FLYING,
@@ -318,7 +356,7 @@ const POKEMON_SECONDARY_TYPES = {
     'Beldum': TYPES.PSYCHIC, 'Metang': TYPES.PSYCHIC, 'Metagross': TYPES.PSYCHIC,
     'Latias': TYPES.PSYCHIC, 'Latios': TYPES.PSYCHIC,
     'Rayquaza': TYPES.FLYING, 'Jirachi': TYPES.STEEL,
-	
+
 
     // --- GEN 4 ---
     'Torterra': TYPES.GROUND, 'Monferno': TYPES.FIGHTING, 'Infernape': TYPES.FIGHTING,
@@ -353,157 +391,328 @@ const POKEMON_SECONDARY_TYPES = {
 // 1. Définition des attaques
 const MOVES_DB = {
     // === NORMAL ===
-    'Charge':         { name: 'Charge',         type: 'normal',   category: 'physical', power: 40 },
-    'Griffe':         { name: 'Griffe',         type: 'normal',   category: 'physical', power: 40 },
-    'Plaquage':       { name: 'Plaquage',       type: 'normal',   category: 'physical', power: 85 },
-    'Tranche':        { name: 'Tranche',        type: 'normal',   category: 'physical', power: 70 },
-    'Météores':       { name: 'Météores',       type: 'normal',   category: 'special',  power: 60 },
-    'Ultralaser':     { name: 'Ultralaser',     type: 'normal',   category: 'special',  power: 150 },
-    
+    'Charge': { name: 'Charge', type: 'normal', category: 'physical', power: 40 },
+    'Griffe': { name: 'Griffe', type: 'normal', category: 'physical', power: 40 },
+    'Plaquage': { name: 'Plaquage', type: 'normal', category: 'physical', power: 85 },
+    'Tranche': { name: 'Tranche', type: 'normal', category: 'physical', power: 70 },
+    'Météores': { name: 'Météores', type: 'normal', category: 'special', power: 60 },
+    'Ultralaser': { name: 'Ultralaser', type: 'normal', category: 'special', power: 150 },
+    'Vive-Attaque': { name: 'Vive-Attaque', type: 'normal', category: 'physical', power: 40 },
+    'Damoclès': { name: 'Damoclès', type: 'normal', category: 'physical', power: 120 },
+
     // === FEU (Fire) ===
-    'Flammèche':      { name: 'Flammèche',      type: 'fire',     category: 'special',  power: 40 },
-    'Lance-Flammes':  { name: 'Lance-Flammes',  type: 'fire',     category: 'special',  power: 90 },
-    'Déflagration':   { name: 'Déflagration',   type: 'fire',     category: 'special',  power: 110 },
-    'Poing de Feu':   { name: 'Poing de Feu',   type: 'fire',     category: 'physical', power: 75 },
-    'Roue de Feu':    { name: 'Roue de Feu',    type: 'fire',     category: 'physical', power: 60 },
-    'Boutefeu':       { name: 'Boutefeu',       type: 'fire',     category: 'physical', power: 120 },
-    
+    'Flammèche': { name: 'Flammèche', type: 'fire', category: 'special', power: 40 },
+    'Lance-Flammes': { name: 'Lance-Flammes', type: 'fire', category: 'special', power: 90 },
+    'Déflagration': { name: 'Déflagration', type: 'fire', category: 'special', power: 110 },
+    'Poing de Feu': { name: 'Poing de Feu', type: 'fire', category: 'physical', power: 75 },
+    'Roue de Feu': { name: 'Roue de Feu', type: 'fire', category: 'physical', power: 60 },
+    'Boutefeu': { name: 'Boutefeu', type: 'fire', category: 'physical', power: 120 },
+    'Canicule': { name: 'Canicule', type: 'fire', category: 'special', power: 95 },
+
     // === EAU (Water) ===
-    'Pistolet à O':   { name: 'Pistolet à O',   type: 'water',    category: 'special',  power: 40 },
-    'Surf':           { name: 'Surf',           type: 'water',    category: 'special',  power: 90 },
-    'Hydrocanon':     { name: 'Hydrocanon',     type: 'water',    category: 'special',  power: 110 },
-    'Cascade':        { name: 'Cascade',        type: 'water',    category: 'physical', power: 80 },
-    'Aqua-Jet':       { name: 'Aqua-Jet',       type: 'water',    category: 'physical', power: 40 },
-    'Pince-Masse':    { name: 'Pince-Masse',    type: 'water',    category: 'physical', power: 100 },
-    
+    'Pistolet à O': { name: 'Pistolet à O', type: 'water', category: 'special', power: 40 },
+    'Surf': { name: 'Surf', type: 'water', category: 'special', power: 90 },
+    'Hydrocanon': { name: 'Hydrocanon', type: 'water', category: 'special', power: 110 },
+    'Cascade': { name: 'Cascade', type: 'water', category: 'physical', power: 80 },
+    'Aqua-Jet': { name: 'Aqua-Jet', type: 'water', category: 'physical', power: 40 },
+    'Pince-Masse': { name: 'Pince-Masse', type: 'water', category: 'physical', power: 100 },
+    'Bulles d\'O': { name: 'Bulles d\'O', type: 'water', category: 'special', power: 65 },
+    'Aqua-Brèche': { name: 'Aqua-Brèche', type: 'water', category: 'physical', power: 85 },
+
     // === PLANTE (Grass) ===
-    'Fouet Lianes':   { name: 'Fouet Lianes',   type: 'grass',    category: 'physical', power: 45 },
-    'Tranch\'Herbe':  { name: 'Tranch\'Herbe',  type: 'grass',    category: 'physical', power: 55 },
-    'Lame-Feuille':   { name: 'Lame-Feuille',   type: 'grass',    category: 'physical', power: 90 },
-    'Méga-Sangsue':   { name: 'Méga-Sangsue',   type: 'grass',    category: 'special',  power: 75 },
-    'Tempête Verte':  { name: 'Tempête Verte',  type: 'grass',    category: 'special',  power: 130 },
-    'Éco-Sphère':     { name: 'Éco-Sphère',     type: 'grass',    category: 'special',  power: 90 },
-    
+    'Fouet Lianes': { name: 'Fouet Lianes', type: 'grass', category: 'physical', power: 45 },
+    'Tranch\'Herbe': { name: 'Tranch\'Herbe', type: 'grass', category: 'physical', power: 55 },
+    'Lame-Feuille': { name: 'Lame-Feuille', type: 'grass', category: 'physical', power: 90 },
+    'Méga-Sangsue': { name: 'Méga-Sangsue', type: 'grass', category: 'special', power: 75 },
+    'Tempête Verte': { name: 'Tempête Verte', type: 'grass', category: 'special', power: 130 },
+    'Éco-Sphère': { name: 'Éco-Sphère', type: 'grass', category: 'special', power: 90 },
+    'Canon Graine': { name: 'Canon Graine', type: 'grass', category: 'physical', power: 80 },
+    'Giga-Sangsue': { name: 'Giga-Sangsue', type: 'grass', category: 'special', power: 75 },
+
     // === ÉLECTRIK (Electric) ===
-    'Éclair':         { name: 'Éclair',         type: 'electric', category: 'special',  power: 40 },
-    'Tonnerre':       { name: 'Tonnerre',       type: 'electric', category: 'special',  power: 90 },
-    'Fatal-Foudre':   { name: 'Fatal-Foudre',   type: 'electric', category: 'special',  power: 110 },
-    'Poing Éclair':   { name: 'Poing Éclair',   type: 'electric', category: 'physical', power: 75 },
-    'Étincelle':      { name: 'Étincelle',      type: 'electric', category: 'physical', power: 65 },
-    'Éclair Fou':     { name: 'Éclair Fou',     type: 'electric', category: 'physical', power: 90 },
-    
+    'Éclair': { name: 'Éclair', type: 'electric', category: 'special', power: 40 },
+    'Tonnerre': { name: 'Tonnerre', type: 'electric', category: 'special', power: 90 },
+    'Fatal-Foudre': { name: 'Fatal-Foudre', type: 'electric', category: 'special', power: 110 },
+    'Poing Éclair': { name: 'Poing Éclair', type: 'electric', category: 'physical', power: 75 },
+    'Étincelle': { name: 'Étincelle', type: 'electric', category: 'physical', power: 65 },
+    'Éclair Fou': { name: 'Éclair Fou', type: 'electric', category: 'physical', power: 90 },
+    'Électacle': { name: 'Électacle', type: 'electric', category: 'physical', power: 120 },
+    'Change Éclair': { name: 'Change Éclair', type: 'electric', category: 'special', power: 70 },
+
     // === GLACE (Ice) ===
-    'Poudreuse':      { name: 'Poudreuse',      type: 'ice',      category: 'special',  power: 40 },
-    'Laser Glace':    { name: 'Laser Glace',    type: 'ice',      category: 'special',  power: 90 },
-    'Blizzard':       { name: 'Blizzard',       type: 'ice',      category: 'special',  power: 110 },
-    'Poing Glace':    { name: 'Poing Glace',    type: 'ice',      category: 'physical', power: 75 },
-    'Crocs Givre':    { name: 'Crocs Givre',    type: 'ice',      category: 'physical', power: 65 },
-    'Avalanche':      { name: 'Avalanche',      type: 'ice',      category: 'physical', power: 60 },
-    
+    'Poudreuse': { name: 'Poudreuse', type: 'ice', category: 'special', power: 40 },
+    'Laser Glace': { name: 'Laser Glace', type: 'ice', category: 'special', power: 90 },
+    'Blizzard': { name: 'Blizzard', type: 'ice', category: 'special', power: 110 },
+    'Poing Glace': { name: 'Poing Glace', type: 'ice', category: 'physical', power: 75 },
+    'Crocs Givre': { name: 'Crocs Givre', type: 'ice', category: 'physical', power: 65 },
+    'Avalanche': { name: 'Avalanche', type: 'ice', category: 'physical', power: 60 },
+    'Éclats Glace': { name: 'Éclats Glace', type: 'ice', category: 'physical', power: 40 },
+    'Lyophilisation': { name: 'Lyophilisation', type: 'ice', category: 'special', power: 70 },
+
     // === COMBAT (Fighting) ===
-    'Poing-Karaté':   { name: 'Poing-Karaté',   type: 'fighting', category: 'physical', power: 50 },
-    'Casse-Brique':   { name: 'Casse-Brique',   type: 'fighting', category: 'physical', power: 75 },
-    'Close Combat':   { name: 'Close Combat',   type: 'fighting', category: 'physical', power: 120 },
-    'Marto-Poing':    { name: 'Marto-Poing',    type: 'fighting', category: 'physical', power: 100 },
-    'Aurasphère':     { name: 'Aurasphère',     type: 'fighting', category: 'special',  power: 80 },
-    'Exploforce':     { name: 'Exploforce',     type: 'fighting', category: 'special',  power: 120 },
-    
+    'Poing-Karaté': { name: 'Poing-Karaté', type: 'fighting', category: 'physical', power: 50 },
+    'Casse-Brique': { name: 'Casse-Brique', type: 'fighting', category: 'physical', power: 75 },
+    'Close Combat': { name: 'Close Combat', type: 'fighting', category: 'physical', power: 120 },
+    'Marto-Poing': { name: 'Marto-Poing', type: 'fighting', category: 'physical', power: 100 },
+    'Aurasphère': { name: 'Aurasphère', type: 'fighting', category: 'special', power: 80 },
+    'Exploforce': { name: 'Exploforce', type: 'fighting', category: 'special', power: 120 },
+    'Vampipoing': { name: 'Vampipoing', type: 'fighting', category: 'physical', power: 75 },
+    'Onde Vide': { name: 'Onde Vide', type: 'fighting', category: 'special', power: 40 },
+
     // === POISON ===
-    'Dard-Venin':     { name: 'Dard-Venin',     type: 'poison',   category: 'physical', power: 15 },
-    'Bomb-Beurk':     { name: 'Bomb-Beurk',     type: 'poison',   category: 'special',  power: 90 },
-    'Crochet Venin':  { name: 'Crochet Venin',  type: 'poison',   category: 'physical', power: 50 },
-    'Direct Toxik':   { name: 'Direct Toxik',   type: 'poison',   category: 'physical', power: 80 },
-    'Acidarmure':     { name: 'Acidarmure',     type: 'poison',   category: 'special',  power: 40 },
-    
+    'Dard-Venin': { name: 'Dard-Venin', type: 'poison', category: 'physical', power: 15 },
+    'Bomb-Beurk': { name: 'Bomb-Beurk', type: 'poison', category: 'special', power: 90 },
+    'Crochet Venin': { name: 'Crochet Venin', type: 'poison', category: 'physical', power: 50 },
+    'Direct Toxik': { name: 'Direct Toxik', type: 'poison', category: 'physical', power: 80 },
+    'Acidarmure': { name: 'Acidarmure', type: 'poison', category: 'special', power: 40 },
+
     // === SOL (Ground) ===
-    'Séisme':         { name: 'Séisme',         type: 'ground',   category: 'physical', power: 100 },
-    'Piétisol':       { name: 'Piétisol',       type: 'ground',   category: 'physical', power: 60 },
-    'Tunnel':         { name: 'Tunnel',         type: 'ground',   category: 'physical', power: 80 },
-    'Telluriforce':   { name: 'Telluriforce',   type: 'ground',   category: 'special',  power: 90 },
-    'Tourbi-Sable':   { name: 'Tourbi-Sable',   type: 'ground',   category: 'special',  power: 35 },
-    
+    'Séisme': { name: 'Séisme', type: 'ground', category: 'physical', power: 100 },
+    'Piétisol': { name: 'Piétisol', type: 'ground', category: 'physical', power: 60 },
+    'Tunnel': { name: 'Tunnel', type: 'ground', category: 'physical', power: 80 },
+    'Telluriforce': { name: 'Telluriforce', type: 'ground', category: 'special', power: 90 },
+    'Tourbi-Sable': { name: 'Tourbi-Sable', type: 'ground', category: 'special', power: 35 },
+
     // === VOL (Flying) ===
-    'Cru-Ailes':      { name: 'Cru-Ailes',      type: 'flying',   category: 'physical', power: 60 },
-    'Aéropique':      { name: 'Aéropique',      type: 'flying',   category: 'physical', power: 60 },
-    'Rapace':         { name: 'Rapace',         type: 'flying',   category: 'physical', power: 120 },
-    'Vent Violent':   { name: 'Vent Violent',   type: 'flying',   category: 'special',  power: 110 },
-    'Lame d\'Air':    { name: 'Lame d\'Air',    type: 'flying',   category: 'special',  power: 75 },
-    
+    'Cru-Ailes': { name: 'Cru-Ailes', type: 'flying', category: 'physical', power: 60 },
+    'Aéropique': { name: 'Aéropique', type: 'flying', category: 'physical', power: 60 },
+    'Rapace': { name: 'Rapace', type: 'flying', category: 'physical', power: 120 },
+    'Vent Violent': { name: 'Vent Violent', type: 'flying', category: 'special', power: 110 },
+    'Lame d\'Air': { name: 'Lame d\'Air', type: 'flying', category: 'special', power: 75 },
+
     // === PSY (Psychic) ===
-    'Choc Mental':    { name: 'Choc Mental',    type: 'psychic',  category: 'special',  power: 50 },
-    'Psyko':          { name: 'Psyko',          type: 'psychic',  category: 'special',  power: 90 },
-    'Psyko-Boost':    { name: 'Psyko-Boost',    type: 'psychic',  category: 'special',  power: 140 },
-    'Coupe Psycho':   { name: 'Coupe Psycho',   type: 'psychic',  category: 'physical', power: 70 },
-    'Zen Headbutt':   { name: 'Zen Headbutt',   type: 'psychic',  category: 'physical', power: 80 },
-    
+    'Choc Mental': { name: 'Choc Mental', type: 'psychic', category: 'special', power: 50 },
+    'Psyko': { name: 'Psyko', type: 'psychic', category: 'special', power: 90 },
+    'Psyko-Boost': { name: 'Psyko-Boost', type: 'psychic', category: 'special', power: 140 },
+    'Coupe Psycho': { name: 'Coupe Psycho', type: 'psychic', category: 'physical', power: 70 },
+    'Zen Headbutt': { name: 'Zen Headbutt', type: 'psychic', category: 'physical', power: 80 },
+    'Choc Psy': { name: 'Choc Psy', type: 'psychic', category: 'special', power: 80 },
+    'Extrasenseur': { name: 'Extrasenseur', type: 'psychic', category: 'special', power: 80 },
+
     // === INSECTE (Bug) ===
-    'Dard-Nuée':      { name: 'Dard-Nuée',      type: 'bug',      category: 'physical', power: 25 },
-    'Plaie-Croix':    { name: 'Plaie-Croix',    type: 'bug',      category: 'physical', power: 80 },
-    'Mégacorne':      { name: 'Mégacorne',      type: 'bug',      category: 'physical', power: 120 },
-    'Bourdon':        { name: 'Bourdon',        type: 'bug',      category: 'special',  power: 90 },
-    'Rayon Signal':   { name: 'Rayon Signal',   type: 'bug',      category: 'special',  power: 75 },
-    
+    'Dard-Nuée': { name: 'Dard-Nuée', type: 'bug', category: 'physical', power: 25 },
+    'Plaie-Croix': { name: 'Plaie-Croix', type: 'bug', category: 'physical', power: 80 },
+    'Mégacorne': { name: 'Mégacorne', type: 'bug', category: 'physical', power: 120 },
+    'Bourdon': { name: 'Bourdon', type: 'bug', category: 'special', power: 90 },
+    'Rayon Signal': { name: 'Rayon Signal', type: 'bug', category: 'special', power: 75 },
+
     // === ROCHE (Rock) ===
-    'Jet-Pierres':    { name: 'Jet-Pierres',    type: 'rock',     category: 'physical', power: 50 },
-    'Éboulement':     { name: 'Éboulement',     type: 'rock',     category: 'physical', power: 75 },
-    'Lame de Roc':    { name: 'Lame de Roc',    type: 'rock',     category: 'physical', power: 100 },
-    'Pouvoir Antique':{ name: 'Pouvoir Antique',type: 'rock',     category: 'special',  power: 60 },
-    'Gemme Lumière':  { name: 'Gemme Lumière',  type: 'rock',     category: 'special',  power: 80 },
-    
+    'Jet-Pierres': { name: 'Jet-Pierres', type: 'rock', category: 'physical', power: 50 },
+    'Éboulement': { name: 'Éboulement', type: 'rock', category: 'physical', power: 75 },
+    'Lame de Roc': { name: 'Lame de Roc', type: 'rock', category: 'physical', power: 100 },
+    'Pouvoir Antique': { name: 'Pouvoir Antique', type: 'rock', category: 'special', power: 60 },
+    'Gemme Lumière': { name: 'Gemme Lumière', type: 'rock', category: 'special', power: 80 },
+
     // === SPECTRE (Ghost) ===
-    'Léchouille':     { name: 'Léchouille',     type: 'ghost',    category: 'physical', power: 30 },
-    'Griffe Ombre':   { name: 'Griffe Ombre',   type: 'ghost',    category: 'physical', power: 70 },
-    'Ball\'Ombre':    { name: 'Ball\'Ombre',    type: 'ghost',    category: 'special',  power: 80 },
-    'Châtiment':      { name: 'Châtiment',      type: 'ghost',    category: 'physical', power: 50 },
-    'Revenant':       { name: 'Revenant',       type: 'ghost',    category: 'physical', power: 120 },
-    
+    'Léchouille': { name: 'Léchouille', type: 'ghost', category: 'physical', power: 30 },
+    'Griffe Ombre': { name: 'Griffe Ombre', type: 'ghost', category: 'physical', power: 70 },
+    'Ball\'Ombre': { name: 'Ball\'Ombre', type: 'ghost', category: 'special', power: 80 },
+    'Châtiment': { name: 'Châtiment', type: 'ghost', category: 'physical', power: 50 },
+    'Revenant': { name: 'Revenant', type: 'ghost', category: 'physical', power: 120 },
+    'Ombre Portée': { name: 'Ombre Portée', type: 'ghost', category: 'physical', power: 40 },
+
     // === DRAGON ===
-    'Draco-Rage':     { name: 'Draco-Rage',     type: 'dragon',   category: 'special',  power: 40 },
-    'Dracogriffe':    { name: 'Dracogriffe',    type: 'dragon',   category: 'physical', power: 80 },
-    'Colère':         { name: 'Colère',         type: 'dragon',   category: 'physical', power: 120 },
-    'Draco-Météor':   { name: 'Draco-Météor',   type: 'dragon',   category: 'special',  power: 130 },
-    'Draco-Choc':     { name: 'Draco-Choc',     type: 'dragon',   category: 'special',  power: 85 },
-    
+    'Draco-Rage': { name: 'Draco-Rage', type: 'dragon', category: 'special', power: 40 },
+    'Dracogriffe': { name: 'Dracogriffe', type: 'dragon', category: 'physical', power: 80 },
+    'Colère': { name: 'Colère', type: 'dragon', category: 'physical', power: 120 },
+    'Draco-Météor': { name: 'Draco-Météor', type: 'dragon', category: 'special', power: 130 },
+    'Draco-Choc': { name: 'Draco-Choc', type: 'dragon', category: 'special', power: 85 },
+
     // === TÉNÈBRES (Dark) ===
-    'Morsure':        { name: 'Morsure',        type: 'dark',     category: 'physical', power: 60 },
-    'Tranche-Nuit':   { name: 'Tranche-Nuit',   type: 'dark',     category: 'physical', power: 70 },
-    'Mâchouille':     { name: 'Mâchouille',     type: 'dark',     category: 'physical', power: 80 },
-    'Vibrobscur':     { name: 'Vibrobscur',     type: 'dark',     category: 'special',  power: 80 },
-    'Dark Pulse':     { name: 'Dark Pulse',     type: 'dark',     category: 'special',  power: 80 },
-    
+    'Morsure': { name: 'Morsure', type: 'dark', category: 'physical', power: 60 },
+    'Tranche-Nuit': { name: 'Tranche-Nuit', type: 'dark', category: 'physical', power: 70 },
+    'Mâchouille': { name: 'Mâchouille', type: 'dark', category: 'physical', power: 80 },
+    'Vibrobscur': { name: 'Vibrobscur', type: 'dark', category: 'special', power: 80 },
+    'Dark Pulse': { name: 'Dark Pulse', type: 'dark', category: 'special', power: 80 },
+    'Sabotage': { name: 'Sabotage', type: 'dark', category: 'physical', power: 65 },
+
     // === ACIER (Steel) ===
-    'Griffe Acier':   { name: 'Griffe Acier',   type: 'steel',    category: 'physical', power: 50 },
-    'Queue de Fer':   { name: 'Queue de Fer',   type: 'steel',    category: 'physical', power: 100 },
-    'Poing Météor':   { name: 'Poing Météor',   type: 'steel',    category: 'physical', power: 90 },
-    'Luminocanon':    { name: 'Luminocanon',    type: 'steel',    category: 'special',  power: 80 },
-    'Gyro Ball':      { name: 'Gyro Ball',      type: 'steel',    category: 'physical', power: 75 },
-    
+    'Griffe Acier': { name: 'Griffe Acier', type: 'steel', category: 'physical', power: 50 },
+    'Queue de Fer': { name: 'Queue de Fer', type: 'steel', category: 'physical', power: 100 },
+    'Poing Météor': { name: 'Poing Météor', type: 'steel', category: 'physical', power: 90 },
+    'Luminocanon': { name: 'Luminocanon', type: 'steel', category: 'special', power: 80 },
+    'Gyro Ball': { name: 'Gyro Ball', type: 'steel', category: 'physical', power: 75 },
+
     // === FÉE (Fairy) ===
-    'Éclat Magique':  { name: 'Éclat Magique',  type: 'fairy',    category: 'special',  power: 80 },
-    'Pouvoir Lunaire':{ name: 'Pouvoir Lunaire',type: 'fairy',    category: 'special',  power: 95 },
-    'Câlinerie':      { name: 'Câlinerie',      type: 'fairy',    category: 'physical', power: 90 },
-    'Doux Baiser':    { name: 'Doux Baiser',    type: 'fairy',    category: 'special',  power: 40 },
+    'Éclat Magique': { name: 'Éclat Magique', type: 'fairy', category: 'special', power: 80 },
+    'Pouvoir Lunaire': { name: 'Pouvoir Lunaire', type: 'fairy', category: 'special', power: 95 },
+    'Câlinerie': { name: 'Câlinerie', type: 'fairy', category: 'physical', power: 90 },
+    'Doux Baiser': { name: 'Doux Baiser', type: 'fairy', category: 'special', power: 40 },
 };
 
-// 2. Attribution des attaques par défaut aux Pokémon
-// Chaque Pokémon utilise une attaque adaptée à son type principal et ses stats (ATK vs SP.ATK)
+// 3. Compatibilité CT (comme dans les jeux Pokémon officiels)
+// Chaque attaque liste les Pokémon qui peuvent l'apprendre via CT (TM/TR)
+// Basé sur les learnsets TM/TR de BDSP, FRLG, SwSh - filtré aux espèces du jeu
+const CT_COMPATIBILITY = {
+    // === NORMAL ===
+    'Charge': ['Caterpie', 'Metapod', 'Butterfree', 'Weedle', 'Kakuna', 'Beedrill', 'Rattata', 'Raticate', 'Pidgey', 'Pidgeotto', 'Pidgeot', 'Spearow', 'Fearow', 'Meowth', 'Persian', 'Doduo', 'Dodrio', 'Magikarp', 'Ditto', 'Eevee', 'Sentret', 'Furret', 'Zigzagoon', 'Linoone', 'Starly', 'Staravia', 'Staraptor', 'Bidoof', 'Bibarel', 'Glameow', 'Purugly', 'Skitty', 'Delcatty', 'Buneary', 'Lopunny', 'Azurill', 'Snubbull', 'Granbull', 'Hoothoot', 'Noctowl', 'Taillow', 'Swellow', 'Castform', 'Kecleon', 'Spinda', 'Dunsparce', 'Chatot', 'Aipom', 'Ambipom', 'Lickitung', 'Lickilicky', 'Chansey', 'Blissey', 'Happiny', 'Kangaskhan', 'Tauros', 'Snorlax', 'Munchlax', 'Togepi', 'Togetic', 'Togekiss', 'Clefairy', 'Clefable', 'Cleffa', 'Jigglypuff', 'Wigglytuff', 'Igglybuff', 'Miltank', 'Porygon', 'Porygon2', 'Porygon-Z', 'Slakoth', 'Vigoroth', 'Slaking', 'Smeargle', 'Stantler', 'Zangoose', 'Regigigas', 'Arceus'],
+    'Griffe': ['Charmander', 'Charmeleon', 'Charizard', 'Squirtle', 'Wartortle', 'Blastoise', 'Pidgey', 'Pidgeotto', 'Pidgeot', 'Rattata', 'Raticate', 'Spearow', 'Fearow', 'Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Meowth', 'Persian', 'Mankey', 'Primeape', 'Growlithe', 'Arcanine', 'Machop', 'Machoke', 'Machamp', 'Geodude', 'Graveler', 'Golem', 'Cubone', 'Marowak', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Scyther', 'Eevee', 'Pichu', 'Pikachu', 'Raichu', 'Sentret', 'Furret', 'Aipom', 'Ambipom', 'Glameow', 'Purugly', 'Skitty', 'Delcatty', 'Buneary', 'Lopunny', 'Sneasel', 'Weavile', 'Teddiursa', 'Ursaring', 'Zangoose', 'Slakoth', 'Vigoroth', 'Slaking', 'Gible', 'Gabite', 'Garchomp', 'Riolu', 'Lucario', 'Shinx', 'Luxio', 'Luxray', 'Totodile', 'Croconaw', 'Feraligatr', 'Treecko', 'Grovyle', 'Sceptile', 'Torchic', 'Combusken', 'Blaziken', 'Mudkip', 'Marshtomp', 'Swampert', 'Poochyena', 'Mightyena', 'Zigzagoon', 'Linoone', 'Bagon', 'Shelgon', 'Salamence', 'Groudon', 'Rayquaza', 'Dialga', 'Palkia', 'Giratina', 'Darkrai'],
+    'Plaquage': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Charmander', 'Charmeleon', 'Charizard', 'Squirtle', 'Wartortle', 'Blastoise', 'Pidgey', 'Pidgeotto', 'Pidgeot', 'Rattata', 'Raticate', 'Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Clefairy', 'Clefable', 'Jigglypuff', 'Wigglytuff', 'Zubat', 'Golbat', 'Crobat', 'Oddish', 'Gloom', 'Vileplume', 'Paras', 'Parasect', 'Meowth', 'Persian', 'Mankey', 'Primeape', 'Growlithe', 'Arcanine', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Machop', 'Machoke', 'Machamp', 'Geodude', 'Graveler', 'Golem', 'Ponyta', 'Rapidash', 'Slowpoke', 'Slowbro', 'Magnemite', 'Magneton', 'Magnezone', 'Farfetch\'d', 'Doduo', 'Dodrio', 'Grimer', 'Muk', 'Gastly', 'Haunter', 'Gengar', 'Drowzee', 'Hypno', 'Cubone', 'Marowak', 'Lickitung', 'Lickilicky', 'Koffing', 'Weezing', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Chansey', 'Blissey', 'Kangaskhan', 'Tauros', 'Eevee', 'Vaporeon', 'Jolteon', 'Flareon', 'Espeon', 'Umbreon', 'Leafeon', 'Glaceon', 'Porygon', 'Porygon2', 'Porygon-Z', 'Snorlax', 'Munchlax', 'Sentret', 'Furret', 'Hoothoot', 'Noctowl', 'Ledyba', 'Ledian', 'Spinarak', 'Ariados', 'Togepi', 'Togetic', 'Togekiss', 'Mareep', 'Flaaffy', 'Ampharos', 'Marill', 'Azumarill', 'Azurill', 'Aipom', 'Ambipom', 'Snubbull', 'Granbull', 'Teddiursa', 'Ursaring', 'Miltank', 'Slakoth', 'Vigoroth', 'Slaking', 'Whismur', 'Loudred', 'Exploud', 'Zangoose', 'Girafarig', 'Dunsparce', 'Stantler', 'Munchlax', 'Rhyperior', 'Regigigas'],
+    'Tranche': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Charizard', 'Pidgey', 'Pidgeotto', 'Pidgeot', 'Nidoqueen', 'Nidoking', 'Persian', 'Growlithe', 'Arcanine', 'Poliwrath', 'Machamp', 'Farfetch\'d', 'Kingler', 'Scyther', 'Scizor', 'Pinsir', 'Lapras', 'Eevee', 'Vaporeon', 'Jolteon', 'Flareon', 'Espeon', 'Umbreon', 'Leafeon', 'Glaceon', 'Sentret', 'Furret', 'Hoothoot', 'Noctowl', 'Ledyba', 'Ledian', 'Scyther', 'Scizor', 'Murkrow', 'Honchkrow', 'Girafarig', 'Aipom', 'Ambipom', 'Sneasel', 'Weavile', 'Ursaring', 'Swablu', 'Altaria', 'Absol', 'Staravia', 'Staraptor', 'Bibarel', 'Luxio', 'Luxray', 'Leafeon', 'Glaceon', 'Gallade', 'Dialga', 'Palkia', 'Giratina', 'Rayquaza'],
+    'Météores': ['Clefairy', 'Clefable', 'Cleffa', 'Jigglypuff', 'Wigglytuff', 'Igglybuff', 'Eevee', 'Vaporeon', 'Jolteon', 'Flareon', 'Espeon', 'Umbreon', 'Leafeon', 'Glaceon', 'Porygon', 'Porygon2', 'Porygon-Z', 'Togepi', 'Togetic', 'Togekiss', 'Natu', 'Xatu', 'Girafarig', 'Stantler', 'Smeargle', 'Ralts', 'Kirlia', 'Gardevoir', 'Plusle', 'Minun', 'Castform', 'Kecleon', 'Chimecho', 'Mesprit', 'Azelf', 'Uxie', 'Cresselia', 'Mew', 'Mewtwo', 'Deoxys', 'Jirachi', 'Arceus'],
+    'Ultralaser': ['Blastoise', 'Charizard', 'Venusaur', 'Pidgeot', 'Nidoking', 'Nidoqueen', 'Clefable', 'Wigglytuff', 'Golbat', 'Crobat', 'Vileplume', 'Victreebel', 'Poliwrath', 'Alakazam', 'Machamp', 'Golem', 'Gengar', 'Electrode', 'Exeggutor', 'Marowak', 'Rhydon', 'Rhyperior', 'Chansey', 'Blissey', 'Kangaskhan', 'Gyarados', 'Lapras', 'Snorlax', 'Articuno', 'Zapdos', 'Moltres', 'Dragonite', 'Mewtwo', 'Mew', 'Meganium', 'Typhlosion', 'Feraligatr', 'Noctowl', 'Togekiss', 'Ampharos', 'Azumarill', 'Jumpluff', 'Sunflora', 'Misdreavus', 'Mismagius', 'Unown', 'Wobbuffet', 'Girafarig', 'Forretress', 'Dunsparce', 'Granbull', 'Quagsire', 'Scizor', 'Slaking', 'Exploud', 'Hariyama', 'Delcatty', 'Mawile', 'Aggron', 'Camerupt', 'Altaria', 'Walrein', 'Salamence', 'Metagross', 'Regirock', 'Regice', 'Registeel', 'Latias', 'Latios', 'Kyogre', 'Groudon', 'Rayquaza', 'Jirachi', 'Deoxys', 'Torterra', 'Infernape', 'Empoleon', 'Staraptor', 'Bibarel', 'Luxray', 'Rampardos', 'Bastiodon', 'Wormadam', 'Mothim', 'Vespiquen', 'Floatzel', 'Lopunny', 'Abomasnow', 'Weavile', 'Rhyperior', 'Togekiss', 'Yanmega', 'Gliscor', 'Mamoswine', 'Gallade', 'Probopass', 'Dusknoir', 'Froslass', 'Rotom', 'Dialga', 'Palkia', 'Giratina', 'Heatran', 'Regigigas', 'Cresselia', 'Phione', 'Manaphy', 'Darkrai', 'Shaymin', 'Arceus'],
+    'Vive-Attaque': ['Pikachu', 'Raichu', 'Pidgey', 'Pidgeotto', 'Pidgeot', 'Rattata', 'Raticate', 'Sandshrew', 'Sandslash', 'Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Vulpix', 'Ninetales', 'Zubat', 'Golbat', 'Crobat', 'Goldeen', 'Seaking', 'Eevee', 'Vaporeon', 'Jolteon', 'Flareon', 'Espeon', 'Umbreon', 'Leafeon', 'Glaceon', 'Sentret', 'Furret', 'Hoothoot', 'Noctowl', 'Murkrow', 'Honchkrow', 'Sneasel', 'Weavile', 'Teddiursa', 'Ursaring', 'Zigzagoon', 'Linoone', 'Taillow', 'Swellow', 'Wingull', 'Pelipper', 'Surskit', 'Masquerain', 'Swablu', 'Altaria', 'Starly', 'Staravia', 'Staraptor', 'Buneary', 'Lopunny', 'Gible', 'Gabite', 'Garchomp', 'Riolu', 'Lucario', 'Shinx', 'Luxio', 'Luxray', 'Articuno', 'Zapdos', 'Moltres', 'Dragonite', 'Raikou', 'Entei', 'Suicune', 'Lugia', 'Ho-Oh', 'Latias', 'Latios', 'Rayquaza', 'Giratina'],
+    'Damoclès': ['Venusaur', 'Charizard', 'Blastoise', 'Pidgeot', 'Nidoking', 'Nidoqueen', 'Arcanine', 'Poliwrath', 'Machamp', 'Golem', 'Rhydon', 'Rhyperior', 'Snorlax', 'Gyarados', 'Lapras', 'Dragonite', 'Meganium', 'Typhlosion', 'Feraligatr', 'Ampharos', 'Ursaring', 'Slaking', 'Aggron', 'Salamence', 'Metagross', 'Regirock', 'Regice', 'Registeel', 'Torterra', 'Infernape', 'Empoleon', 'Staraptor', 'Luxray', 'Rampardos', 'Bastiodon', 'Floatzel', 'Abomasnow', 'Weavile', 'Mamoswine', 'Garchomp', 'Rhyperior', 'Probopass', 'Dialga', 'Palkia', 'Giratina', 'Heatran', 'Regigigas', 'Groudon', 'Kyogre', 'Rayquaza', 'Arceus'],
+
+    // === FEU ===
+    'Flammèche': ['Charmander', 'Charmeleon', 'Charizard', 'Vulpix', 'Ninetales', 'Growlithe', 'Arcanine', 'Ponyta', 'Rapidash', 'Magmar', 'Magmortar', 'Flareon', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Slugma', 'Magcargo', 'Houndour', 'Houndoom', 'Numel', 'Camerupt', 'Torkoal', 'Chimchar', 'Monferno', 'Infernape', 'Magby', 'Heatran', 'Entei', 'Moltres', 'Ho-Oh'],
+    'Lance-Flammes': ['Charmander', 'Charmeleon', 'Charizard', 'Vulpix', 'Ninetales', 'Growlithe', 'Arcanine', 'Ponyta', 'Rapidash', 'Magmar', 'Magmortar', 'Flareon', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Slugma', 'Magcargo', 'Houndour', 'Houndoom', 'Numel', 'Camerupt', 'Torkoal', 'Torchic', 'Combusken', 'Blaziken', 'Chimchar', 'Monferno', 'Infernape', 'Magby', 'Rotom', 'Heatran', 'Entei', 'Moltres', 'Ho-Oh', 'Magcargo', 'Camerupt'],
+    'Déflagration': ['Charmander', 'Charmeleon', 'Charizard', 'Vulpix', 'Ninetales', 'Growlithe', 'Arcanine', 'Ponyta', 'Rapidash', 'Magmar', 'Magmortar', 'Flareon', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Slugma', 'Magcargo', 'Houndour', 'Houndoom', 'Numel', 'Camerupt', 'Torkoal', 'Torchic', 'Combusken', 'Blaziken', 'Chimchar', 'Monferno', 'Infernape', 'Magby', 'Heatran', 'Entei', 'Moltres', 'Ho-Oh'],
+    'Poing de Feu': ['Charmander', 'Charmeleon', 'Charizard', 'Mankey', 'Primeape', 'Machop', 'Machoke', 'Machamp', 'Magmar', 'Magmortar', 'Electabuzz', 'Electivire', 'Flareon', 'Tyrogue', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Totodile', 'Croconaw', 'Feraligatr', 'Torchic', 'Combusken', 'Blaziken', 'Chimchar', 'Monferno', 'Infernape', 'Magby', 'Riolu', 'Lucario', 'Elekid', 'Meditite', 'Medicham', 'Monferno', 'Infernape'],
+    'Roue de Feu': ['Charmander', 'Charmeleon', 'Charizard', 'Ponyta', 'Rapidash', 'Vulpix', 'Ninetales', 'Growlithe', 'Arcanine', 'Magmar', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Slugma', 'Magcargo', 'Houndour', 'Houndoom', 'Numel', 'Camerupt', 'Entei'],
+    'Boutefeu': ['Charmander', 'Charmeleon', 'Charizard', 'Vulpix', 'Ninetales', 'Growlithe', 'Arcanine', 'Ponyta', 'Rapidash', 'Magmar', 'Magmortar', 'Flareon', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Houndour', 'Houndoom', 'Numel', 'Camerupt', 'Torchic', 'Combusken', 'Blaziken', 'Chimchar', 'Monferno', 'Infernape', 'Magby', 'Entei', 'Moltres', 'Ho-Oh', 'Heatran'],
+    'Canicule': ['Charmander', 'Charmeleon', 'Charizard', 'Vulpix', 'Ninetales', 'Growlithe', 'Arcanine', 'Ponyta', 'Rapidash', 'Magmar', 'Magmortar', 'Flareon', 'Cyndaquil', 'Quilava', 'Typhlosion', 'Slugma', 'Magcargo', 'Houndour', 'Houndoom', 'Numel', 'Camerupt', 'Torkoal', 'Torchic', 'Combusken', 'Blaziken', 'Chimchar', 'Monferno', 'Infernape', 'Heatran', 'Entei', 'Moltres', 'Ho-Oh'],
+
+    // === EAU ===
+    'Pistolet à O': ['Squirtle', 'Wartortle', 'Blastoise', 'Psyduck', 'Golduck', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Politoed', 'Tentacool', 'Tentacruel', 'Slowpoke', 'Slowbro', 'Slowking', 'Shellder', 'Cloyster', 'Krabby', 'Kingler', 'Horsea', 'Seadra', 'Kingdra', 'Goldeen', 'Seaking', 'Staryu', 'Starmie', 'Magikarp', 'Gyarados', 'Lapras', 'Vaporeon', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Azurill', 'Wooper', 'Quagsire', 'Chinchou', 'Lanturn', 'Remoraid', 'Octillery', 'Mantine', 'Mantyke', 'Carvanha', 'Sharpedo', 'Wailmer', 'Wailord', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Finneon', 'Lumineon', 'Mudkip', 'Marshtomp', 'Swampert', 'Lotad', 'Lombre', 'Ludicolo', 'Wingull', 'Pelipper', 'Surskit', 'Masquerain', 'Feebas', 'Milotic', 'Spheal', 'Sealeo', 'Walrein', 'Corphish', 'Crawdaunt', 'Luvdisc', 'Buizel', 'Floatzel', 'Phione', 'Manaphy', 'Kyogre', 'Palkia', 'Suicune'],
+    'Surf': ['Squirtle', 'Wartortle', 'Blastoise', 'Psyduck', 'Golduck', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Politoed', 'Tentacool', 'Tentacruel', 'Slowpoke', 'Slowbro', 'Slowking', 'Shellder', 'Cloyster', 'Krabby', 'Kingler', 'Horsea', 'Seadra', 'Kingdra', 'Goldeen', 'Seaking', 'Staryu', 'Starmie', 'Magikarp', 'Gyarados', 'Lapras', 'Vaporeon', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Wooper', 'Quagsire', 'Chinchou', 'Lanturn', 'Remoraid', 'Octillery', 'Mantine', 'Mantyke', 'Carvanha', 'Sharpedo', 'Wailmer', 'Wailord', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Finneon', 'Lumineon', 'Mudkip', 'Marshtomp', 'Swampert', 'Lotad', 'Lombre', 'Ludicolo', 'Wingull', 'Pelipper', 'Surskit', 'Masquerain', 'Feebas', 'Milotic', 'Spheal', 'Sealeo', 'Walrein', 'Corphish', 'Crawdaunt', 'Clamperl', 'Huntail', 'Gorebyss', 'Luvdisc', 'Buizel', 'Floatzel', 'Relicanth', 'Kyogre', 'Palkia', 'Manaphy', 'Phione', 'Suicune'],
+    'Hydrocanon': ['Squirtle', 'Wartortle', 'Blastoise', 'Psyduck', 'Golduck', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Politoed', 'Tentacool', 'Tentacruel', 'Slowpoke', 'Slowbro', 'Slowking', 'Shellder', 'Cloyster', 'Krabby', 'Kingler', 'Horsea', 'Seadra', 'Kingdra', 'Goldeen', 'Seaking', 'Staryu', 'Starmie', 'Magikarp', 'Gyarados', 'Lapras', 'Vaporeon', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Wooper', 'Quagsire', 'Remoraid', 'Octillery', 'Carvanha', 'Sharpedo', 'Wailmer', 'Wailord', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Finneon', 'Lumineon', 'Mudkip', 'Marshtomp', 'Swampert', 'Lotad', 'Lombre', 'Ludicolo', 'Wingull', 'Pelipper', 'Feebas', 'Milotic', 'Spheal', 'Sealeo', 'Walrein', 'Corphish', 'Crawdaunt', 'Clamperl', 'Huntail', 'Gorebyss', 'Buizel', 'Floatzel', 'Kyogre', 'Palkia', 'Manaphy', 'Phione', 'Suicune'],
+    'Cascade': ['Squirtle', 'Wartortle', 'Blastoise', 'Psyduck', 'Golduck', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Politoed', 'Tentacool', 'Tentacruel', 'Slowpoke', 'Slowbro', 'Slowking', 'Shellder', 'Cloyster', 'Krabby', 'Kingler', 'Horsea', 'Seadra', 'Kingdra', 'Goldeen', 'Seaking', 'Magikarp', 'Gyarados', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Wooper', 'Quagsire', 'Remoraid', 'Octillery', 'Mantine', 'Mantyke', 'Carvanha', 'Sharpedo', 'Wailmer', 'Wailord', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Mudkip', 'Marshtomp', 'Swampert', 'Lotad', 'Lombre', 'Ludicolo', 'Wingull', 'Pelipper', 'Feebas', 'Milotic', 'Spheal', 'Sealeo', 'Walrein', 'Corphish', 'Crawdaunt', 'Buizel', 'Floatzel', 'Gible', 'Gabite', 'Garchomp', 'Kyogre', 'Palkia', 'Manaphy', 'Phione', 'Suicune'],
+    'Aqua-Jet': ['Squirtle', 'Wartortle', 'Blastoise', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Shellder', 'Cloyster', 'Krabby', 'Kingler', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Remoraid', 'Octillery', 'Carvanha', 'Sharpedo', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Mudkip', 'Marshtomp', 'Swampert', 'Lotad', 'Lombre', 'Ludicolo', 'Corphish', 'Crawdaunt', 'Buizel', 'Floatzel', 'Piplup', 'Prinplup', 'Empoleon', 'Phione', 'Manaphy'],
+    'Pince-Masse': ['Krabby', 'Kingler', 'Corphish', 'Crawdaunt', 'Cloyster', 'Kabutops'],
+    'Bulles d\'O': ['Squirtle', 'Wartortle', 'Blastoise', 'Psyduck', 'Golduck', 'Poliwag', 'Poliwhirl', 'Tentacool', 'Tentacruel', 'Shellder', 'Cloyster', 'Krabby', 'Kingler', 'Horsea', 'Seadra', 'Kingdra', 'Staryu', 'Starmie', 'Magikarp', 'Gyarados', 'Lapras', 'Vaporeon', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Wooper', 'Quagsire', 'Remoraid', 'Octillery', 'Carvanha', 'Sharpedo', 'Wingull', 'Pelipper', 'Surskit', 'Masquerain', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Finneon', 'Lumineon', 'Buizel', 'Floatzel', 'Phione', 'Manaphy'],
+    'Aqua-Brèche': ['Squirtle', 'Wartortle', 'Blastoise', 'Psyduck', 'Golduck', 'Poliwag', 'Poliwhirl', 'Poliwrath', 'Slowpoke', 'Slowbro', 'Shellder', 'Cloyster', 'Gyarados', 'Lapras', 'Totodile', 'Croconaw', 'Feraligatr', 'Marill', 'Azumarill', 'Wooper', 'Quagsire', 'Remoraid', 'Octillery', 'Carvanha', 'Sharpedo', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Mudkip', 'Marshtomp', 'Swampert', 'Lotad', 'Lombre', 'Ludicolo', 'Feebas', 'Milotic', 'Spheal', 'Sealeo', 'Walrein', 'Corphish', 'Crawdaunt', 'Buizel', 'Floatzel', 'Gible', 'Gabite', 'Garchomp', 'Kyogre', 'Palkia', 'Manaphy', 'Phione', 'Suicune'],
+
+    // === PLANTE ===
+    'Fouet Lianes': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Carnivine', 'Exeggcute', 'Exeggutor', 'Leafeon', 'Snover', 'Abomasnow', 'Seedot', 'Nuzleaf', 'Shiftry', 'Shroomish', 'Breloom', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Paras', 'Parasect', 'Celebi', 'Shaymin'],
+    'Tranch\'Herbe': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Paras', 'Parasect', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Carnivine', 'Exeggcute', 'Exeggutor', 'Leafeon', 'Snover', 'Abomasnow', 'Seedot', 'Nuzleaf', 'Shiftry', 'Shroomish', 'Breloom', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Lileep', 'Cradily', 'Celebi', 'Shaymin'],
+    'Lame-Feuille': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Paras', 'Parasect', 'Scyther', 'Scizor', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Carnivine', 'Exeggcute', 'Exeggutor', 'Leafeon', 'Snover', 'Abomasnow', 'Seedot', 'Nuzleaf', 'Shiftry', 'Shroomish', 'Breloom', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Leafeon', 'Celebi', 'Shaymin'],
+    'Méga-Sangsue': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellossom', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Paras', 'Parasect', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Exeggcute', 'Exeggutor', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Shroomish', 'Breloom', 'Lileep', 'Cradily', 'Celebi', 'Shaymin'],
+    'Tempête Verte': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Exeggcute', 'Exeggutor', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Roselia', 'Budew', 'Roserade', 'Lileep', 'Cradily', 'Celebi', 'Shaymin'],
+    'Éco-Sphère': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellossom', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Exeggcute', 'Exeggutor', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Shroomish', 'Breloom', 'Lileep', 'Cradily', 'Leafeon', 'Snover', 'Abomasnow', 'Celebi', 'Shaymin'],
+    'Canon Graine': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tangela', 'Tangrowth', 'Exeggcute', 'Exeggutor', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Carnivine', 'Shroomish', 'Breloom', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Lileep', 'Cradily', 'Leafeon', 'Snover', 'Abomasnow', 'Seedot', 'Nuzleaf', 'Shiftry', 'Celebi', 'Shaymin'],
+    'Giga-Sangsue': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellossom', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Paras', 'Parasect', 'Chikorita', 'Bayleef', 'Meganium', 'Treecko', 'Grovyle', 'Sceptile', 'Turtwig', 'Grotle', 'Torterra', 'Hoppip', 'Skiploom', 'Jumpluff', 'Sunkern', 'Sunflora', 'Cacnea', 'Cacturne', 'Cherubi', 'Cherrim', 'Roselia', 'Budew', 'Roserade', 'Tropius', 'Shroomish', 'Breloom', 'Lileep', 'Cradily', 'Celebi', 'Shaymin'],
+
+    // === ÉLECTRIK ===
+    'Éclair': ['Pichu', 'Pikachu', 'Raichu', 'Magnemite', 'Magneton', 'Magnezone', 'Voltorb', 'Electrode', 'Electabuzz', 'Electivire', 'Jolteon', 'Elekid', 'Mareep', 'Flaaffy', 'Ampharos', 'Electrike', 'Manectric', 'Plusle', 'Minun', 'Pachirisu', 'Shinx', 'Luxio', 'Luxray', 'Rotom', 'Raikou', 'Zapdos'],
+    'Tonnerre': ['Pichu', 'Pikachu', 'Raichu', 'Magnemite', 'Magneton', 'Magnezone', 'Voltorb', 'Electrode', 'Electabuzz', 'Electivire', 'Jolteon', 'Elekid', 'Mareep', 'Flaaffy', 'Ampharos', 'Electrike', 'Manectric', 'Plusle', 'Minun', 'Pachirisu', 'Shinx', 'Luxio', 'Luxray', 'Rotom', 'Chinchou', 'Lanturn', 'Raikou', 'Zapdos'],
+    'Fatal-Foudre': ['Pichu', 'Pikachu', 'Raichu', 'Magnemite', 'Magneton', 'Magnezone', 'Voltorb', 'Electrode', 'Electabuzz', 'Electivire', 'Jolteon', 'Elekid', 'Mareep', 'Flaaffy', 'Ampharos', 'Electrike', 'Manectric', 'Plusle', 'Minun', 'Pachirisu', 'Shinx', 'Luxio', 'Luxray', 'Rotom', 'Chinchou', 'Lanturn', 'Raikou', 'Zapdos'],
+    'Poing Éclair': ['Pikachu', 'Raichu', 'Electabuzz', 'Electivire', 'Machop', 'Machoke', 'Machamp', 'Magmar', 'Magmortar', 'Elekid', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Hitmonchan', 'Hitmontop', 'Tyrogue'],
+    'Étincelle': ['Pichu', 'Pikachu', 'Raichu', 'Magnemite', 'Magneton', 'Magnezone', 'Voltorb', 'Electrode', 'Electabuzz', 'Electivire', 'Jolteon', 'Mareep', 'Flaaffy', 'Ampharos', 'Electrike', 'Manectric', 'Shinx', 'Luxio', 'Luxray', 'Elekid', 'Raikou', 'Zapdos'],
+    'Éclair Fou': ['Pichu', 'Pikachu', 'Raichu', 'Magnemite', 'Magneton', 'Magnezone', 'Voltorb', 'Electrode', 'Electabuzz', 'Electivire', 'Jolteon', 'Mareep', 'Flaaffy', 'Ampharos', 'Electrike', 'Manectric', 'Shinx', 'Luxio', 'Luxray', 'Elekid', 'Raikou', 'Zapdos'],
+    'Électacle': ['Pichu', 'Pikachu', 'Raichu', 'Elekid'],
+    'Change Éclair': ['Pichu', 'Pikachu', 'Raichu', 'Magnemite', 'Magneton', 'Magnezone', 'Voltorb', 'Electrode', 'Electabuzz', 'Electivire', 'Jolteon', 'Mareep', 'Flaaffy', 'Ampharos', 'Electrike', 'Manectric', 'Plusle', 'Minun', 'Pachirisu', 'Shinx', 'Luxio', 'Luxray', 'Rotom', 'Chinchou', 'Lanturn', 'Raikou', 'Zapdos'],
+
+    // === GLACE ===
+    'Poudreuse': ['Seel', 'Dewgong', 'Jynx', 'Smoochum', 'Lapras', 'Articuno', 'Delibird', 'Snorunt', 'Glalie', 'Froslass', 'Spheal', 'Sealeo', 'Walrein', 'Snover', 'Abomasnow', 'Glaceon', 'Sneasel', 'Weavile', 'Regice'],
+    'Laser Glace': ['Dewgong', 'Cloyster', 'Jynx', 'Smoochum', 'Lapras', 'Articuno', 'Regice', 'Delibird', 'Snorunt', 'Glalie', 'Froslass', 'Spheal', 'Sealeo', 'Walrein', 'Snover', 'Abomasnow', 'Glaceon', 'Sneasel', 'Weavile', 'Palkia', 'Kyogre', 'Manaphy', 'Phione', 'Suicune'],
+    'Blizzard': ['Dewgong', 'Cloyster', 'Jynx', 'Smoochum', 'Lapras', 'Articuno', 'Regice', 'Delibird', 'Snorunt', 'Glalie', 'Froslass', 'Spheal', 'Sealeo', 'Walrein', 'Snover', 'Abomasnow', 'Glaceon', 'Sneasel', 'Weavile', 'Slowbro', 'Slowking', 'Starmie', 'Tentacruel', 'Vaporeon', 'Palkia', 'Kyogre', 'Manaphy', 'Phione', 'Suicune'],
+    'Poing Glace': ['Jynx', 'Smoochum', 'Hitmonchan', 'Hitmontop', 'Tyrogue', 'Sneasel', 'Weavile', 'Snorunt', 'Glalie', 'Froslass', 'Meditite', 'Medicham', 'Riolu', 'Lucario'],
+    'Crocs Givre': ['Gyarados', 'Arcanine', 'Mightyena', 'Poochyena', 'Houndour', 'Houndoom', 'Sneasel', 'Weavile', 'Drapion', 'Gible', 'Gabite', 'Garchomp', 'Glaceon'],
+    'Avalanche': ['Sandshrew', 'Sandslash', 'Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Swinub', 'Piloswine', 'Mamoswine', 'Snorunt', 'Glalie', 'Froslass', 'Abomasnow', 'Regice', 'Articuno'],
+    'Éclats Glace': ['Dewgong', 'Cloyster', 'Jynx', 'Smoochum', 'Lapras', 'Articuno', 'Regice', 'Delibird', 'Snorunt', 'Glalie', 'Froslass', 'Spheal', 'Sealeo', 'Walrein', 'Snover', 'Abomasnow', 'Glaceon', 'Sneasel', 'Weavile'],
+    'Lyophilisation': ['Dewgong', 'Cloyster', 'Jynx', 'Lapras', 'Articuno', 'Regice', 'Snorunt', 'Glalie', 'Froslass', 'Spheal', 'Sealeo', 'Walrein', 'Snover', 'Abomasnow', 'Glaceon', 'Lanturn', 'Wingull', 'Pelipper', 'Mantine', 'Mantyke', 'Kyogre', 'Suicune'],
+
+    // === COMBAT ===
+    'Poing-Karaté': ['Mankey', 'Primeape', 'Machop', 'Machoke', 'Machamp', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Tyrogue', 'Makuhita', 'Hariyama', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Monferno', 'Infernape', 'Breloom', 'Croagunk', 'Toxicroak', 'Gallade'],
+    'Casse-Brique': ['Mankey', 'Primeape', 'Machop', 'Machoke', 'Machamp', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Tyrogue', 'Makuhita', 'Hariyama', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Monferno', 'Infernape', 'Breloom', 'Croagunk', 'Toxicroak', 'Gallade', 'Nidoking', 'Nidoqueen', 'Kangaskhan', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Tyranitar'],
+    'Close Combat': ['Mankey', 'Primeape', 'Machop', 'Machoke', 'Machamp', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Tyrogue', 'Makuhita', 'Hariyama', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Monferno', 'Infernape', 'Breloom', 'Heracross', 'Gallade', 'Staravia', 'Staraptor', 'Hariyama'],
+    'Marto-Poing': ['Machop', 'Machoke', 'Machamp', 'Hitmonchan', 'Hitmontop', 'Tyrogue', 'Makuhita', 'Hariyama', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Magmar', 'Magmortar', 'Electabuzz', 'Electivire'],
+    'Aurasphère': ['Riolu', 'Lucario', 'Meditite', 'Medicham', 'Togekiss', 'Mew', 'Mewtwo', 'Deoxys'],
+    'Exploforce': ['Machop', 'Machoke', 'Machamp', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Alakazam', 'Kadabra', 'Abra', 'Jynx', 'Smoochum', 'Mr. Mime', 'Mime Jr.', 'Girafarig', 'Gardevoir', 'Kirlia', 'Ralts', 'Espeon', 'Mewtwo', 'Mew', 'Deoxys', 'Gallade'],
+    'Vampipoing': ['Machop', 'Machoke', 'Machamp', 'Hitmonchan', 'Hitmontop', 'Tyrogue', 'Makuhita', 'Hariyama', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Breloom', 'Croagunk', 'Toxicroak', 'Gallade'],
+    'Onde Vide': ['Machop', 'Machoke', 'Machamp', 'Hitmonchan', 'Hitmontop', 'Meditite', 'Medicham', 'Riolu', 'Lucario', 'Combusken', 'Blaziken', 'Breloom', 'Gallade', 'Abra', 'Kadabra', 'Alakazam', 'Mewtwo', 'Mew'],
+
+    // === POISON ===
+    'Dard-Venin': ['Weedle', 'Kakuna', 'Beedrill', 'Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Zubat', 'Golbat', 'Crobat', 'Oddish', 'Gloom', 'Vileplume', 'Venonat', 'Venomoth', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tentacool', 'Tentacruel', 'Grimer', 'Muk', 'Gastly', 'Haunter', 'Gengar', 'Spinarak', 'Ariados', 'Crobat', 'Roselia', 'Budew', 'Roserade', 'Gulpin', 'Swalot', 'Seviper', 'Skorupi', 'Drapion', 'Croagunk', 'Toxicroak', 'Stunky', 'Skuntank', 'Qwilfish', 'Dustox', 'Beautifly', 'Wormadam'],
+    'Bomb-Beurk': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Oddish', 'Gloom', 'Vileplume', 'Bellossom', 'Weedle', 'Kakuna', 'Beedrill', 'Zubat', 'Golbat', 'Crobat', 'Venonat', 'Venomoth', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tentacool', 'Tentacruel', 'Grimer', 'Muk', 'Gastly', 'Haunter', 'Gengar', 'Koffing', 'Weezing', 'Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Roselia', 'Budew', 'Roserade', 'Gulpin', 'Swalot', 'Seviper', 'Croagunk', 'Toxicroak', 'Stunky', 'Skuntank', 'Qwilfish', 'Dustox', 'Wormadam'],
+    'Crochet Venin': ['Bulbasaur', 'Ivysaur', 'Venusaur', 'Weedle', 'Kakuna', 'Beedrill', 'Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Zubat', 'Golbat', 'Crobat', 'Oddish', 'Gloom', 'Vileplume', 'Venonat', 'Venomoth', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Grimer', 'Muk', 'Gastly', 'Haunter', 'Gengar', 'Spinarak', 'Ariados', 'Roselia', 'Budew', 'Roserade', 'Gulpin', 'Swalot', 'Seviper', 'Skorupi', 'Drapion', 'Croagunk', 'Toxicroak', 'Stunky', 'Skuntank'],
+    'Direct Toxik': ['Nidoran♀', 'Nidorina', 'Nidoqueen', 'Nidoran♂', 'Nidorino', 'Nidoking', 'Zubat', 'Golbat', 'Crobat', 'Oddish', 'Gloom', 'Vileplume', 'Venonat', 'Venomoth', 'Bellsprout', 'Weepinbell', 'Victreebel', 'Tentacool', 'Tentacruel', 'Grimer', 'Muk', 'Koffing', 'Weezing', 'Gastly', 'Haunter', 'Gengar', 'Spinarak', 'Ariados', 'Roselia', 'Budew', 'Roserade', 'Gulpin', 'Swalot', 'Seviper', 'Skorupi', 'Drapion', 'Croagunk', 'Toxicroak', 'Stunky', 'Skuntank', 'Qwilfish', 'Dustox'],
+    'Acidarmure': ['Grimer', 'Muk', 'Tentacool', 'Tentacruel', 'Koffing', 'Weezing', 'Gulpin', 'Swalot', 'Trubbish', 'Garbodor', 'Skrelp', 'Dragalge'],
+
+    // === SOL ===
+    'Séisme': ['Sandshrew', 'Sandslash', 'Nidoqueen', 'Nidoking', 'Diglett', 'Dugtrio', 'Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Cubone', 'Marowak', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Groudon', 'Phanpy', 'Donphan', 'Trapinch', 'Vibrava', 'Flygon', 'Baltoy', 'Claydol', 'Hippopotas', 'Hippowdon', 'Gible', 'Gabite', 'Garchomp', 'Swinub', 'Piloswine', 'Mamoswine', 'Marshtomp', 'Swampert', 'Torterra', 'Regirock', 'Regigigas'],
+    'Piétisol': ['Sandshrew', 'Sandslash', 'Nidoqueen', 'Nidoking', 'Diglett', 'Dugtrio', 'Geodude', 'Graveler', 'Golem', 'Onix', 'Cubone', 'Marowak', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Phanpy', 'Donphan', 'Trapinch', 'Vibrava', 'Flygon', 'Baltoy', 'Claydol', 'Hippopotas', 'Hippowdon', 'Gible', 'Gabite', 'Garchomp', 'Swinub', 'Piloswine', 'Mamoswine', 'Torterra', 'Marshtomp', 'Swampert'],
+    'Tunnel': ['Sandshrew', 'Sandslash', 'Nidoqueen', 'Nidoking', 'Diglett', 'Dugtrio', 'Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Cubone', 'Marowak', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Phanpy', 'Donphan', 'Trapinch', 'Vibrava', 'Flygon', 'Baltoy', 'Claydol', 'Hippopotas', 'Hippowdon', 'Gible', 'Gabite', 'Garchomp', 'Swinub', 'Piloswine', 'Mamoswine', 'Wooper', 'Quagsire', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Torterra', 'Marshtomp', 'Swampert', 'Groudon'],
+    'Telluriforce': ['Nidoqueen', 'Nidoking', 'Geodude', 'Graveler', 'Golem', 'Onix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Baltoy', 'Claydol', 'Trapinch', 'Vibrava', 'Flygon', 'Gible', 'Gabite', 'Garchomp', 'Groudon', 'Regirock'],
+    'Tourbi-Sable': ['Sandshrew', 'Sandslash', 'Diglett', 'Dugtrio', 'Geodude', 'Graveler', 'Golem', 'Wooper', 'Quagsire', 'Barboach', 'Whiscash', 'Shellos', 'Gastrodon', 'Baltoy', 'Claydol', 'Hippopotas', 'Hippowdon', 'Trapinch', 'Vibrava', 'Flygon', 'Marshtomp', 'Swampert', 'Torterra'],
+
+    // === VOL ===
+    'Cru-Ailes': ['Pidgey', 'Pidgeotto', 'Pidgeot', 'Spearow', 'Fearow', 'Zubat', 'Golbat', 'Crobat', 'Farfetch\'d', 'Doduo', 'Dodrio', 'Scyther', 'Scizor', 'Aerodactyl', 'Articuno', 'Zapdos', 'Moltres', 'Dragonite', 'Hoothoot', 'Noctowl', 'Ledyba', 'Ledian', 'Natu', 'Xatu', 'Yanma', 'Yanmega', 'Murkrow', 'Honchkrow', 'Gligar', 'Gliscor', 'Skarmory', 'Taillow', 'Swellow', 'Wingull', 'Pelipper', 'Swablu', 'Altaria', 'Starly', 'Staravia', 'Staraptor', 'Combee', 'Vespiquen', 'Drifloon', 'Drifblim', 'Chatot', 'Togekiss', 'Rayquaza', 'Latias', 'Latios', 'Lugia', 'Ho-Oh'],
+    'Aéropique': ['Pidgey', 'Pidgeotto', 'Pidgeot', 'Spearow', 'Fearow', 'Zubat', 'Golbat', 'Crobat', 'Farfetch\'d', 'Doduo', 'Dodrio', 'Scyther', 'Scizor', 'Aerodactyl', 'Articuno', 'Zapdos', 'Moltres', 'Dragonite', 'Hoothoot', 'Noctowl', 'Natu', 'Xatu', 'Yanma', 'Yanmega', 'Murkrow', 'Honchkrow', 'Gligar', 'Gliscor', 'Skarmory', 'Taillow', 'Swellow', 'Swablu', 'Altaria', 'Starly', 'Staravia', 'Staraptor', 'Scyther', 'Scizor', 'Ninjask', 'Rayquaza', 'Latias', 'Latios', 'Lugia', 'Ho-Oh'],
+    'Rapace': ['Pidgey', 'Pidgeotto', 'Pidgeot', 'Spearow', 'Fearow', 'Zubat', 'Golbat', 'Crobat', 'Farfetch\'d', 'Doduo', 'Dodrio', 'Scyther', 'Scizor', 'Aerodactyl', 'Articuno', 'Zapdos', 'Moltres', 'Dragonite', 'Hoothoot', 'Noctowl', 'Murkrow', 'Honchkrow', 'Skarmory', 'Taillow', 'Swellow', 'Swablu', 'Altaria', 'Staravia', 'Staraptor', 'Drifloon', 'Drifblim', 'Rayquaza', 'Latias', 'Latios', 'Lugia', 'Ho-Oh'],
+    'Vent Violent': ['Butterfree', 'Pidgeot', 'Zubat', 'Golbat', 'Crobat', 'Farfetch\'d', 'Scyther', 'Articuno', 'Zapdos', 'Moltres', 'Dragonite', 'Hoothoot', 'Noctowl', 'Natu', 'Xatu', 'Yanma', 'Yanmega', 'Murkrow', 'Honchkrow', 'Mantine', 'Mantyke', 'Skarmory', 'Taillow', 'Swellow', 'Wingull', 'Pelipper', 'Swablu', 'Altaria', 'Staravia', 'Staraptor', 'Tropius', 'Drifloon', 'Drifblim', 'Chatot', 'Togekiss', 'Rayquaza', 'Latias', 'Latios', 'Lugia', 'Ho-Oh'],
+    'Lame d\'Air': ['Pidgey', 'Pidgeotto', 'Pidgeot', 'Spearow', 'Fearow', 'Zubat', 'Golbat', 'Crobat', 'Butterfree', 'Scyther', 'Charizard', 'Dragonite', 'Hoothoot', 'Noctowl', 'Natu', 'Xatu', 'Yanma', 'Yanmega', 'Murkrow', 'Honchkrow', 'Mantine', 'Mantyke', 'Skarmory', 'Taillow', 'Swellow', 'Wingull', 'Pelipper', 'Swablu', 'Altaria', 'Tropius', 'Drifloon', 'Drifblim', 'Togekiss', 'Rayquaza', 'Latias', 'Latios', 'Lugia'],
+
+    // === PSY ===
+    'Choc Mental': ['Abra', 'Kadabra', 'Alakazam', 'Slowpoke', 'Slowbro', 'Slowking', 'Drowzee', 'Hypno', 'Exeggcute', 'Exeggutor', 'Starmie', 'Mr. Mime', 'Mime Jr.', 'Jynx', 'Smoochum', 'Mewtwo', 'Mew', 'Natu', 'Xatu', 'Espeon', 'Girafarig', 'Ralts', 'Kirlia', 'Gardevoir', 'Wobbuffet', 'Wynaut', 'Spoink', 'Grumpig', 'Chimecho', 'Chingling', 'Bronzor', 'Bronzong', 'Unown', 'Uxie', 'Mesprit', 'Azelf', 'Cresselia', 'Jirachi', 'Deoxys'],
+    'Psyko': ['Abra', 'Kadabra', 'Alakazam', 'Slowpoke', 'Slowbro', 'Slowking', 'Drowzee', 'Hypno', 'Exeggcute', 'Exeggutor', 'Starmie', 'Mr. Mime', 'Mime Jr.', 'Jynx', 'Smoochum', 'Mewtwo', 'Mew', 'Natu', 'Xatu', 'Espeon', 'Girafarig', 'Ralts', 'Kirlia', 'Gardevoir', 'Wobbuffet', 'Wynaut', 'Spoink', 'Grumpig', 'Chimecho', 'Chingling', 'Bronzor', 'Bronzong', 'Uxie', 'Mesprit', 'Azelf', 'Cresselia', 'Jirachi', 'Deoxys', 'Gallade'],
+    'Psyko-Boost': ['Deoxys'],
+    'Coupe Psycho': ['Abra', 'Kadabra', 'Alakazam', 'Slowbro', 'Slowking', 'Exeggutor', 'Starmie', 'Mr. Mime', 'Mime Jr.', 'Jynx', 'Mewtwo', 'Mew', 'Natu', 'Xatu', 'Espeon', 'Ralts', 'Kirlia', 'Gardevoir', 'Gallade', 'Spoink', 'Grumpig', 'Bronzor', 'Bronzong', 'Cresselia', 'Jirachi', 'Deoxys'],
+    'Zen Headbutt': ['Slowpoke', 'Slowbro', 'Slowking', 'Exeggcute', 'Exeggutor', 'Drowzee', 'Hypno', 'Lickitung', 'Lickilicky', 'Chansey', 'Blissey', 'Snorlax', 'Mew', 'Mewtwo', 'Girafarig', 'Ralts', 'Kirlia', 'Gardevoir', 'Meditite', 'Medicham', 'Beldum', 'Metang', 'Metagross', 'Chimecho', 'Bronzor', 'Bronzong', 'Riolu', 'Lucario', 'Gallade', 'Uxie', 'Mesprit', 'Azelf', 'Cresselia', 'Jirachi', 'Deoxys'],
+    'Choc Psy': ['Abra', 'Kadabra', 'Alakazam', 'Slowpoke', 'Slowbro', 'Slowking', 'Drowzee', 'Hypno', 'Exeggcute', 'Exeggutor', 'Starmie', 'Mr. Mime', 'Mime Jr.', 'Jynx', 'Smoochum', 'Mewtwo', 'Mew', 'Natu', 'Xatu', 'Espeon', 'Girafarig', 'Ralts', 'Kirlia', 'Gardevoir', 'Spoink', 'Grumpig', 'Chimecho', 'Chingling', 'Bronzor', 'Bronzong', 'Uxie', 'Mesprit', 'Azelf', 'Cresselia', 'Jirachi', 'Deoxys', 'Gallade'],
+    'Extrasenseur': ['Abra', 'Kadabra', 'Alakazam', 'Slowpoke', 'Slowbro', 'Slowking', 'Drowzee', 'Hypno', 'Exeggcute', 'Exeggutor', 'Starmie', 'Mr. Mime', 'Mime Jr.', 'Jynx', 'Smoochum', 'Mewtwo', 'Mew', 'Natu', 'Xatu', 'Espeon', 'Girafarig', 'Ralts', 'Kirlia', 'Gardevoir', 'Wobbuffet', 'Wynaut', 'Spoink', 'Grumpig', 'Chimecho', 'Chingling', 'Bronzor', 'Bronzong', 'Uxie', 'Mesprit', 'Azelf', 'Cresselia', 'Jirachi', 'Deoxys', 'Gallade'],
+
+    // === INSECTE ===
+    'Dard-Nuée': ['Caterpie', 'Metapod', 'Butterfree', 'Weedle', 'Kakuna', 'Beedrill', 'Paras', 'Parasect', 'Venonat', 'Venomoth', 'Scyther', 'Scizor', 'Pinsir', 'Ledyba', 'Ledian', 'Spinarak', 'Ariados', 'Yanma', 'Yanmega', 'Pineco', 'Forretress', 'Heracross', 'Wurmple', 'Silcoon', 'Beautifly', 'Cascoon', 'Dustox', 'Kricketot', 'Kricketune', 'Combee', 'Vespiquen', 'Surskit', 'Masquerain', 'Nincada', 'Ninjask', 'Shedinja', 'Burmy', 'Wormadam', 'Mothim', 'Scizor'],
+    'Plaie-Croix': ['Paras', 'Parasect', 'Venonat', 'Venomoth', 'Scyther', 'Scizor', 'Pinsir', 'Ledyba', 'Ledian', 'Spinarak', 'Ariados', 'Heracross', 'Beautifly', 'Dustox', 'Masquerain', 'Ninjask', 'Shedinja', 'Vespiquen', 'Kricketune', 'Wormadam', 'Mothim'],
+    'Mégacorne': ['Beedrill', 'Parasect', 'Venomoth', 'Pinsir', 'Heracross', 'Scyther', 'Scizor', 'Ledyba', 'Ledian', 'Spinarak', 'Ariados', 'Yanma', 'Yanmega', 'Forretress', 'Kricketune', 'Vespiquen'],
+    'Bourdon': ['Butterfree', 'Beedrill', 'Venonat', 'Venomoth', 'Paras', 'Parasect', 'Scyther', 'Ledyba', 'Ledian', 'Spinarak', 'Ariados', 'Yanma', 'Yanmega', 'Pineco', 'Forretress', 'Heracross', 'Beautifly', 'Dustox', 'Masquerain', 'Kricketot', 'Kricketune', 'Combee', 'Vespiquen', 'Burmy', 'Wormadam', 'Mothim'],
+    'Rayon Signal': ['Butterfree', 'Venonat', 'Venomoth', 'Paras', 'Parasect', 'Ledyba', 'Ledian', 'Spinarak', 'Ariados', 'Yanma', 'Yanmega', 'Illumise', 'Volbeat', 'Combee', 'Vespiquen', 'Kricketot', 'Kricketune'],
+
+    // === ROCHE ===
+    'Jet-Pierres': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Aerodactyl', 'Sudowoodo', 'Bonsly', 'Shuckle', 'Nosepass', 'Probopass', 'Lunatone', 'Solrock', 'Lileep', 'Cradily', 'Anorith', 'Armaldo', 'Cranidos', 'Rampardos', 'Shieldon', 'Bastiodon', 'Larvitar', 'Pupitar', 'Tyranitar', 'Regirock'],
+    'Éboulement': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Aerodactyl', 'Sudowoodo', 'Bonsly', 'Shuckle', 'Nosepass', 'Probopass', 'Lunatone', 'Solrock', 'Lileep', 'Cradily', 'Anorith', 'Armaldo', 'Cranidos', 'Rampardos', 'Shieldon', 'Bastiodon', 'Larvitar', 'Pupitar', 'Tyranitar', 'Regirock', 'Groudon'],
+    'Lame de Roc': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Aerodactyl', 'Sudowoodo', 'Bonsly', 'Nosepass', 'Probopass', 'Lunatone', 'Solrock', 'Lileep', 'Cradily', 'Anorith', 'Armaldo', 'Cranidos', 'Rampardos', 'Shieldon', 'Bastiodon', 'Larvitar', 'Pupitar', 'Tyranitar', 'Regirock'],
+    'Pouvoir Antique': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Aerodactyl', 'Lunatone', 'Solrock', 'Lileep', 'Cradily', 'Anorith', 'Armaldo', 'Baltoy', 'Claydol', 'Cranidos', 'Rampardos', 'Shieldon', 'Bastiodon', 'Regirock'],
+    'Gemme Lumière': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Rhyhorn', 'Rhydon', 'Omanyte', 'Omastar', 'Kabuto', 'Kabutops', 'Aerodactyl', 'Nosepass', 'Probopass', 'Lunatone', 'Solrock', 'Lileep', 'Cradily', 'Anorith', 'Armaldo', 'Cranidos', 'Rampardos', 'Shieldon', 'Bastiodon', 'Relicanth', 'Regirock'],
+
+    // === SPECTRE ===
+    'Léchouille': ['Gastly', 'Haunter', 'Gengar', 'Lickitung', 'Lickilicky', 'Duskull', 'Dusclops', 'Dusknoir'],
+    'Griffe Ombre': ['Gastly', 'Haunter', 'Gengar', 'Misdreavus', 'Mismagius', 'Shuppet', 'Banette', 'Duskull', 'Dusclops', 'Dusknoir', 'Drifloon', 'Drifblim', 'Spiritomb', 'Sableye', 'Shedinja', 'Darkrai'],
+    'Ball\'Ombre': ['Gastly', 'Haunter', 'Gengar', 'Misdreavus', 'Mismagius', 'Shuppet', 'Banette', 'Duskull', 'Dusclops', 'Dusknoir', 'Drifloon', 'Drifblim', 'Spiritomb', 'Sableye', 'Chimecho', 'Chingling', 'Rotom', 'Uxie', 'Mesprit', 'Azelf', 'Cresselia', 'Darkrai'],
+    'Châtiment': ['Gastly', 'Haunter', 'Gengar', 'Misdreavus', 'Mismagius', 'Shuppet', 'Banette', 'Duskull', 'Dusclops', 'Dusknoir', 'Sableye', 'Spiritomb'],
+    'Revenant': ['Gastly', 'Haunter', 'Gengar', 'Misdreavus', 'Mismagius', 'Shuppet', 'Banette', 'Duskull', 'Dusclops', 'Dusknoir', 'Drifloon', 'Drifblim', 'Spiritomb', 'Sableye', 'Darkrai'],
+    'Ombre Portée': ['Gastly', 'Haunter', 'Gengar', 'Misdreavus', 'Mismagius', 'Shuppet', 'Banette', 'Duskull', 'Dusclops', 'Dusknoir', 'Shedinja', 'Spiritomb', 'Froslass'],
+
+    // === DRAGON ===
+    'Draco-Rage': ['Dratini', 'Dragonair', 'Dragonite', 'Horsea', 'Seadra', 'Kingdra', 'Gible', 'Gabite', 'Garchomp', 'Bagon', 'Shelgon', 'Salamence', 'Altaria', 'Swablu', 'Vibrava', 'Flygon', 'Rayquaza', 'Latias', 'Latios', 'Dialga', 'Palkia', 'Giratina'],
+    'Dracogriffe': ['Dragonite', 'Kingdra', 'Gible', 'Gabite', 'Garchomp', 'Bagon', 'Shelgon', 'Salamence', 'Altaria', 'Swablu', 'Vibrava', 'Flygon', 'Rayquaza', 'Latias', 'Latios', 'Dialga', 'Palkia', 'Giratina'],
+    'Colère': ['Dratini', 'Dragonair', 'Dragonite', 'Kingdra', 'Gible', 'Gabite', 'Garchomp', 'Bagon', 'Shelgon', 'Salamence', 'Altaria', 'Vibrava', 'Flygon', 'Rayquaza', 'Latias', 'Latios', 'Dialga', 'Palkia', 'Giratina'],
+    'Draco-Météor': ['Dragonite', 'Kingdra', 'Salamence', 'Altaria', 'Flygon', 'Garchomp', 'Rayquaza', 'Latias', 'Latios', 'Dialga', 'Palkia', 'Giratina'],
+    'Draco-Choc': ['Dratini', 'Dragonair', 'Dragonite', 'Horsea', 'Seadra', 'Kingdra', 'Gible', 'Gabite', 'Garchomp', 'Bagon', 'Shelgon', 'Salamence', 'Altaria', 'Swablu', 'Vibrava', 'Flygon', 'Rayquaza', 'Latias', 'Latios', 'Dialga', 'Palkia', 'Giratina'],
+
+    // === TÉNÈBRES ===
+    'Morsure': ['Rattata', 'Raticate', 'Zubat', 'Golbat', 'Crobat', 'Meowth', 'Persian', 'Growlithe', 'Arcanine', 'Tentacool', 'Tentacruel', 'Gyarados', 'Eevee', 'Umbreon', 'Hoothoot', 'Noctowl', 'Murkrow', 'Honchkrow', 'Poochyena', 'Mightyena', 'Sneasel', 'Weavile', 'Houndour', 'Houndoom', 'Tyranitar', 'Sableye', 'Carvanha', 'Sharpedo', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Spiritomb', 'Darkrai'],
+    'Tranche-Nuit': ['Rattata', 'Raticate', 'Zubat', 'Golbat', 'Crobat', 'Persian', 'Umbreon', 'Murkrow', 'Honchkrow', 'Poochyena', 'Mightyena', 'Sneasel', 'Weavile', 'Houndour', 'Houndoom', 'Tyranitar', 'Sableye', 'Carvanha', 'Sharpedo', 'Absol', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Spiritomb', 'Darkrai'],
+    'Mâchouille': ['Rattata', 'Raticate', 'Persian', 'Gyarados', 'Umbreon', 'Murkrow', 'Honchkrow', 'Poochyena', 'Mightyena', 'Sneasel', 'Weavile', 'Houndour', 'Houndoom', 'Tyranitar', 'Sableye', 'Carvanha', 'Sharpedo', 'Absol', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Spiritomb', 'Darkrai'],
+    'Vibrobscur': ['Rattata', 'Raticate', 'Meowth', 'Persian', 'Gastly', 'Haunter', 'Gengar', 'Umbreon', 'Murkrow', 'Honchkrow', 'Misdreavus', 'Mismagius', 'Sneasel', 'Weavile', 'Houndour', 'Houndoom', 'Tyranitar', 'Sableye', 'Carvanha', 'Sharpedo', 'Absol', 'Crawdaunt', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Spiritomb', 'Darkrai'],
+    'Dark Pulse': ['Rattata', 'Raticate', 'Meowth', 'Persian', 'Gastly', 'Haunter', 'Gengar', 'Umbreon', 'Murkrow', 'Honchkrow', 'Misdreavus', 'Mismagius', 'Sneasel', 'Weavile', 'Houndour', 'Houndoom', 'Tyranitar', 'Sableye', 'Carvanha', 'Sharpedo', 'Absol', 'Crawdaunt', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Spiritomb', 'Darkrai'],
+    'Sabotage': ['Rattata', 'Raticate', 'Meowth', 'Persian', 'Gastly', 'Haunter', 'Gengar', 'Umbreon', 'Murkrow', 'Honchkrow', 'Sneasel', 'Weavile', 'Houndour', 'Houndoom', 'Tyranitar', 'Sableye', 'Carvanha', 'Sharpedo', 'Absol', 'Stunky', 'Skuntank', 'Skorupi', 'Drapion', 'Spiritomb', 'Darkrai'],
+
+    // === ACIER ===
+    'Griffe Acier': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Magnemite', 'Magneton', 'Magnezone', 'Aron', 'Lairon', 'Aggron', 'Beldum', 'Metang', 'Metagross', 'Nosepass', 'Probopass', 'Bronzor', 'Bronzong', 'Riolu', 'Lucario', 'Scizor', 'Mawile', 'Skarmory', 'Registeel', 'Dialga', 'Jirachi'],
+    'Queue de Fer': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Rhyhorn', 'Rhydon', 'Rhyperior', 'Magnemite', 'Magneton', 'Magnezone', 'Aron', 'Lairon', 'Aggron', 'Beldum', 'Metang', 'Metagross', 'Nosepass', 'Probopass', 'Bronzor', 'Bronzong', 'Lucario', 'Scizor', 'Mawile', 'Skarmory', 'Forretress', 'Registeel', 'Dialga', 'Jirachi'],
+    'Poing Météor': ['Magnemite', 'Magneton', 'Magnezone', 'Aron', 'Lairon', 'Aggron', 'Beldum', 'Metang', 'Metagross', 'Nosepass', 'Probopass', 'Bronzor', 'Bronzong', 'Riolu', 'Lucario', 'Mawile', 'Registeel', 'Dialga', 'Jirachi'],
+    'Luminocanon': ['Magnemite', 'Magneton', 'Magnezone', 'Aron', 'Lairon', 'Aggron', 'Beldum', 'Metang', 'Metagross', 'Nosepass', 'Probopass', 'Bronzor', 'Bronzong', 'Empoleon', 'Scizor', 'Forretress', 'Registeel', 'Dialga', 'Jirachi', 'Heatran'],
+    'Gyro Ball': ['Geodude', 'Graveler', 'Golem', 'Onix', 'Steelix', 'Magnemite', 'Magneton', 'Magnezone', 'Aron', 'Lairon', 'Aggron', 'Beldum', 'Metang', 'Metagross', 'Nosepass', 'Probopass', 'Bronzor', 'Bronzong', 'Forretress', 'Pineco', 'Registeel', 'Dialga', 'Jirachi'],
+
+    // === FÉE ===
+    'Éclat Magique': ['Clefairy', 'Clefable', 'Cleffa', 'Jigglypuff', 'Wigglytuff', 'Igglybuff', 'Togepi', 'Togetic', 'Togekiss', 'Marill', 'Azumarill', 'Azurill', 'Snubbull', 'Granbull', 'Mime Jr.', 'Mr. Mime', 'Ralts', 'Kirlia', 'Gardevoir', 'Mawile', 'Mime Jr.', 'Cresselia', 'Mesprit', 'Uxie', 'Azelf', 'Jirachi', 'Mew', 'Celebi', 'Shaymin'],
+    'Pouvoir Lunaire': ['Clefairy', 'Clefable', 'Cleffa', 'Jigglypuff', 'Wigglytuff', 'Igglybuff', 'Togepi', 'Togetic', 'Togekiss', 'Marill', 'Azumarill', 'Azurill', 'Snubbull', 'Granbull', 'Mr. Mime', 'Mime Jr.', 'Ralts', 'Kirlia', 'Gardevoir', 'Mawile', 'Sylveon', 'Cresselia', 'Jirachi', 'Mew', 'Celebi', 'Shaymin'],
+    'Câlinerie': ['Clefairy', 'Clefable', 'Cleffa', 'Jigglypuff', 'Wigglytuff', 'Igglybuff', 'Togepi', 'Togetic', 'Togekiss', 'Snubbull', 'Granbull', 'Marill', 'Azumarill', 'Azurill', 'Mr. Mime', 'Mime Jr.', 'Ralts', 'Kirlia', 'Gardevoir', 'Mawile', 'Chansey', 'Blissey', 'Happiny', 'Cresselia', 'Jirachi', 'Mew'],
+    'Doux Baiser': ['Clefairy', 'Clefable', 'Cleffa', 'Jigglypuff', 'Wigglytuff', 'Igglybuff', 'Togepi', 'Togetic', 'Togekiss', 'Snubbull', 'Granbull', 'Marill', 'Azumarill', 'Azurill', 'Mr. Mime', 'Mime Jr.', 'Ralts', 'Kirlia', 'Gardevoir', 'Chansey', 'Blissey', 'Happiny', 'Smoochum', 'Jynx', 'Cresselia', 'Mew']
+};
+
+// 4. Attribution des attaques par défaut aux Pokémon
+// Chaque Pokémon peut avoir une attaque fixe (string) ou plusieurs possibilités (array), choisie à la création
 const POKEMON_DEFAULT_MOVES = {
     // === GEN 1 - KANTO ===
     // Starters Plante
-    'Bulbasaur': 'Fouet Lianes',       // Grass Physical (ATK moyen)
-    'Ivysaur': 'Tranch\'Herbe',        // Grass Physical
+    'Bulbasaur': ['Fouet Lianes', 'Méga-Sangsue'],
+    'Ivysaur': ['Tranch\'Herbe', 'Lame-Feuille', 'Méga-Sangsue'],
     'Venusaur': 'Éco-Sphère',          // Grass Special (SP.ATK élevé)
-    
+
     // Starters Feu
-    'Charmander': 'Flammèche',         // Fire Special
-    'Charmeleon': 'Lance-Flammes',     // Fire Special
-    'Charizard': 'Lance-Flammes',      // Fire Special (SP.ATK élevé)
-    
+    'Charmander': ['Flammèche', 'Roue de Feu'],
+    'Charmeleon': ['Lance-Flammes', 'Poing de Feu'],
+    'Charizard': ['Lance-Flammes', 'Boutefeu', 'Canicule'],  // Fire (SP.ATK ou ATK)
+
     // Starters Eau
-    'Squirtle': 'Pistolet à O',        // Water Special
-    'Wartortle': 'Surf',               // Water Special
-    'Blastoise': 'Hydrocanon',         // Water Special
-    
+    'Squirtle': ['Pistolet à O', 'Bulles d\'O'],
+    'Wartortle': ['Surf', 'Cascade', 'Bulles d\'O'],
+    'Blastoise': ['Hydrocanon', 'Surf', 'Cascade'],
+
     // Insectes de début
     'Caterpie': 'Charge',              // Normal Physical
     'Metapod': 'Charge',
@@ -511,33 +720,33 @@ const POKEMON_DEFAULT_MOVES = {
     'Weedle': 'Dard-Venin',            // Poison Physical
     'Kakuna': 'Dard-Venin',
     'Beedrill': 'Dard-Nuée',           // Bug Physical (ATK élevé)
-    
+
     // Oiseaux
     'Pidgey': 'Cru-Ailes',             // Flying Physical
     'Pidgeotto': 'Cru-Ailes',
     'Pidgeot': 'Rapace',               // Flying Physical (ATK élevé)
     'Spearow': 'Cru-Ailes',
     'Fearow': 'Rapace',
-    
+
     // Rongeurs
     'Rattata': 'Charge',               // Normal Physical
     'Raticate': 'Plaquage',
-    
+
     // Serpents Poison
     'Ekans': 'Crochet Venin',          // Poison Physical
     'Arbok': 'Direct Toxik',
-    
+
     // Ligne Pikachu
-    'Pichu': 'Éclair',                 // Electric Special
-    'Pikachu': 'Éclair',
-    'Raichu': 'Tonnerre',
-    
+    'Pichu': ['Éclair', 'Vive-Attaque'],
+    'Pikachu': ['Éclair', 'Tonnerre', 'Vive-Attaque', 'Éclair Fou'],
+    'Raichu': ['Tonnerre', 'Fatal-Foudre', 'Éclair Fou'],
+
     // Sol
     'Sandshrew': 'Piétisol',           // Ground Physical
     'Sandslash': 'Séisme',
     'Diglett': 'Piétisol',
     'Dugtrio': 'Séisme',
-    
+
     // Nidoran
     'Nidoran♀': 'Crochet Venin',
     'Nidorina': 'Direct Toxik',
@@ -545,7 +754,7 @@ const POKEMON_DEFAULT_MOVES = {
     'Nidoran♂': 'Crochet Venin',
     'Nidorino': 'Direct Toxik',
     'Nidoking': 'Séisme',
-    
+
     // Fée
     'Clefairy': 'Éclat Magique',       // Fairy Special (SP.ATK dominant)
     'Clefable': 'Pouvoir Lunaire',
@@ -553,216 +762,216 @@ const POKEMON_DEFAULT_MOVES = {
     'Jigglypuff': 'Éclat Magique',
     'Wigglytuff': 'Pouvoir Lunaire',
     'Igglybuff': 'Éclat Magique',
-    
+
     // Renards Feu
     'Vulpix': 'Flammèche',
     'Ninetales': 'Lance-Flammes',
-    
+
     // Chauves-souris
     'Zubat': 'Cru-Ailes',
     'Golbat': 'Cru-Ailes',
     'Crobat': 'Rapace',
-    
+
     // Plantes Poison
     'Oddish': 'Méga-Sangsue',          // Grass Special
     'Gloom': 'Méga-Sangsue',
     'Vileplume': 'Éco-Sphère',
     'Bellossom': 'Éco-Sphère',
-    
+
     // Insectes
     'Paras': 'Plaie-Croix',            // Bug Physical
     'Parasect': 'Plaie-Croix',
     'Venonat': 'Choc Mental',          // Psychic Special (Sp.ATK dominant)
     'Venomoth': 'Bourdon',             // Bug Special
-    
+
     // Chats
     'Meowth': 'Griffe',                // Normal Physical
     'Persian': 'Tranche',
-    
+
     // Canards
     'Psyduck': 'Choc Mental',          // Psychic Special (SP.ATK élevé)
     'Golduck': 'Psyko',
-    
+
     // Singes Combat
     'Mankey': 'Poing-Karaté',          // Fighting Physical
     'Primeape': 'Close Combat',
-    
+
     // Chiens Feu
     'Growlithe': 'Flammèche',
     'Arcanine': 'Boutefeu',            // Fire Physical (ATK élevé)
-    
+
     // Grenouilles
     'Poliwag': 'Pistolet à O',
     'Poliwhirl': 'Surf',
     'Poliwrath': 'Cascade',            // Water Physical (ATK élevé)
     'Politoed': 'Surf',
-    
+
     // Psy
     'Abra': 'Choc Mental',
     'Kadabra': 'Psyko',
     'Alakazam': 'Psyko',               // Psychic Special (SP.ATK très élevé)
-    
+
     // Combat
     'Machop': 'Poing-Karaté',
     'Machoke': 'Casse-Brique',
     'Machamp': 'Close Combat',
-    
+
     // Plantes Poison
     'Bellsprout': 'Fouet Lianes',
     'Weepinbell': 'Tranch\'Herbe',
     'Victreebel': 'Lame-Feuille',
-    
+
     // Méduses
     'Tentacool': 'Surf',
     'Tentacruel': 'Surf',
-    
+
     // Roches
     'Geodude': 'Jet-Pierres',
     'Graveler': 'Éboulement',
     'Golem': 'Séisme',
-    
+
     // Chevaux Feu
     'Ponyta': 'Roue de Feu',
     'Rapidash': 'Boutefeu',
-    
+
     // Slowpoke
     'Slowpoke': 'Surf',
     'Slowbro': 'Psyko',
     'Slowking': 'Psyko',
-    
+
     // Magnétiques
     'Magnemite': 'Éclair',
     'Magneton': 'Tonnerre',
     'Magnezone': 'Tonnerre',
-    
+
     // Oiseaux
     'Farfetch\'d': 'Cru-Ailes',
     'Doduo': 'Cru-Ailes',
     'Dodrio': 'Rapace',
-    
+
     // Phoques
     'Seel': 'Surf',
     'Dewgong': 'Laser Glace',
-    
+
     // Slimes
     'Grimer': 'Bomb-Beurk',
     'Muk': 'Bomb-Beurk',
-    
+
     // Coquillages
     'Shellder': 'Cascade',
     'Cloyster': 'Laser Glace',
-    
+
     // Spectres
     'Gastly': 'Ball\'Ombre',           // Ghost Special (SP.ATK dominant)
     'Haunter': 'Ball\'Ombre',
     'Gengar': 'Ball\'Ombre',
-    
+
     // Serpent Roche
     'Onix': 'Jet-Pierres',
     'Steelix': 'Queue de Fer',
-    
+
     // Psy
     'Drowzee': 'Choc Mental',
     'Hypno': 'Psyko',
-    
+
     // Crabes
     'Krabby': 'Pince-Masse',           // Water Physical (ATK très élevé)
     'Kingler': 'Pince-Masse',
-    
+
     // Électriques
     'Voltorb': 'Éclair',
     'Electrode': 'Tonnerre',
-    
+
     // Œufs Plante
     'Exeggcute': 'Choc Mental',
     'Exeggutor': 'Psyko',
-    
+
     // Osseux
     'Cubone': 'Piétisol',
     'Marowak': 'Séisme',
-    
+
     // Combat
     'Hitmonlee': 'Close Combat',
     'Hitmonchan': 'Marto-Poing',
     'Hitmontop': 'Close Combat',
     'Tyrogue': 'Poing-Karaté',
-    
+
     // Langue
     'Lickitung': 'Plaquage',
     'Lickilicky': 'Plaquage',
-    
+
     // Poison Gaz
     'Koffing': 'Bomb-Beurk',
     'Weezing': 'Bomb-Beurk',
-    
+
     // Rhino
     'Rhyhorn': 'Jet-Pierres',
     'Rhydon': 'Séisme',
     'Rhyperior': 'Séisme',
-    
+
     // Rose
     'Chansey': 'Plaquage',
     'Blissey': 'Plaquage',
     'Happiny': 'Plaquage',
-    
+
     // Plante
     'Tangela': 'Lame-Feuille',
     'Tangrowth': 'Lame-Feuille',
-    
+
     // Kangourou
     'Kangaskhan': 'Plaquage',
-    
+
     // Hippocampes
     'Horsea': 'Surf',
     'Seadra': 'Surf',
     'Kingdra': 'Draco-Choc',           // Dragon Special
-    
+
     // Poissons
     'Goldeen': 'Cascade',
     'Seaking': 'Cascade',
-    
+
     // Étoiles
     'Staryu': 'Surf',
     'Starmie': 'Psyko',
-    
+
     // Mime
     'Mr. Mime': 'Psyko',
     'Mime Jr.': 'Choc Mental',
-    
+
     // Mante
     'Scyther': 'Plaie-Croix',          // Bug Physical (ATK très élevé)
     'Scizor': 'Plaie-Croix',
-    
+
     // Humanoïdes
     'Jynx': 'Psyko',
     'Smoochum': 'Choc Mental',
-    
+
     // Électriques
     'Electabuzz': 'Poing Éclair',      // Electric Physical (ATK et SP.ATK proches)
     'Elekid': 'Éclair',
     'Electivire': 'Éclair Fou',
-    
+
     // Feu
     'Magmar': 'Lance-Flammes',
     'Magby': 'Flammèche',
     'Magmortar': 'Lance-Flammes',
-    
+
     // Insecte
     'Pinsir': 'Mégacorne',
-    
+
     // Taureau
     'Tauros': 'Plaquage',
-    
+
     // Poisson
     'Magikarp': 'Charge',
     'Gyarados': 'Cascade',             // Water Physical (ATK très élevé)
-    
+
     // Glace
     'Lapras': 'Laser Glace',           // Ice Special (SP.ATK élevé)
-    
+
     // Métamorphe
     'Ditto': 'Charge',
-    
+
     // Évoli et évolutions
     'Eevee': 'Charge',
     'Vaporeon': 'Surf',                // Water Special (SP.ATK élevé)
@@ -772,170 +981,170 @@ const POKEMON_DEFAULT_MOVES = {
     'Umbreon': 'Morsure',              // Dark Physical (DEF orienté mais Dark)
     'Leafeon': 'Lame-Feuille',         // Grass Physical (ATK élevé)
     'Glaceon': 'Laser Glace',          // Ice Special (SP.ATK élevé)
-    
+
     // Virtuel
     'Porygon': 'Météores',
     'Porygon2': 'Météores',
     'Porygon-Z': 'Ultralaser',
-    
+
     // Fossiles
     'Omanyte': 'Surf',
     'Omastar': 'Surf',
     'Kabuto': 'Cascade',
     'Kabutops': 'Cascade',
     'Aerodactyl': 'Lame de Roc',
-    
+
     // Dormeur
     'Snorlax': 'Plaquage',
     'Munchlax': 'Plaquage',
-    
+
     // Légendaires Oiseaux
     'Articuno': 'Blizzard',            // Ice Special
     'Zapdos': 'Fatal-Foudre',          // Electric Special
     'Moltres': 'Déflagration',         // Fire Special
-    
+
     // Dragons
     'Dratini': 'Draco-Choc',
     'Dragonair': 'Draco-Choc',
     'Dragonite': 'Colère',             // Dragon Physical (ATK très élevé)
-    
+
     // Légendaires Psy
     'Mewtwo': 'Psyko',
     'Mew': 'Psyko',
-    
+
     // === GEN 2 - JOHTO ===
     'Chikorita': 'Fouet Lianes',
     'Bayleef': 'Tranch\'Herbe',
     'Meganium': 'Éco-Sphère',
-    
+
     'Cyndaquil': 'Flammèche',
     'Quilava': 'Lance-Flammes',
     'Typhlosion': 'Lance-Flammes',
-    
+
     'Totodile': 'Pistolet à O',
     'Croconaw': 'Cascade',
     'Feraligatr': 'Cascade',           // Water Physical (ATK élevé)
-    
+
     'Sentret': 'Charge',
     'Furret': 'Plaquage',
-    
+
     'Hoothoot': 'Cru-Ailes',
     'Noctowl': 'Lame d\'Air',
-    
+
     'Ledyba': 'Dard-Nuée',
     'Ledian': 'Dard-Nuée',
-    
+
     'Spinarak': 'Dard-Nuée',
     'Ariados': 'Plaie-Croix',
-    
+
     'Chinchou': 'Éclair',
     'Lanturn': 'Tonnerre',
-    
+
     'Togepi': 'Éclat Magique',
     'Togetic': 'Éclat Magique',
     'Togekiss': 'Pouvoir Lunaire',
-    
+
     'Natu': 'Choc Mental',
     'Xatu': 'Psyko',
-    
+
     'Mareep': 'Éclair',
     'Flaaffy': 'Éclair',
     'Ampharos': 'Tonnerre',
-    
+
     'Marill': 'Cascade',
     'Azumarill': 'Cascade',
     'Azurill': 'Charge',
-    
+
     'Sudowoodo': 'Jet-Pierres',
     'Bonsly': 'Jet-Pierres',
-    
+
     'Hoppip': 'Méga-Sangsue',
     'Skiploom': 'Méga-Sangsue',
     'Jumpluff': 'Méga-Sangsue',
-    
+
     'Aipom': 'Tranche',
     'Ambipom': 'Tranche',
-    
+
     'Sunkern': 'Méga-Sangsue',
     'Sunflora': 'Éco-Sphère',
-    
+
     'Yanma': 'Lame d\'Air',
     'Yanmega': 'Bourdon',
-    
+
     'Wooper': 'Piétisol',
     'Quagsire': 'Séisme',
-    
+
     'Murkrow': 'Morsure',
     'Honchkrow': 'Tranche-Nuit',
-    
+
     'Misdreavus': 'Ball\'Ombre',
     'Mismagius': 'Ball\'Ombre',
-    
+
     'Unown': 'Choc Mental',
-    
+
     'Wobbuffet': 'Charge',
     'Wynaut': 'Charge',
-    
+
     'Girafarig': 'Psyko',
-    
+
     'Pineco': 'Plaie-Croix',
     'Forretress': 'Gyro Ball',
-    
+
     'Dunsparce': 'Plaquage',
-    
+
     'Gligar': 'Séisme',
     'Gliscor': 'Séisme',
-    
+
     'Snubbull': 'Câlinerie',
     'Granbull': 'Câlinerie',
-    
+
     'Qwilfish': 'Direct Toxik',
-    
+
     'Shuckle': 'Jet-Pierres',
-    
+
     'Heracross': 'Mégacorne',
-    
+
     'Sneasel': 'Tranche-Nuit',
     'Weavile': 'Tranche-Nuit',
-    
+
     'Teddiursa': 'Tranche',
     'Ursaring': 'Close Combat',
-    
+
     'Slugma': 'Flammèche',
     'Magcargo': 'Lance-Flammes',
-    
+
     'Swinub': 'Piétisol',
     'Piloswine': 'Séisme',
     'Mamoswine': 'Séisme',
-    
+
     'Corsola': 'Pouvoir Antique',
-    
+
     'Remoraid': 'Pistolet à O',
     'Octillery': 'Surf',
-    
+
     'Delibird': 'Poudreuse',
-    
+
     'Mantine': 'Surf',
     'Mantyke': 'Surf',
-    
+
     'Skarmory': 'Griffe Acier',
-    
+
     'Houndour': 'Flammèche',
     'Houndoom': 'Lance-Flammes',
-    
+
     'Phanpy': 'Piétisol',
     'Donphan': 'Séisme',
-    
+
     'Stantler': 'Zen Headbutt',
-    
+
     'Smeargle': 'Charge',
-    
+
     'Miltank': 'Plaquage',
-    
+
     'Larvitar': 'Jet-Pierres',
     'Pupitar': 'Éboulement',
     'Tyranitar': 'Lame de Roc',
-    
+
     // Légendaires Gen 2
     'Raikou': 'Tonnerre',
     'Entei': 'Lance-Flammes',
@@ -943,291 +1152,291 @@ const POKEMON_DEFAULT_MOVES = {
     'Lugia': 'Psyko',
     'Ho-Oh': 'Déflagration',
     'Celebi': 'Éco-Sphère',
-    
+
     // === GEN 3 - HOENN ===
     'Treecko': 'Fouet Lianes',
     'Grovyle': 'Lame-Feuille',
     'Sceptile': 'Lame-Feuille',
-    
+
     'Torchic': 'Flammèche',
     'Combusken': 'Boutefeu',
     'Blaziken': 'Boutefeu',            // Fire Physical (ATK très élevé)
-    
+
     'Mudkip': 'Pistolet à O',
     'Marshtomp': 'Surf',
     'Swampert': 'Séisme',              // Ground Physical
-    
+
     'Poochyena': 'Morsure',
     'Mightyena': 'Mâchouille',
-    
+
     'Zigzagoon': 'Charge',
     'Linoone': 'Plaquage',
-    
+
     'Wurmple': 'Dard-Nuée',
     'Silcoon': 'Charge',
     'Beautifly': 'Bourdon',
     'Cascoon': 'Charge',
     'Dustox': 'Bourdon',
-    
+
     'Lotad': 'Surf',
     'Lombre': 'Surf',
     'Ludicolo': 'Éco-Sphère',
-    
+
     'Seedot': 'Fouet Lianes',
     'Nuzleaf': 'Tranch\'Herbe',
     'Shiftry': 'Lame-Feuille',
-    
+
     'Taillow': 'Cru-Ailes',
     'Swellow': 'Rapace',
-    
+
     'Wingull': 'Cru-Ailes',
     'Pelipper': 'Surf',
-    
+
     'Ralts': 'Choc Mental',
     'Kirlia': 'Choc Mental',
     'Gardevoir': 'Psyko',
     'Gallade': 'Close Combat',
-    
+
     'Surskit': 'Surf',
     'Masquerain': 'Bourdon',
-    
+
     'Shroomish': 'Méga-Sangsue',
     'Breloom': 'Close Combat',
-    
+
     'Slakoth': 'Tranche',
     'Vigoroth': 'Tranche',
     'Slaking': 'Plaquage',
-    
+
     'Nincada': 'Piétisol',
     'Ninjask': 'Plaie-Croix',
     'Shedinja': 'Griffe Ombre',
-    
+
     'Whismur': 'Plaquage',
     'Loudred': 'Plaquage',
     'Exploud': 'Ultralaser',
-    
+
     'Makuhita': 'Poing-Karaté',
     'Hariyama': 'Close Combat',
-    
+
     'Aron': 'Jet-Pierres',
     'Lairon': 'Éboulement',
     'Aggron': 'Queue de Fer',
-    
+
     'Meditite': 'Aurasphère',
     'Medicham': 'Aurasphère',
-    
+
     'Electrike': 'Éclair',
     'Manectric': 'Tonnerre',
-    
+
     'Plusle': 'Éclair',
     'Minun': 'Éclair',
-    
+
     'Volbeat': 'Rayon Signal',
     'Illumise': 'Bourdon',
-    
+
     'Budew': 'Méga-Sangsue',
     'Roselia': 'Méga-Sangsue',
     'Roserade': 'Éco-Sphère',
-    
+
     'Gulpin': 'Bomb-Beurk',
     'Swalot': 'Bomb-Beurk',
-    
+
     'Carvanha': 'Cascade',
     'Sharpedo': 'Cascade',
-    
+
     'Wailmer': 'Surf',
     'Wailord': 'Surf',
-    
+
     'Numel': 'Flammèche',
     'Camerupt': 'Séisme',
-    
+
     'Torkoal': 'Lance-Flammes',
-    
+
     'Spoink': 'Choc Mental',
     'Grumpig': 'Psyko',
-    
+
     'Spinda': 'Plaquage',
-    
+
     'Trapinch': 'Piétisol',
     'Vibrava': 'Draco-Choc',
     'Flygon': 'Séisme',
-    
+
     'Cacnea': 'Dard-Nuée',
     'Cacturne': 'Tranche-Nuit',
-    
+
     'Swablu': 'Cru-Ailes',
     'Altaria': 'Draco-Choc',
-    
+
     'Zangoose': 'Tranche',
     'Seviper': 'Direct Toxik',
-    
+
     'Lunatone': 'Psyko',
     'Solrock': 'Jet-Pierres',
-    
+
     'Barboach': 'Piétisol',
     'Whiscash': 'Séisme',
-    
+
     'Corphish': 'Pince-Masse',
     'Crawdaunt': 'Pince-Masse',
-    
+
     'Baltoy': 'Choc Mental',
     'Claydol': 'Telluriforce',
-    
+
     'Lileep': 'Pouvoir Antique',
     'Cradily': 'Pouvoir Antique',
-    
+
     'Anorith': 'Plaie-Croix',
     'Armaldo': 'Plaie-Croix',
-    
+
     'Feebas': 'Surf',
     'Milotic': 'Surf',
-    
+
     'Castform': 'Météores',
     'Kecleon': 'Tranche',
-    
+
     'Shuppet': 'Ball\'Ombre',
     'Banette': 'Griffe Ombre',
-    
+
     'Duskull': 'Ball\'Ombre',
     'Dusclops': 'Ball\'Ombre',
     'Dusknoir': 'Griffe Ombre',
-    
+
     'Tropius': 'Lame d\'Air',
-    
+
     'Chimecho': 'Choc Mental',
     'Chingling': 'Choc Mental',
-    
+
     'Absol': 'Tranche-Nuit',
-    
+
     'Snorunt': 'Poudreuse',
     'Glalie': 'Laser Glace',
     'Froslass': 'Ball\'Ombre',
-    
+
     'Spheal': 'Poudreuse',
     'Sealeo': 'Surf',
     'Walrein': 'Blizzard',
-    
+
     'Clamperl': 'Surf',
     'Huntail': 'Cascade',
     'Gorebyss': 'Surf',
-    
+
     'Relicanth': 'Lame de Roc',
-    
+
     'Luvdisc': 'Surf',
-    
+
     'Bagon': 'Dracogriffe',
     'Shelgon': 'Dracogriffe',
     'Salamence': 'Colère',
-    
+
     'Beldum': 'Charge',
     'Metang': 'Poing Météor',
     'Metagross': 'Poing Météor',
-    
+
     'Regirock': 'Lame de Roc',
     'Regice': 'Blizzard',
     'Registeel': 'Queue de Fer',
-    
+
     'Latias': 'Psyko',
     'Latios': 'Draco-Météor',
-    
+
     'Kyogre': 'Hydrocanon',
     'Groudon': 'Séisme',
     'Rayquaza': 'Colère',
-    
+
     'Jirachi': 'Psyko',
     'Deoxys': 'Psyko-Boost',
-    
+
     // === GEN 4 - SINNOH ===
     'Turtwig': 'Fouet Lianes',
     'Grotle': 'Tranch\'Herbe',
     'Torterra': 'Séisme',
-    
+
     'Chimchar': 'Flammèche',
     'Monferno': 'Lance-Flammes',
     'Infernape': 'Close Combat',
-    
+
     'Piplup': 'Pistolet à O',
     'Prinplup': 'Surf',
     'Empoleon': 'Surf',
-    
+
     'Starly': 'Cru-Ailes',
     'Staravia': 'Cru-Ailes',
     'Staraptor': 'Rapace',
-    
+
     'Bidoof': 'Charge',
     'Bibarel': 'Cascade',
-    
+
     'Kricketot': 'Dard-Nuée',
     'Kricketune': 'Plaie-Croix',
-    
+
     'Shinx': 'Étincelle',
     'Luxio': 'Étincelle',
     'Luxray': 'Éclair Fou',
-    
+
     'Cranidos': 'Lame de Roc',
     'Rampardos': 'Lame de Roc',
-    
+
     'Shieldon': 'Jet-Pierres',
     'Bastiodon': 'Queue de Fer',
-    
+
     'Burmy': 'Charge',
     'Wormadam': 'Rayon Signal',
-    
+
     'Combee': 'Dard-Nuée',
     'Vespiquen': 'Plaie-Croix',
-    
+
     'Buizel': 'Aqua-Jet',
     'Floatzel': 'Cascade',
-    
+
     'Cherubi': 'Méga-Sangsue',
     'Cherrim': 'Éco-Sphère',
-    
+
     'Shellos': 'Surf',
     'Gastrodon': 'Telluriforce',
-    
+
     'Drifloon': 'Ball\'Ombre',
     'Drifblim': 'Ball\'Ombre',
-    
+
     'Buneary': 'Plaquage',
     'Lopunny': 'Plaquage',
-    
+
     'Glameow': 'Tranche',
     'Purugly': 'Tranche',
-    
+
     'Stunky': 'Morsure',
     'Skuntank': 'Mâchouille',
-    
+
     'Bronzor': 'Choc Mental',
     'Bronzong': 'Psyko',
-    
+
     'Gible': 'Dracogriffe',
     'Gabite': 'Dracogriffe',
     'Garchomp': 'Séisme',
-    
+
     'Riolu': 'Aurasphère',
     'Lucario': 'Aurasphère',
-    
+
     'Hippopotas': 'Piétisol',
     'Hippowdon': 'Séisme',
-    
+
     'Skorupi': 'Dard-Nuée',
     'Drapion': 'Mâchouille',
-    
+
     'Croagunk': 'Direct Toxik',
     'Toxicroak': 'Direct Toxik',
-    
+
     'Finneon': 'Surf',
     'Lumineon': 'Surf',
-    
+
     'Snover': 'Laser Glace',
     'Abomasnow': 'Blizzard',
-    
+
     'Rotom': 'Éclair',
-    
+
     'Uxie': 'Psyko',
     'Mesprit': 'Psyko',
     'Azelf': 'Psyko',
-    
+
     'Dialga': 'Draco-Météor',
     'Palkia': 'Draco-Météor',
     'Heatran': 'Lance-Flammes',
@@ -1238,9 +1447,24 @@ const POKEMON_DEFAULT_MOVES = {
     'Manaphy': 'Surf',
     'Darkrai': 'Dark Pulse',
     'Arceus': 'Ultralaser',
-    
+
     // Fallback : Les Pokémon non listés utiliseront 'Charge' (physical normal)
 };
+
+/** Retourne le pool d'attaques par défaut pour un Pokémon (array). Gère string et array. */
+function getDefaultMovesPool(pokemonName) {
+    const val = POKEMON_DEFAULT_MOVES[pokemonName];
+    if (!val) return ['Charge'];
+    return Array.isArray(val) ? val : [val];
+}
+
+/** Vérifie si un Pokémon peut apprendre une attaque via CT */
+function canLearnCT(pokemonName, moveName) {
+    return (CT_COMPATIBILITY[moveName] || []).includes(pokemonName);
+}
+
+/** Préfixe des items CT dans l'inventaire */
+const CT_ITEM_PREFIX = 'ct_';
 
 const TOWER_SHOP_ITEMS = {
     permanentXP: {
@@ -1276,7 +1500,7 @@ const TOWER_SHOP_ITEMS = {
     teamContribution: {
         name: "Synergie d'Équipe (Permanent)",
         description: "Augmente la contribution des stats de l'équipe principale de +1% par niveau (Max: +25%).",
-        cost: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300,2400,2500],
+        cost: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500],
         maxLevel: 25,
         type: 'permanent',
         effect: { type: 'team_contribution', value: 0.01 }
@@ -1288,7 +1512,7 @@ const TOWER_SHOP_ITEMS = {
         type: 'item',
         item: 'evolution_stone'
     },
-   
+
     talentReroll: {
         name: "Cristal de Réinitialisation",
         description: "Réassigne aléatoirement le talent passif d'une créature Epic ou Legendary.",
@@ -1303,23 +1527,23 @@ const TOWER_SHOP_ITEMS = {
         type: 'consumable',
         item: 'talent_choice'
     },
-	'leftovers': {
+    'leftovers': {
         id: 'leftovers',
         name: "Restes (Objet Tenu)",
         description: "Soigne le porteur à chaque tour.",
         cost: 100 // Poussière
     },
-	'choice_band': {
+    'choice_band': {
         name: "Bandeau Choix",
         description: "+25% ATK, mais -10% SPD.",
         effect: { attack_mult: 0.25, speed_mult: -0.10 },
-		cost: 100 // Poussière
+        cost: 100 // Poussière
     },
     'expert_belt': {
         name: "Ceinture Pro",
         description: "+15% de dégâts si l'attaque est Super Efficace.",
         effect: { super_effective_bonus: 0.15 },
-		cost: 100 // Poussière
+        cost: 100 // Poussière
     }
 };
 
@@ -1331,7 +1555,7 @@ const HELD_ITEMS = {
         effect: { heal_percent: 0.02 },
         rarity: 'rare',    // ✅ AJOUTÉ
         icon: "🍎",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png"
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png"
     },
     'choice_band': {
         name: "Bandeau Choix",
@@ -1339,13 +1563,13 @@ const HELD_ITEMS = {
         effect: { attack_mult: 0.50, disable_ultimate: true },
         rarity: 'epic',    // ✅ AJOUTÉ
         icon: "🥊",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-band.png"
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-band.png"
     },
     'expert_belt': {
         name: "Ceinture Pro",
         description: "+20% de dégâts si l'attaque est Super Efficace.",
         effect: { super_effective_bonus: 0.20 },
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/expert-belt.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/expert-belt.png",
         rarity: 'rare',    // ✅ AJOUTÉ
         icon: "🥋"         // ✅ AJOUTÉ
     },
@@ -1353,14 +1577,14 @@ const HELD_ITEMS = {
         name: "Orbe Vie",
         description: "+30% Dégâts, mais coûte 10% des PV max à chaque attaque.",
         effect: { damage_mult: 1.30, self_recoil: 0.10 },
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png",
         rarity: 'epic',    // ✅ AJOUTÉ
         icon: "🔮"         // ✅ AJOUTÉ
     },
     'rocky_helmet': {
         name: "Casque Brut",
         description: "Renvoie 15% des dégâts subis à l'attaquant.",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rocky-helmet.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rocky-helmet.png",
         effect: { reflect_mult: 0.15 },
         rarity: 'rare',    // ✅ AJOUTÉ
         icon: "⛑️"         // ✅ AJOUTÉ
@@ -1369,7 +1593,7 @@ const HELD_ITEMS = {
         name: "Œuf Chance",
         description: "Le porteur gagne +100% d'XP.",
         effect: { xp_bonus: 1.0 },
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-egg.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-egg.png",
         rarity: 'legendary', // ✅ AJOUTÉ
         icon: "🥚"           // ✅ AJOUTÉ
     },
@@ -1377,14 +1601,14 @@ const HELD_ITEMS = {
         name: "Mouchoir Choix",
         description: "+50% Vitesse.",
         effect: { speed_mult: 0.50 },
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png",
         rarity: 'epic',    // ✅ AJOUTÉ
         icon: "🧣"         // ✅ AJOUTÉ
     },
     'shell_bell': {
         name: "Grelot Coque",
         description: "Soigne 15% des dégâts infligés.",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shell-bell.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shell-bell.png",
         effect: { lifesteal: 0.15 },
         rarity: 'rare',    // ✅ AJOUTÉ
         icon: "🔔"         // ✅ AJOUTÉ
@@ -1442,7 +1666,7 @@ const TEAM_SYNERGIES = {
         name: "Forteresse",
         message: "Une défense impénétrable ! (+30% DEF)"
     },
-	'steam_power': {
+    'steam_power': {
         name: "Vapeur Hurlante",
         types: [TYPES.FIRE, TYPES.WATER],
         min_count: 3, // Il faut 3 de CHAQUE type listé
@@ -1450,7 +1674,7 @@ const TEAM_SYNERGIES = {
         effect: { attack_mult: 0.25, defense_mult: 0.25 },
         message: "L'alliance du Feu et de l'Eau crée une pression dévastatrice ! (+25% ATK/DEF)"
     },
-    
+
     'nature_storm': {
         name: "Tempête Naturelle",
         types: [TYPES.GRASS, TYPES.ELECTRIC],
@@ -1468,7 +1692,7 @@ const TEAM_SYNERGIES = {
         effect: { attack_mult: 0.15, defense_mult: 0.15, speed_mult: 0.15, max_hp_mult: 0.15 }, // Bonus partout
         message: "L'harmonie parfaite des éléments ! (+15% TOUTES STATS)"
     },
-    
+
     'fortress_ultimate': {
         name: "Forteresse Imprenable",
         types: [TYPES.STEEL, TYPES.ROCK, TYPES.GROUND],
@@ -1477,7 +1701,7 @@ const TEAM_SYNERGIES = {
         effect: { defense_mult: 0.50 },
         message: "Une défense absolue ! (+50% DEF)"
     },
-	'mind_body': {
+    'mind_body': {
         name: "Esprit & Matière",
         types: [TYPES.PSYCHIC, TYPES.FIGHTING],
         min_count: 2, // 2 Psy + 2 Combat
@@ -1555,13 +1779,13 @@ const TEAM_SYNERGIES = {
 };
 
 /**
- * Collection Synergies — Bonus passifs basés sur la collection de familles complètes.
+ * Bonus de collection — Bonus passifs basés sur la collection de familles complètes.
  * Principe "Maillon Faible" : niveau de bonus = min(prestige) parmi tous les membres requis.
  * Si un Pokémon manque ou a prestige 0 → bonus famille = 0.
  * Les valeurs dans effect sont par niveau (ex: crit_chance: 0.1 → +10% crit par niveau).
  */
 /** Évolutions finales uniquement. Valeurs /10. Water Starters = 1% PV max par prestige. */
-const COLLECTION_SYNERGIES = {
+const COLLECTION_BONUSES = {
     'muscle_heads': {
         name: "Muscle Heads",
         pokemon: ['Machamp', 'Primeape', 'Hitmonlee', 'Hitmonchan', 'Hitmontop', 'Heracross', 'Hariyama', 'Medicham', 'Lucario', 'Toxicroak'],
@@ -1596,6 +1820,21 @@ const COLLECTION_SYNERGIES = {
         name: "Grass Starters",
         pokemon: ['Venusaur', 'Meganium', 'Sceptile', 'Torterra'],
         effect: { hp_regen_per_turn: 0.005 }
+    },
+    'forge_draconique': {
+        name: "Forge draconique",
+        pokemon: ['Dragonite', 'Salamence', 'Garchomp'],
+        effect: { damage_mult: 0.015 }
+    },
+    'mur_d_acier': {
+        name: "Mur d'acier",
+        pokemon: ['Steelix', 'Aggron', 'Metagross', 'Skarmory', 'Forretress'],
+        effect: { defense_mult: 0.01 }
+    },
+    'chasseurs_nocturnes': {
+        name: "Chasseurs nocturnes",
+        pokemon: ['Crobat', 'Weavile', 'Absol', 'Honchkrow', 'Umbreon', 'Noctowl'],
+        effect: { crit_chance: 0.006 }
     }
 };
 
@@ -1626,7 +1865,7 @@ const TOWER_RELICS = {
             [RARITY.LEGENDARY]: { atk: 0.75, def: 0.25 }
         },
         getDescription: (val) => `+${Math.round(val.atk * 100)}% ATK, mais -${Math.round(val.def * 100)}% DEF.`,
-        effect: (game, val) => { 
+        effect: (game, val) => {
             game.towerState.buffs.attack_mult = (game.towerState.buffs.attack_mult || 1) + val.atk;
             game.towerState.buffs.defense_mult = (game.towerState.buffs.defense_mult || 1) - val.def;
         }
@@ -1654,14 +1893,14 @@ const TOWER_RELICS = {
             [RARITY.LEGENDARY]: 1.00 // Soin total !
         },
         getDescription: (val) => `Soigne immédiatement ${Math.round(val * 100)}% des PV de l'équipe.`,
-        effect: (game, val) => { 
+        effect: (game, val) => {
             game.playerTeam.forEach(c => {
-                if(c.isAlive()) {
-                     const max = game.getPlayerMaxHp();
-                     c.mainAccountCurrentHp = Math.min(max, (c.mainAccountCurrentHp || 0) + (max * val));
+                if (c.isAlive()) {
+                    const max = game.getPlayerMaxHp();
+                    c.mainAccountCurrentHp = Math.min(max, (c.mainAccountCurrentHp || 0) + (max * val));
                 }
             });
-            logMessage(`Soin d'urgence : +${Math.round(val*100)}% PV !`);
+            logMessage(`Soin d'urgence : +${Math.round(val * 100)}% PV !`);
         }
     },
     'lucky_charm': {
@@ -1676,7 +1915,7 @@ const TOWER_RELICS = {
         getDescription: (val) => `+${Math.round(val * 100)}% Chance Critique.`,
         effect: (game, val) => { game.towerState.buffs.crit_chance = (game.towerState.buffs.crit_chance || 0) + val; }
     },
-	'swift_boots': {
+    'swift_boots': {
         name: "Bottes de Vitesse",
         icon: "👟",
         values: {
@@ -1739,7 +1978,7 @@ const TOWER_RELICS = {
         getDescription: (val) => `+${Math.round(val * 100)}% Dégâts si l'ennemi a < 50% PV. ( 1 seul exemplaire maximum)`,
         // Note: On stocke la valeur (pourcentage) au lieu de true/false
         effect: (game, val) => { game.towerState.buffs.execute_percent = (game.towerState.buffs.execute_percent || 0) + val; }
-    },'golem_heart': {
+    }, 'golem_heart': {
         name: "Cœur de Golem",
         icon: "🤎",
         values: {
@@ -1768,7 +2007,7 @@ const TOWER_RELICS = {
 };
 
 
-		// ✅ Tel quel dans le document, mais je suggère d'ajouter une description pour l'UI
+// ✅ Tel quel dans le document, mais je suggère d'ajouter une description pour l'UI
 const ARENAS = {
     1: {
         name: "Arène d'Argenta",
@@ -1895,7 +2134,7 @@ const ACCOUNT_TALENTS = {
     }
 };
 
-        const EVOLUTIONS = {
+const EVOLUTIONS = {
     // --- GEN 1 (Kanto) ---
     'Bulbasaur': { level: 16, evolves_to: 'Ivysaur', new_type: TYPES.GRASS },
     'Ivysaur': { level: 32, evolves_to: 'Venusaur', new_type: TYPES.GRASS },
@@ -1917,7 +2156,7 @@ const ACCOUNT_TALENTS = {
     'Nidoran♀': { level: 16, evolves_to: 'Nidorina', new_type: TYPES.POISON },
     'Nidorina': { level: 32, condition: 'Moon Stone', evolves_to: 'Nidoqueen', new_type: TYPES.POISON },
     'Nidoran♂': { level: 16, evolves_to: 'Nidorino', new_type: TYPES.POISON },
-    'Nidorino': { level: 32,  evolves_to: 'Nidoking', new_type: TYPES.POISON },
+    'Nidorino': { level: 32, evolves_to: 'Nidoking', new_type: TYPES.POISON },
     'Clefairy': { level: 32, condition: 'Moon Stone', evolves_to: 'Clefable', new_type: TYPES.NORMAL },
     'Vulpix': { level: null, condition: 'Fire Stone', evolves_to: 'Ninetales', new_type: TYPES.FIRE },
     'Jigglypuff': { level: null, condition: 'Moon Stone', evolves_to: 'Wigglytuff', new_type: TYPES.NORMAL },
@@ -2184,7 +2423,7 @@ const EVOLUTION_FAMILIES = {
     'Bulbasaur': 'Bulbasaur', 'Ivysaur': 'Bulbasaur', 'Venusaur': 'Bulbasaur',
     'Charmander': 'Charmander', 'Charmeleon': 'Charmander', 'Charizard': 'Charmander',
     'Squirtle': 'Squirtle', 'Wartortle': 'Squirtle', 'Blastoise': 'Squirtle',
-    
+
     // Gen 1 - Communs & Evolutions
     'Caterpie': 'Caterpie', 'Metapod': 'Caterpie', 'Butterfree': 'Caterpie',
     'Weedle': 'Weedle', 'Kakuna': 'Weedle', 'Beedrill': 'Weedle',
@@ -2257,7 +2496,7 @@ const EVOLUTION_FAMILIES = {
     'Articuno': 'Articuno', 'Zapdos': 'Zapdos', 'Moltres': 'Moltres',
     'Dratini': 'Dratini', 'Dragonair': 'Dratini', 'Dragonite': 'Dratini',
     'Mewtwo': 'Mewtwo', 'Mew': 'Mew',
-    
+
     // Gen 2
     'Chikorita': 'Chikorita', 'Bayleef': 'Chikorita', 'Meganium': 'Chikorita',
     'Cyndaquil': 'Cyndaquil', 'Quilava': 'Cyndaquil', 'Typhlosion': 'Cyndaquil',
@@ -2306,7 +2545,7 @@ const EVOLUTION_FAMILIES = {
     'Raikou': 'Raikou', 'Entei': 'Entei', 'Suicune': 'Suicune',
     'Larvitar': 'Larvitar', 'Pupitar': 'Larvitar', 'Tyranitar': 'Larvitar',
     'Lugia': 'Lugia', 'Ho-Oh': 'Ho-Oh', 'Celebi': 'Celebi',
-    
+
     // Gen 3
     'Treecko': 'Treecko', 'Grovyle': 'Treecko', 'Sceptile': 'Treecko',
     'Torchic': 'Torchic', 'Combusken': 'Torchic', 'Blaziken': 'Torchic',
@@ -2352,7 +2591,7 @@ const EVOLUTION_FAMILIES = {
     'Anorith': 'Anorith', 'Armaldo': 'Anorith',
     'Feebas': 'Feebas', 'Milotic': 'Feebas',
     'Castform': 'Castform',
-	'Spinda': 'Spinda',
+    'Spinda': 'Spinda',
     'Kecleon': 'Kecleon',
     'Shuppet': 'Shuppet', 'Banette': 'Shuppet',
     'Duskull': 'Duskull', 'Dusclops': 'Duskull', 'Dusknoir': 'Duskull',
@@ -2370,7 +2609,7 @@ const EVOLUTION_FAMILIES = {
     'Latias': 'Latias', 'Latios': 'Latios',
     'Kyogre': 'Kyogre', 'Groudon': 'Groudon', 'Rayquaza': 'Rayquaza',
     'Jirachi': 'Jirachi', 'Deoxys': 'Deoxys',
-    
+
     // Gen 4 (selected)
     'Turtwig': 'Turtwig', 'Grotle': 'Turtwig', 'Torterra': 'Turtwig',
     'Chimchar': 'Chimchar', 'Monferno': 'Chimchar', 'Infernape': 'Chimchar',
@@ -2414,38 +2653,38 @@ const POKEMON_SPRITE_IDS = {
     'Bulbasaur': 1, 'Ivysaur': 2, 'Venusaur': 3,
     'Charmander': 4, 'Charmeleon': 5, 'Charizard': 6,
     'Squirtle': 7, 'Wartortle': 8, 'Blastoise': 9,
-    
-	// --- GEN 2 (Manquants) ---
-'Chikorita': 152, 'Bayleef': 153, 'Meganium': 154,
-'Cyndaquil': 155, 'Quilava': 156, 'Typhlosion': 157,
-'Totodile': 158, 'Croconaw': 159, 'Feraligatr': 160,
-'Bellossom': 182,
-'Politoed': 186,
-'Aipom': 190,
-'Yanma': 193,
-'Slowking': 199,
-'Unown': 201,
-'Girafarig': 203,
-'Dunsparce': 206,
-'Qwilfish': 211,
-'Mantine': 226,
-'Porygon2': 233,
-'Tyrogue': 236, 'Hitmontop': 237,
-'Smoochum': 238,
-'Elekid': 239,
-'Magby': 240,
-'Blissey': 242,
 
-// --- GEN 3 (Manquants) ---
-'Azurill': 298,
-'Spinda': 327,
-'Castform': 351,
-'Kecleon': 352,
-'Chimecho': 358,
-'Wynaut': 360,
+    // --- GEN 2 (Manquants) ---
+    'Chikorita': 152, 'Bayleef': 153, 'Meganium': 154,
+    'Cyndaquil': 155, 'Quilava': 156, 'Typhlosion': 157,
+    'Totodile': 158, 'Croconaw': 159, 'Feraligatr': 160,
+    'Bellossom': 182,
+    'Politoed': 186,
+    'Aipom': 190,
+    'Yanma': 193,
+    'Slowking': 199,
+    'Unown': 201,
+    'Girafarig': 203,
+    'Dunsparce': 206,
+    'Qwilfish': 211,
+    'Mantine': 226,
+    'Porygon2': 233,
+    'Tyrogue': 236, 'Hitmontop': 237,
+    'Smoochum': 238,
+    'Elekid': 239,
+    'Magby': 240,
+    'Blissey': 242,
 
-// --- GEN 4 (Manquants) ---
-'Burmy': 412, 'Wormadam': 413, 'Mothim': 414,
+    // --- GEN 3 (Manquants) ---
+    'Azurill': 298,
+    'Spinda': 327,
+    'Castform': 351,
+    'Kecleon': 352,
+    'Chimecho': 358,
+    'Wynaut': 360,
+
+    // --- GEN 4 (Manquants) ---
+    'Burmy': 412, 'Wormadam': 413, 'Mothim': 414,
 
     // Gen 1 - Communs
     'Caterpie': 10, 'Metapod': 11, 'Butterfree': 12,
@@ -2661,7 +2900,7 @@ const POKEMON_SPRITE_IDS = {
     'Giratina': 487, 'Cresselia': 488, 'Phione': 489, 'Manaphy': 490,
     'Darkrai': 491, 'Shaymin': 492, 'Arceus': 493,
 
-    
+
     // Fallback pour les noms génériques
     'Ennemi': 25,
     'Boss': 150,
@@ -2679,39 +2918,39 @@ const ROAMING_POKEMON = [
 
 // --- DÉFINITION DES POKÉBALLS (Mise à jour avec Rareté) ---
 const BALLS = {
-    'pokeball': { 
-        name: "Pokéball", 
-        catchMult: 1.0, 
-        price: 200, 
+    'pokeball': {
+        name: "Pokéball",
+        catchMult: 1.0,
+        price: 200,
         icon: "🔴", // On garde l'icône en secours
         // ✅ AJOUTER LA LIGNE IMAGE :
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png",
         rarity: 'common',
         description: "Taux de capture standard."
     },
-    'greatball': { 
-        name: "Super Ball", 
-        catchMult: 2, 
-        price: 600, 
-        icon: "🔵", 
+    'greatball': {
+        name: "Super Ball",
+        catchMult: 2,
+        price: 600,
+        icon: "🔵",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png",
         rarity: 'rare',
         description: "Taux de capture x1.5."
     },
-    'hyperball': { 
-        name: "Hyper Ball", 
-        catchMult: 4, 
-        price: 1500, 
-        icon: "⚫", 
+    'hyperball': {
+        name: "Hyper Ball",
+        catchMult: 4,
+        price: 1500,
+        icon: "⚫",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png", // Notez "ultra-ball" en anglais
         rarity: 'epic',
         description: "Taux de capture x2.0."
     },
-    'masterball': { 
-        name: "Master Ball", 
-        catchMult: 999, 
-        price: 0, 
-        icon: "🟣", 
+    'masterball': {
+        name: "Master Ball",
+        catchMult: 999,
+        price: 0,
+        icon: "🟣",
         img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png",
         rarity: 'legendary',
         description: "Capture garantie à 100%."
@@ -2792,7 +3031,7 @@ const PASSIVE_TALENTS = {
         description: "Les Critiques infligent x3 dégâts et +20% chance Crit",
         rarity: RARITY.LEGENDARY
     },
-	opportuniste: {
+    opportuniste: {
         name: "Opportuniste",
         description: "+50% Dégâts si la cible a un effet de statut",
         rarity: RARITY.EPIC
@@ -2823,34 +3062,34 @@ const PASSIVE_TALENTS = {
 
 // On inclut TOUS les talents épiques
 const EPIC_TALENTS = [
-    'mentor', 
-    'collecteur', 
-    'catalyseur', 
-    'vengeance',   
-    'adrenaline',  
-    'charmeur', 'opportuniste', 'muraille', 'intouchable'     
+    'mentor',
+    'collecteur',
+    'catalyseur',
+    'vengeance',
+    'adrenaline',
+    'charmeur', 'opportuniste', 'muraille', 'intouchable'
 ];
 
 // On inclut les Légendaires (et souvent on inclut aussi les Épiques pour diluer, 
 // mais ici gardons les purs Légendaires pour que ce soit vraiment fort)
 const LEGENDARY_TALENTS = [
-    'aura', 
-    'maitre', 
-    'phoenix', 
-    'catalyseur_supreme', 
+    'aura',
+    'maitre',
+    'phoenix',
+    'catalyseur_supreme',
     'sniper', 'vampire', 'berserker'
 ];
 
 
-		
-		const STATUS_EFFECTS = {
+
+const STATUS_EFFECTS = {
     NONE: 'none',
     PARALYZED: 'paralyzed',
     FROZEN: 'frozen',
     BURNED: 'burned',
     POISONED: 'poisoned',
     STUNNED: 'stunned',
-	// Nouveaux debuffs
+    // Nouveaux debuffs
     CONFUSED: 'confused',
     SCARED: 'scared',
     // Nouveaux buffs
@@ -2910,401 +3149,401 @@ const POKEMON_ULTIMATE_ABILITIES = {
         name: "Distorsion",
         description: "Inflige 100% de dégâts et applique CONFUS. Charge l'ultime de 50% au prochain tour.",
         chargeNeeded: 100,
-        effect: { type: 'DAMAGE_AND_STATUS', value: 1.0, status: STATUS_EFFECTS.CONFUSED, bonusCharge: 50 } 
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.0, status: STATUS_EFFECTS.CONFUSED, bonusCharge: 50 }
         // Note : "bonusCharge" est un nouvel effet que nous devrons peut-être implémenter
     },
-	'Groudon': {
+    'Groudon': {
         name: "Magma",
         description: "Inflige 120% de dégâts et applique CONFUS. Charge l'ultime de 50% au prochain tour.",
         chargeNeeded: 100,
-        effect: { type: 'DAMAGE_AND_STATUS', value: 1.2, status: STATUS_EFFECTS.BURNED, bonusCharge: 50 } 
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.2, status: STATUS_EFFECTS.BURNED, bonusCharge: 50 }
         // Note : "bonusCharge" est un nouvel effet que nous devrons peut-être implémenter
     },
-	'Venusaur': {
-    name: "Vampigraine",
-    description: "Inflige 100% de dégâts et draine 50% des dégâts infligés en PV.",
-    chargeNeeded: 100,
-    effect: { type: 'LIFESTEAL', value: 1.0, steal: 0.5 }
-},
-'Blastoise': {
-    name: "Hydro-Canon",
-    description: "Inflige 160% de dégâts et applique RENFORCÉ (augmente la Défense).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.REINFORCED }
-},
-'Pikachu': {
-    name: "Fatal-Foudre",
-    description: "Inflige 150% de dégâts et garantit d'appliquer PARALYSIE.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.PARALYZED }
-},
-'Raichu': {
-    name: "Fatal-Foudre",
-    description: "Inflige 150% de dégâts et garantit d'appliquer PARALYSIE.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.PARALYZED }
-},
-'Snorlax': {
-    name: "Giga-Impact",
-    description: "Inflige 250% de dégâts, mais vous subissez 25% des dégâts infligés en retour.",
-    chargeNeeded: 100,
-    effect: { type: 'RECOIL', value: 2.5, recoil: 0.25 }
-},
-'Gyarados': {
-    name: "Cascade",
-    description: "Inflige 80% de dégâts, mais frappe 2 fois.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_HIT', value: 0.8, hits: 2 }
-},
-'Dragonite': {
-    name: "Draco-Charge",
-    description: "Inflige 180% de dégâts et applique ENRAGÉ (augmente l'Attaque).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.ENRAGED }
-},
-'Articuno': {
-    name: "Zéro Absolu",
-    description: "Inflige 150% de dégâts et garantit d'appliquer GEL.",
-    chargeNeeded: 120,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.FROZEN }
-},
-'Zapdos': {
-    name: "Électrocution",
-    description: "Inflige 100% de dégâts, frappe 2 fois, et applique PARALYSIE.",
-    chargeNeeded: 120,
-    effect: { type: 'MULTI_HIT', value: 1.0, hits: 2, status: STATUS_EFFECTS.PARALYZED }
-    // Note : Il faudra modifier 'MULTI_HIT' dans performAttackWithBonus pour gérer ce "status" optionnel
-},
-'Moltres': {
-    name: "Déflagration",
-    description: "Inflige 200% de dégâts de Feu et garantit BRÛLURE.",
-    chargeNeeded: 120,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 2.0, status: STATUS_EFFECTS.BURNED }
-},
-'Lugia': {
-    name: "Aéroblast",
-    description: "Inflige 160% de dégâts et applique AGILE (augmente l'esquive).",
-    chargeNeeded: 110,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.AGILE }
-},
-'Ho-Oh': {
-    name: "Feu Sacré",
-    description: "Inflige 170% de dégâts, garantit BRÛLURE, et se soigne de 15% des PV max.",
-    chargeNeeded: 120,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.BURNED, selfHeal: 0.15 }
-    // Note : "selfHeal" est un nouvel effet à ajouter dans le switch case de performUltimateAttack
-},
-'Tyranitar': {
-    name: "Sable Volant",
-    description: "Inflige 150% de dégâts et applique EFFRAYÉ (réduit l'Attaque ennemie).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.SCARED }
-},
-'Metagross': {
-    name: "Poing Météore",
-    description: "Inflige 160% de dégâts et applique RENFORCÉ (augmente la Défense).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.REINFORCED }
-},
-'Salamence': {
-    name: "Vol-Dragon",
-    description: "Inflige 170% de dégâts et applique AGILE (augmente l'esquive).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.AGILE }
-},
-'Garchomp': {
-    name: "Double Frappe",
-    description: "Inflige 100% de dégâts, mais frappe 2 fois.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_HIT', value: 1.0, hits: 2 }
-},
-'Kyogre': {
-    name: "Onde Originelle",
-    description: "Inflige 180% de dégâts et applique GEL.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.FROZEN }
-},
-'Rayquaza': {
-    name: "Draco Ascension",
-    description: "Inflige 220% de dégâts qui ignorent 25% de la Défense de l'ennemi.",
-    chargeNeeded: 120,
-    effect: { type: 'DEFENSE_PENETRATION', value: 2.2, penetration: 0.25 }
-},
-'Dialga': {
-    name: "Hurle-Temps",
-    description: "Inflige 200% de dégâts et applique ÉTOURDI (ennemi passe son tour).",
-    chargeNeeded: 120,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 2.0, status: STATUS_EFFECTS.STUNNED }
-},
-'Palkia': {
-    name: "Spatio-Rift",
-    description: "Inflige 170% de dégâts et applique CONFUS.",
-    chargeNeeded: 110,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.CONFUSED }
-},
-'Giratina': {
-    name: "Revenant",
-    description: "N'inflige pas de dégâts, mais applique EFFRAYÉ, CONFUS, et EMPOISONNEMENT.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.SCARED, STATUS_EFFECTS.CONFUSED, STATUS_EFFECTS.POISONED] }
-},
-'Arceus': {
-    name: "Jugement",
-    description: "Inflige 250% de dégâts purs qui ignorent 25% de la Défense.",
-    chargeNeeded: 130,
-    effect: { type: 'DEFENSE_PENETRATION', value: 2.5, penetration: 0.25 }
-},
-'Arcanine': {
-    name: "Vitesse Extrême",
-    description: "Inflige 180% de dégâts et applique ENRAGÉ (augmente l'Attaque et la Vitesse).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.ENRAGED }
-},
-'Machamp': {
-    name: "Poing-Karaté",
-    description: "Frappe 4 fois, infligeant 60% de dégâts à chaque coup.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_HIT', value: 0.6, hits: 4 }
-},
-'Lapras': {
-    name: "Onde Boréale",
-    description: "Inflige 120% de dégâts et a 100% de chance d'appliquer GEL.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.2, status: STATUS_EFFECTS.FROZEN }
-},
-'Vaporeon': {
-    name: "Aqua-Régénération",
-    description: "Restaure 40% des PV max du compte.",
-    chargeNeeded: 120, // Les soins sont puissants
-    effect: { type: 'HEAL', value: 0.40 }
-},
-'Jolteon': {
-    name: "Hâte",
-    description: "Applique AGILE (3 esquives) et PUNCHER (prochaine attaque x2).",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.AGILE, STATUS_EFFECTS.PUNCHER] }
-},
-'Flareon': {
-    name: "Boutefeu",
-    description: "Inflige 220% de dégâts, mais vous subissez 20% des dégâts infligés en retour.",
-    chargeNeeded: 100,
-    effect: { type: 'RECOIL', value: 2.2, recoil: 0.20 }
-},
-'Espeon': {
-    name: "Psyko",
-    description: "Inflige 160% de dégâts et applique CONFUS.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.CONFUSED }
-},
-'Umbreon': {
-    name: "Regard Noir",
-    description: "Inflige 140% de dégâts et applique EFFRAYÉ (réduit l'Attaque ennemie).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.4, status: STATUS_EFFECTS.SCARED }
-},
-'Typhlosion': {
-    name: "Éruption",
-    description: "Inflige 190% de dégâts et garantit BRÛLURE.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.9, status: STATUS_EFFECTS.BURNED }
-},
-'Feraligatr': {
-    name: "Crocs Givre",
-    description: "Inflige 150% de dégâts et draine 30% des dégâts en PV.",
-    chargeNeeded: 100,
-    effect: { type: 'LIFESTEAL', value: 1.5, steal: 0.3 }
-},
-'Sceptile': {
-    name: "Lame-Feuille",
-    description: "La prochaine attaque inflige 250% de dégâts.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_MULT', value: 2.5 }
-},
-'Blaziken': {
-    name: "Pied Brûleur",
-    description: "Inflige 180% de dégâts et applique PUNCHER (prochaine attaque x2).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.PUNCHER }
-},
-'Swampert': {
-    name: "Séisme",
-    description: "Inflige 160% de dégâts et applique RENFORCÉ.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.REINFORCED }
-},
-'Infernape': {
-    name: "Close Combat",
-    description: "Frappe 3 fois, infligeant 70% de dégâts à chaque coup.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_HIT', value: 0.7, hits: 3 }
-},
-'Empoleon': {
-    name: "Hydro-Armure",
-    description: "Inflige 150% de dégâts et applique RENFORCÉ.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.REINFORCED }
-},
-'Gardevoir': {
-    name: "Trou Noir",
-    description: "Inflige 100% de dégâts et applique CONFUS et EFFRAYÉ.",
-    chargeNeeded: 110,
-    effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.CONFUSED, STATUS_EFFECTS.SCARED], value: 1.0 }
-    // Note : Il faudra modifier 'MULTI_BUFF' pour qu'il gère 'value' (dégâts) en plus des statuts
-},
-'Lucario': {
-    name: "Aurasphère",
-    description: "La prochaine attaque inflige 300% de dégâts.",
-    chargeNeeded: 110,
-    effect: { type: 'DAMAGE_MULT', value: 3.0 }
-},
-'Nidoking': {
-    name: "Force Colossale",
-    description: "Inflige 170% de dégâts et applique RENFORCÉ.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.REINFORCED }
-},
-'Nidoqueen': {
-    name: "Égide Royale",
-    description: "Inflige 150% de dégâts et applique RENFORCÉ.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.REINFORCED }
-},
-'Vileplume': {
-    name: "Poudre Dodo",
-    description: "N'inflige pas de dégâts, mais garantit d'appliquer EMPOISONNEMENT et PARALYSIE.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.POISONED, STATUS_EFFECTS.PARALYZED] }
-},
-'Poliwrath': {
-    name: "Poing-Dynamique",
-    description: "Inflige 150% de dégâts et applique CONFUS.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.CONFUSED }
-},
-'Scizor': {
-    name: "Poing-Pistolet",
-    description: "Frappe 3 fois, infligeant 70% de dégâts à chaque coup.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_HIT', value: 0.7, hits: 3 }
-},
-'Heracross': {
-    name: "Mégacorne",
-    description: "La prochaine attaque inflige 300% de dégâts.",
-    chargeNeeded: 110,
-    effect: { type: 'DAMAGE_MULT', value: 3.0 }
-},
-'Crobat': {
-    name: "Poison-Croix",
-    description: "Inflige 120% de dégâts et applique EMPOISONNEMENT (dégâts x3).",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.2, status: STATUS_EFFECTS.POISONED, statusMult: 3 }
-},
-'Ampharos': {
-    name: "Rayon Signal",
-    description: "Inflige 140% de dégâts et garantit PARALYSIE.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.4, status: STATUS_EFFECTS.PARALYZED }
-},
-'Flygon': {
-    name: "Draco-Charge",
-    description: "Inflige 100% de dégâts, frappe 2 fois.",
-    chargeNeeded: 100,
-    effect: { type: 'MULTI_HIT', value: 1.0, hits: 2 }
-},
-'Milotic': {
-    name: "Anneau Hydro",
-    description: "Restaure 35% des PV max du compte.",
-    chargeNeeded: 110,
-    effect: { type: 'HEAL', value: 0.35 }
-},
-'Absol': {
-    name: "Coup Critique",
-    description: "La prochaine attaque inflige 300% de dégâts.",
-    chargeNeeded: 110,
-    effect: { type: 'DAMAGE_MULT', value: 3.0 }
-},
-'Leafeon': {
-    name: "Giga-Sangsue",
-    description: "Inflige 120% de dégâts et draine 50% des dégâts infligés en PV.",
-    chargeNeeded: 100,
-    effect: { type: 'LIFESTEAL', value: 1.2, steal: 0.5 }
-},
-'Glaceon': {
-    name: "Blizzard",
-    description: "Inflige 140% de dégâts et garantit d'appliquer GEL.",
-    chargeNeeded: 100,
-    effect: { type: 'DAMAGE_AND_STATUS', value: 1.4, status: STATUS_EFFECTS.FROZEN }
-},
-'Togekiss': {
+    'Venusaur': {
+        name: "Vampigraine",
+        description: "Inflige 100% de dégâts et draine 50% des dégâts infligés en PV.",
+        chargeNeeded: 100,
+        effect: { type: 'LIFESTEAL', value: 1.0, steal: 0.5 }
+    },
+    'Blastoise': {
+        name: "Hydro-Canon",
+        description: "Inflige 160% de dégâts et applique RENFORCÉ (augmente la Défense).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.REINFORCED }
+    },
+    'Pikachu': {
+        name: "Fatal-Foudre",
+        description: "Inflige 150% de dégâts et garantit d'appliquer PARALYSIE.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.PARALYZED }
+    },
+    'Raichu': {
+        name: "Fatal-Foudre",
+        description: "Inflige 150% de dégâts et garantit d'appliquer PARALYSIE.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.PARALYZED }
+    },
+    'Snorlax': {
+        name: "Giga-Impact",
+        description: "Inflige 250% de dégâts, mais vous subissez 25% des dégâts infligés en retour.",
+        chargeNeeded: 100,
+        effect: { type: 'RECOIL', value: 2.5, recoil: 0.25 }
+    },
+    'Gyarados': {
+        name: "Cascade",
+        description: "Inflige 80% de dégâts, mais frappe 2 fois.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_HIT', value: 0.8, hits: 2 }
+    },
+    'Dragonite': {
+        name: "Draco-Charge",
+        description: "Inflige 180% de dégâts et applique ENRAGÉ (augmente l'Attaque).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.ENRAGED }
+    },
+    'Articuno': {
+        name: "Zéro Absolu",
+        description: "Inflige 150% de dégâts et garantit d'appliquer GEL.",
+        chargeNeeded: 120,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.FROZEN }
+    },
+    'Zapdos': {
+        name: "Électrocution",
+        description: "Inflige 100% de dégâts, frappe 2 fois, et applique PARALYSIE.",
+        chargeNeeded: 120,
+        effect: { type: 'MULTI_HIT', value: 1.0, hits: 2, status: STATUS_EFFECTS.PARALYZED }
+        // Note : Il faudra modifier 'MULTI_HIT' dans performAttackWithBonus pour gérer ce "status" optionnel
+    },
+    'Moltres': {
+        name: "Déflagration",
+        description: "Inflige 200% de dégâts de Feu et garantit BRÛLURE.",
+        chargeNeeded: 120,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 2.0, status: STATUS_EFFECTS.BURNED }
+    },
+    'Lugia': {
+        name: "Aéroblast",
+        description: "Inflige 160% de dégâts et applique AGILE (augmente l'esquive).",
+        chargeNeeded: 110,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.AGILE }
+    },
+    'Ho-Oh': {
+        name: "Feu Sacré",
+        description: "Inflige 170% de dégâts, garantit BRÛLURE, et se soigne de 15% des PV max.",
+        chargeNeeded: 120,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.BURNED, selfHeal: 0.15 }
+        // Note : "selfHeal" est un nouvel effet à ajouter dans le switch case de performUltimateAttack
+    },
+    'Tyranitar': {
+        name: "Sable Volant",
+        description: "Inflige 150% de dégâts et applique EFFRAYÉ (réduit l'Attaque ennemie).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.SCARED }
+    },
+    'Metagross': {
+        name: "Poing Météore",
+        description: "Inflige 160% de dégâts et applique RENFORCÉ (augmente la Défense).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.REINFORCED }
+    },
+    'Salamence': {
+        name: "Vol-Dragon",
+        description: "Inflige 170% de dégâts et applique AGILE (augmente l'esquive).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.AGILE }
+    },
+    'Garchomp': {
+        name: "Double Frappe",
+        description: "Inflige 100% de dégâts, mais frappe 2 fois.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_HIT', value: 1.0, hits: 2 }
+    },
+    'Kyogre': {
+        name: "Onde Originelle",
+        description: "Inflige 180% de dégâts et applique GEL.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.FROZEN }
+    },
+    'Rayquaza': {
+        name: "Draco Ascension",
+        description: "Inflige 220% de dégâts qui ignorent 25% de la Défense de l'ennemi.",
+        chargeNeeded: 120,
+        effect: { type: 'DEFENSE_PENETRATION', value: 2.2, penetration: 0.25 }
+    },
+    'Dialga': {
+        name: "Hurle-Temps",
+        description: "Inflige 200% de dégâts et applique ÉTOURDI (ennemi passe son tour).",
+        chargeNeeded: 120,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 2.0, status: STATUS_EFFECTS.STUNNED }
+    },
+    'Palkia': {
+        name: "Spatio-Rift",
+        description: "Inflige 170% de dégâts et applique CONFUS.",
+        chargeNeeded: 110,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.CONFUSED }
+    },
+    'Giratina': {
+        name: "Revenant",
+        description: "N'inflige pas de dégâts, mais applique EFFRAYÉ, CONFUS, et EMPOISONNEMENT.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.SCARED, STATUS_EFFECTS.CONFUSED, STATUS_EFFECTS.POISONED] }
+    },
+    'Arceus': {
+        name: "Jugement",
+        description: "Inflige 250% de dégâts purs qui ignorent 25% de la Défense.",
+        chargeNeeded: 130,
+        effect: { type: 'DEFENSE_PENETRATION', value: 2.5, penetration: 0.25 }
+    },
+    'Arcanine': {
+        name: "Vitesse Extrême",
+        description: "Inflige 180% de dégâts et applique ENRAGÉ (augmente l'Attaque et la Vitesse).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.ENRAGED }
+    },
+    'Machamp': {
+        name: "Poing-Karaté",
+        description: "Frappe 4 fois, infligeant 60% de dégâts à chaque coup.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_HIT', value: 0.6, hits: 4 }
+    },
+    'Lapras': {
+        name: "Onde Boréale",
+        description: "Inflige 120% de dégâts et a 100% de chance d'appliquer GEL.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.2, status: STATUS_EFFECTS.FROZEN }
+    },
+    'Vaporeon': {
+        name: "Aqua-Régénération",
+        description: "Restaure 40% des PV max du compte.",
+        chargeNeeded: 120, // Les soins sont puissants
+        effect: { type: 'HEAL', value: 0.40 }
+    },
+    'Jolteon': {
+        name: "Hâte",
+        description: "Applique AGILE (3 esquives) et PUNCHER (prochaine attaque x2).",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.AGILE, STATUS_EFFECTS.PUNCHER] }
+    },
+    'Flareon': {
+        name: "Boutefeu",
+        description: "Inflige 220% de dégâts, mais vous subissez 20% des dégâts infligés en retour.",
+        chargeNeeded: 100,
+        effect: { type: 'RECOIL', value: 2.2, recoil: 0.20 }
+    },
+    'Espeon': {
+        name: "Psyko",
+        description: "Inflige 160% de dégâts et applique CONFUS.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.CONFUSED }
+    },
+    'Umbreon': {
+        name: "Regard Noir",
+        description: "Inflige 140% de dégâts et applique EFFRAYÉ (réduit l'Attaque ennemie).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.4, status: STATUS_EFFECTS.SCARED }
+    },
+    'Typhlosion': {
+        name: "Éruption",
+        description: "Inflige 190% de dégâts et garantit BRÛLURE.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.9, status: STATUS_EFFECTS.BURNED }
+    },
+    'Feraligatr': {
+        name: "Crocs Givre",
+        description: "Inflige 150% de dégâts et draine 30% des dégâts en PV.",
+        chargeNeeded: 100,
+        effect: { type: 'LIFESTEAL', value: 1.5, steal: 0.3 }
+    },
+    'Sceptile': {
+        name: "Lame-Feuille",
+        description: "La prochaine attaque inflige 250% de dégâts.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_MULT', value: 2.5 }
+    },
+    'Blaziken': {
+        name: "Pied Brûleur",
+        description: "Inflige 180% de dégâts et applique PUNCHER (prochaine attaque x2).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.PUNCHER }
+    },
+    'Swampert': {
+        name: "Séisme",
+        description: "Inflige 160% de dégâts et applique RENFORCÉ.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.REINFORCED }
+    },
+    'Infernape': {
+        name: "Close Combat",
+        description: "Frappe 3 fois, infligeant 70% de dégâts à chaque coup.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_HIT', value: 0.7, hits: 3 }
+    },
+    'Empoleon': {
+        name: "Hydro-Armure",
+        description: "Inflige 150% de dégâts et applique RENFORCÉ.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.REINFORCED }
+    },
+    'Gardevoir': {
+        name: "Trou Noir",
+        description: "Inflige 100% de dégâts et applique CONFUS et EFFRAYÉ.",
+        chargeNeeded: 110,
+        effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.CONFUSED, STATUS_EFFECTS.SCARED], value: 1.0 }
+        // Note : Il faudra modifier 'MULTI_BUFF' pour qu'il gère 'value' (dégâts) en plus des statuts
+    },
+    'Lucario': {
+        name: "Aurasphère",
+        description: "La prochaine attaque inflige 300% de dégâts.",
+        chargeNeeded: 110,
+        effect: { type: 'DAMAGE_MULT', value: 3.0 }
+    },
+    'Nidoking': {
+        name: "Force Colossale",
+        description: "Inflige 170% de dégâts et applique RENFORCÉ.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.7, status: STATUS_EFFECTS.REINFORCED }
+    },
+    'Nidoqueen': {
+        name: "Égide Royale",
+        description: "Inflige 150% de dégâts et applique RENFORCÉ.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.REINFORCED }
+    },
+    'Vileplume': {
+        name: "Poudre Dodo",
+        description: "N'inflige pas de dégâts, mais garantit d'appliquer EMPOISONNEMENT et PARALYSIE.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_BUFF', status: [STATUS_EFFECTS.POISONED, STATUS_EFFECTS.PARALYZED] }
+    },
+    'Poliwrath': {
+        name: "Poing-Dynamique",
+        description: "Inflige 150% de dégâts et applique CONFUS.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.5, status: STATUS_EFFECTS.CONFUSED }
+    },
+    'Scizor': {
+        name: "Poing-Pistolet",
+        description: "Frappe 3 fois, infligeant 70% de dégâts à chaque coup.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_HIT', value: 0.7, hits: 3 }
+    },
+    'Heracross': {
+        name: "Mégacorne",
+        description: "La prochaine attaque inflige 300% de dégâts.",
+        chargeNeeded: 110,
+        effect: { type: 'DAMAGE_MULT', value: 3.0 }
+    },
+    'Crobat': {
+        name: "Poison-Croix",
+        description: "Inflige 120% de dégâts et applique EMPOISONNEMENT (dégâts x3).",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.2, status: STATUS_EFFECTS.POISONED, statusMult: 3 }
+    },
+    'Ampharos': {
+        name: "Rayon Signal",
+        description: "Inflige 140% de dégâts et garantit PARALYSIE.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.4, status: STATUS_EFFECTS.PARALYZED }
+    },
+    'Flygon': {
+        name: "Draco-Charge",
+        description: "Inflige 100% de dégâts, frappe 2 fois.",
+        chargeNeeded: 100,
+        effect: { type: 'MULTI_HIT', value: 1.0, hits: 2 }
+    },
+    'Milotic': {
+        name: "Anneau Hydro",
+        description: "Restaure 35% des PV max du compte.",
+        chargeNeeded: 110,
+        effect: { type: 'HEAL', value: 0.35 }
+    },
+    'Absol': {
+        name: "Coup Critique",
+        description: "La prochaine attaque inflige 300% de dégâts.",
+        chargeNeeded: 110,
+        effect: { type: 'DAMAGE_MULT', value: 3.0 }
+    },
+    'Leafeon': {
+        name: "Giga-Sangsue",
+        description: "Inflige 120% de dégâts et draine 50% des dégâts infligés en PV.",
+        chargeNeeded: 100,
+        effect: { type: 'LIFESTEAL', value: 1.2, steal: 0.5 }
+    },
+    'Glaceon': {
+        name: "Blizzard",
+        description: "Inflige 140% de dégâts et garantit d'appliquer GEL.",
+        chargeNeeded: 100,
+        effect: { type: 'DAMAGE_AND_STATUS', value: 1.4, status: STATUS_EFFECTS.FROZEN }
+    },
+    'Togekiss': {
         name: "Lame d'Air",
         description: "Frappe 2 fois et a une chance d'ETOURDIR (Flinch).",
         chargeNeeded: 100,
         effect: { type: 'MULTI_HIT', value: 0.9, hits: 2, status: STATUS_EFFECTS.STUNNED }
     },
-    
+
     'Gallade': {
         name: "Coupe Psycho",
         description: "Une attaque précise qui ignore 30% de la Défense adverse.",
         chargeNeeded: 90,
         effect: { type: 'DEFENSE_PENETRATION', value: 1.8, penetration: 0.3 }
     },
-    
+
     'Rhyperior': {
         name: "Roc-Boulet",
         description: "Une attaque massive (250% Dégâts) qui inflige un léger recul.",
         chargeNeeded: 110,
         effect: { type: 'RECOIL', value: 2.5, recoil: 0.05 }
     },
-    
+
     'Electivire': {
         name: "Poing-Éclair",
         description: "Frappe 3 fois et a une chance de PARALYSER.",
         chargeNeeded: 100,
         effect: { type: 'MULTI_HIT', value: 0.7, hits: 3, status: STATUS_EFFECTS.PARALYZED }
     },
-    
+
     'Magmortar': {
         name: "Canon Floral",
         description: "Tire une boule de feu explosive (200% Dégâts) qui BRÛLE l'ennemi.",
         chargeNeeded: 110,
         effect: { type: 'DAMAGE_AND_STATUS', value: 2.0, status: STATUS_EFFECTS.BURNED }
     },
-    
+
     'Dusknoir': {
         name: "Poing Ombre",
         description: "Une attaque inesquivable (160% Dégâts) qui rend l'ennemi CONFUS.",
         chargeNeeded: 90,
         effect: { type: 'DAMAGE_AND_STATUS', value: 1.6, status: STATUS_EFFECTS.CONFUSED }
     },
-    
+
     'Magnezone': {
         name: "Luminocanon",
         description: "Inflige 180% de dégâts et applique RENFORCÉ.",
         chargeNeeded: 100,
         effect: { type: 'DAMAGE_AND_STATUS', value: 1.8, status: STATUS_EFFECTS.REINFORCED }
     },
-    
+
     'Weavile': {
         name: "Tranche-Nuit",
         description: "Frappe 3 fois très rapidement (0.6x par coup).",
         chargeNeeded: 80, // Charge très vite
         effect: { type: 'MULTI_HIT', value: 0.6, hits: 3 }
     },
-    
+
     'Porygon-Z': {
         name: "Ultralaser Bug",
         description: "Une attaque instable qui inflige 250% de dégâts mais rend CONFUS le lanceur (simulé).",
         chargeNeeded: 110,
         effect: { type: 'DAMAGE_MULT', value: 2.5 }
     },
-    
+
     'Slaking': {
         name: "Paresse Royale",
         description: "Ne fait rien... puis frappe à 400% de dégâts !",
         chargeNeeded: 150, // Très long à charger
         effect: { type: 'DAMAGE_MULT', value: 4.0 }
     },
-	
+
     'Darkrai': {
         name: "Trou Noir",
         description: "Plonge l'ennemi dans le cauchemar : Dégâts + ÉTOURDI (Passe son tour).",
@@ -3671,7 +3910,7 @@ const POKEMON_ULTIMATE_ABILITIES = {
         chargeNeeded: 100,
         effect: { type: 'DEFENSE_PENETRATION', value: 1.6, penetration: 0.2 }
     },
-	// --- DERNIERS LÉGENDAIRES MANQUANTS ---
+    // --- DERNIERS LÉGENDAIRES MANQUANTS ---
 
     'Moltres': {
         name: "Piqué Incendiaire",
@@ -3837,126 +4076,136 @@ const QUEST_DIFFICULTIES = {
     EASY: {
         name: 'Facile',
         color: '#10b981',
-        rewardMultiplier: 1,
+        icon: '🟢',
+        rewardMultiplier: 1.0,
         rarityWeights: { common: 70, uncommon: 25, rare: 5 }
     },
     MEDIUM: {
         name: 'Moyen',
         color: '#3b82f6',
-        rewardMultiplier: 1.5,
+        icon: '🔵',
+        rewardMultiplier: 1.8,
         rarityWeights: { common: 50, uncommon: 35, rare: 12, epic: 3 }
     },
     HARD: {
         name: 'Difficile',
         color: '#8b5cf6',
-        rewardMultiplier: 2.5,
+        icon: '🟣',
+        rewardMultiplier: 3.2,
         rarityWeights: { uncommon: 40, rare: 35, epic: 20, legendary: 5 }
     },
     EXTREME: {
         name: 'Extrême',
         color: '#ec4899',
-        rewardMultiplier: 4,
+        icon: '🔴',
+        rewardMultiplier: 5.0,
         rarityWeights: { rare: 30, epic: 40, legendary: 25, mythic: 5 }
     }
 };
 
+// Base rewards for generated (non-story) quests.
+const QUEST_REWARD_BASE = {
+    pokedollars: 250,
+    tokens: 2
+};
+
 const ACHIEVEMENTS = {
     // Investisseur Avisé
-    'upgradesPurchased_1': { 
-        title: "Investisseur Avisé I", 
-        desc: "Acheter 3 améliorations", 
-        target: 3, 
-        trackingKey: 'upgradesPurchased', 
-        rewards: { pokedollars: 5000, questTokens: 10 } 
+    'upgradesPurchased_1': {
+        title: "Investisseur Avisé I",
+        desc: "Acheter 3 améliorations",
+        target: 3,
+        trackingKey: 'upgradesPurchased',
+        rewards: { pokedollars: 5000, questTokens: 10 }
     },
-    'upgradesPurchased_2': { 
-        title: "Investisseur Avisé II", 
-        desc: "Acheter 5 améliorations", 
-        target: 5, 
-        trackingKey: 'upgradesPurchased', 
-        rewards: { pokedollars: 10000, questTokens: 20 } 
+    'upgradesPurchased_2': {
+        title: "Investisseur Avisé II",
+        desc: "Acheter 5 améliorations",
+        target: 5,
+        trackingKey: 'upgradesPurchased',
+        rewards: { pokedollars: 10000, questTokens: 20 }
     },
-    'upgradesPurchased_3': { 
-        title: "Investisseur Avisé III", 
-        desc: "Acheter 8 améliorations", 
-        target: 8, 
-        trackingKey: 'upgradesPurchased', 
-        rewards: { pokedollars: 20000, questTokens: 30, eggs: { [RARITY.RARE]: 1 } } 
+    'upgradesPurchased_3': {
+        title: "Investisseur Avisé III",
+        desc: "Acheter 8 améliorations",
+        target: 8,
+        trackingKey: 'upgradesPurchased',
+        rewards: { pokedollars: 20000, questTokens: 30, eggs: { [RARITY.RARE]: 1 } }
     },
 
     // Élevage Intensif
-    'pensionCount_1': { 
-        title: "Élevage Intensif I", 
-        desc: "Avoir 3 créatures en pension", 
-        target: 3, 
-        trackingKey: 'pensionCount', 
-        rewards: { pokedollars: 5000, questTokens: 10 } 
+    'pensionCount_1': {
+        title: "Élevage Intensif I",
+        desc: "Avoir 3 créatures en pension",
+        target: 3,
+        trackingKey: 'pensionCount',
+        rewards: { pokedollars: 5000, questTokens: 10 }
     },
-    'pensionCount_2': { 
-        title: "Élevage Intensif II", 
-        desc: "Avoir 5 créatures en pension", 
-        target: 5, 
-        trackingKey: 'pensionCount', 
-        rewards: { pokedollars: 10000, questTokens: 20 } 
+    'pensionCount_2': {
+        title: "Élevage Intensif II",
+        desc: "Avoir 5 créatures en pension",
+        target: 5,
+        trackingKey: 'pensionCount',
+        rewards: { pokedollars: 10000, questTokens: 20 }
     },
-    'pensionCount_3': { 
-        title: "Élevage Intensif III", 
-        desc: "Avoir 8 créatures en pension", 
-        target: 8, 
-        trackingKey: 'pensionCount', 
-        rewards: { pokedollars: 20000, questTokens: 30, eggs: { [RARITY.RARE]: 1 } } 
+    'pensionCount_3': {
+        title: "Élevage Intensif III",
+        desc: "Avoir 8 créatures en pension",
+        target: 8,
+        trackingKey: 'pensionCount',
+        rewards: { pokedollars: 20000, questTokens: 30, eggs: { [RARITY.RARE]: 1 } }
     },
 
     // Équipe d'Élite
-    'teamPower_1': { 
-        title: "Équipe d'Élite I", 
-        desc: "Atteindre 10 000 de puissance d'équipe totale", 
-        target: 10000, 
-        trackingKey: 'teamPower', 
-        rewards: { pokedollars: 10000, questTokens: 15 } 
+    'teamPower_1': {
+        title: "Équipe d'Élite I",
+        desc: "Atteindre 10 000 de puissance d'équipe totale",
+        target: 10000,
+        trackingKey: 'teamPower',
+        rewards: { pokedollars: 10000, questTokens: 15 }
     },
-    'teamPower_2': { 
-        title: "Équipe d'Élite II", 
-        desc: "Atteindre 25 000 de puissance d'équipe totale", 
-        target: 25000, 
-        trackingKey: 'teamPower', 
-        rewards: { pokedollars: 20000, questTokens: 25 } 
+    'teamPower_2': {
+        title: "Équipe d'Élite II",
+        desc: "Atteindre 25 000 de puissance d'équipe totale",
+        target: 25000,
+        trackingKey: 'teamPower',
+        rewards: { pokedollars: 20000, questTokens: 25 }
     },
-    'teamPower_3': { 
-        title: "Équipe d'Élite III", 
-        desc: "Atteindre 50 000 de puissance d'équipe totale", 
-        target: 50000, 
-        trackingKey: 'teamPower', 
-        rewards: { pokedollars: 30000, questTokens: 35, eggs: { [RARITY.EPIC]: 1 } } 
+    'teamPower_3': {
+        title: "Équipe d'Élite III",
+        desc: "Atteindre 50 000 de puissance d'équipe totale",
+        target: 50000,
+        trackingKey: 'teamPower',
+        rewards: { pokedollars: 30000, questTokens: 35, eggs: { [RARITY.EPIC]: 1 } }
     },
-'teamPower_4': { 
-        title: "Équipe d'Élite III", 
-        desc: "Atteindre 100 000 de puissance d'équipe totale", 
-        target: 100000, 
-        trackingKey: 'teamPower', 
-        rewards: { pokedollars: 60000, questTokens: 35, eggs: { [RARITY.EPIC]: 3 } } 
+    'teamPower_4': {
+        title: "Équipe d'Élite III",
+        desc: "Atteindre 100 000 de puissance d'équipe totale",
+        target: 100000,
+        trackingKey: 'teamPower',
+        rewards: { pokedollars: 60000, questTokens: 35, eggs: { [RARITY.EPIC]: 3 } }
     },
     // Collectionneur de Badges
-    'badgesEarned_1': { 
-        title: "Collectionneur de Badges I", 
-        desc: "Obtenir 1 badge d'arène", 
-        target: 1, 
-        trackingKey: 'badgesEarned', 
-        rewards: { questTokens: 50, eggs: { [RARITY.EPIC]: 1 } } 
+    'badgesEarned_1': {
+        title: "Collectionneur de Badges I",
+        desc: "Obtenir 1 badge d'arène",
+        target: 1,
+        trackingKey: 'badgesEarned',
+        rewards: { questTokens: 50, eggs: { [RARITY.EPIC]: 1 } }
     },
-    'badgesEarned_2': { 
-        title: "Collectionneur de Badges II", 
-        desc: "Obtenir 3 badges d'arène", 
-        target: 3, 
-        trackingKey: 'badgesEarned', 
-        rewards: { questTokens: 100, eggs: { [RARITY.EPIC]: 2 } } 
+    'badgesEarned_2': {
+        title: "Collectionneur de Badges II",
+        desc: "Obtenir 3 badges d'arène",
+        target: 3,
+        trackingKey: 'badgesEarned',
+        rewards: { questTokens: 100, eggs: { [RARITY.EPIC]: 2 } }
     },
-    'badgesEarned_3': { 
-        title: "Collectionneur de Badges III", 
-        desc: "Obtenir 5 badges d'arène", 
-        target: 5, 
-        trackingKey: 'badgesEarned', 
-        rewards: { questTokens: 150, eggs: { [RARITY.LEGENDARY]: 1 } } 
+    'badgesEarned_3': {
+        title: "Collectionneur de Badges III",
+        desc: "Obtenir 5 badges d'arène",
+        target: 5,
+        trackingKey: 'badgesEarned',
+        rewards: { questTokens: 150, eggs: { [RARITY.LEGENDARY]: 1 } }
     },
     // --- Professor Chen (narrative, unlocked manually) ---
     'toutCaPourCa_1': {
@@ -3967,20 +4216,20 @@ const ACHIEVEMENTS = {
         rewards: {}
     },
     // --- COLLECTION SHINY ---
-    'shinyHunter_1': { 
-        title: "Chasseur d'Étoiles I", desc: "Capturer 1 Pokémon Shiny", 
-        target: 1, trackingKey: 'shiniesObtained', 
-        rewards: { questTokens: 50, eggs: { [RARITY.EPIC]: 1 } } 
+    'shinyHunter_1': {
+        title: "Chasseur d'Étoiles I", desc: "Capturer 1 Pokémon Shiny",
+        target: 1, trackingKey: 'shiniesObtained',
+        rewards: { questTokens: 50, eggs: { [RARITY.EPIC]: 1 } }
     },
-    'shinyHunter_2': { 
-        title: "Chasseur d'Étoiles II", desc: "Capturer 10 Pokémon Shiny", 
-        target: 10, trackingKey: 'shiniesObtained', 
-        rewards: { questTokens: 200, eggs: { [RARITY.LEGENDARY]: 1 } } 
+    'shinyHunter_2': {
+        title: "Chasseur d'Étoiles II", desc: "Capturer 10 Pokémon Shiny",
+        target: 10, trackingKey: 'shiniesObtained',
+        rewards: { questTokens: 200, eggs: { [RARITY.LEGENDARY]: 1 } }
     },
-    'shinyHunter_3': { 
-        title: "Chasseur d'Étoiles III", desc: "Capturer 100 Pokémon Shiny", 
-        target: 100, trackingKey: 'shiniesObtained', 
-        rewards: { questTokens: 1000, items: { 'master_ball': 1 } } 
+    'shinyHunter_3': {
+        title: "Chasseur d'Étoiles III", desc: "Capturer 100 Pokémon Shiny",
+        target: 100, trackingKey: 'shiniesObtained',
+        rewards: { questTokens: 1000, items: { 'masterball': 1 } }
     },
 
     // --- PUISSANCE ULTIME (NIVEAUX) ---
@@ -3992,20 +4241,20 @@ const ACHIEVEMENTS = {
     'levelMax_6': { title: "Puissance VI", desc: "Avoir un Pokémon niveau 150", target: 150, trackingKey: 'highestLevelReached', rewards: { eggs: { [RARITY.LEGENDARY]: 1 } } },
     'levelMax_7': { title: "Puissance VII", desc: "Avoir un Pokémon niveau 160", target: 160, trackingKey: 'highestLevelReached', rewards: { questTokens: 250 } },
     'levelMax_8': { title: "Puissance VIII", desc: "Avoir un Pokémon niveau 170", target: 170, trackingKey: 'highestLevelReached', rewards: { questTokens: 500 } },
-    'levelMax_9': { title: "Puissance IX", desc: "Avoir un Pokémon niveau 180", target: 180, trackingKey: 'highestLevelReached', rewards: { items: { 'candy_exp_l': 10 } } },
-    'levelMax_10': { title: "Puissance X", desc: "Avoir un Pokémon niveau 190", target: 190, trackingKey: 'highestLevelReached', rewards: { items: { 'candy_exp_xl': 10 } } },
-    'levelMax_11': { title: "Légende Vivante", desc: "Avoir un Pokémon niveau 200", target: 200, trackingKey: 'highestLevelReached', rewards: { items: { 'master_ball': 3 } } },
+    'levelMax_9': { title: "Puissance IX", desc: "Avoir un Pokémon niveau 180", target: 180, trackingKey: 'highestLevelReached', rewards: { items: { 'super_bonbon': 10 } } },
+    'levelMax_10': { title: "Puissance X", desc: "Avoir un Pokémon niveau 190", target: 190, trackingKey: 'highestLevelReached', rewards: { items: { 'super_bonbon': 20 } } },
+    'levelMax_11': { title: "Légende Vivante", desc: "Avoir un Pokémon niveau 200", target: 200, trackingKey: 'highestLevelReached', rewards: { items: { 'masterball': 3 } } },
 
     // --- PERFECTION (IV) ---
-    'perfectIV_1': { 
-        title: "Génétique Parfaite", desc: "Obtenir un Pokémon avec 100% IV (Parfait)", 
-        target: 1, trackingKey: 'perfectIvCount', 
-        rewards: { questTokens: 500 } 
+    'perfectIV_1': {
+        title: "Génétique Parfaite", desc: "Obtenir un Pokémon avec 100% IV (Parfait)",
+        target: 1, trackingKey: 'perfectIvCount',
+        rewards: { questTokens: 500 }
     },
-    'perfectShiny_1': { 
-        title: "Le Saint Graal", desc: "Obtenir un Shiny avec 100% IV (Parfait)", 
-        target: 1, trackingKey: 'perfectShinyCount', 
-        rewards: { questTokens: 5000, items: { 'master_ball': 5 } } 
+    'perfectShiny_1': {
+        title: "Le Saint Graal", desc: "Obtenir un Shiny avec 100% IV (Parfait)",
+        target: 1, trackingKey: 'perfectShinyCount',
+        rewards: { questTokens: 5000, items: { 'masterball': 5 } }
     },
 
     // --- COMBATTANT ---
@@ -4040,53 +4289,46 @@ const ACHIEVEMENTS = {
 
 const QUEST_TEMPLATES = {
     [QUEST_TYPES.COMBAT]: [
-        { title: "Combattant Débutant", desc: "Gagner {target} combats", target: [10, 30, 50], difficulty: 'EASY', trackingKey: 'combatsWon' },
+        { title: "Combattant Débutant", desc: "Gagner {target} combats", target: [30, 60, 100], difficulty: 'EASY', trackingKey: 'combatsWon' },
         { title: "Série Victorieuse", desc: "Gagner {target} combats d'affilée", target: [5, 10, 20], difficulty: 'MEDIUM', trackingKey: 'winStreak', special: 'streak' },
         { title: "Domination Totale", desc: "Gagner {target} combats sans KO dans l'équipe", target: [3, 5, 10], difficulty: 'HARD', trackingKey: 'perfectWins', special: 'perfect' },
-        
-        
-        
-        { title: "Chasseur de Boss", desc: "Vaincre {target} Boss", target: [1, 3, 5], difficulty: 'HARD', trackingKey: 'bossDefeated' }
+        { title: "Chasseur de Boss", desc: "Vaincre {target} Boss", target: [1, 3, 5], difficulty: 'HARD', trackingKey: 'bossDefeated' },
+        { title: "Puissance Déchaînée", desc: "Utiliser {target} fois une capacité Ultime en combat", target: [3, 8, 15], difficulty: 'MEDIUM', trackingKey: 'ultimateUsed' }
     ],
-    
+
     [QUEST_TYPES.ECONOMY]: [
-        { title: "Collectionneur de Richesses", desc: "Gagner {target} Pokédollars au total", target: [1000, 5000, 10000], difficulty: 'EASY', trackingKey: 'totalPokedollarsEarned' },
-        
-       
-        
+        { title: "Collectionneur de Richesses", desc: "Gagner {target} Pokédollars au total", target: [2000, 8000, 16000], difficulty: 'EASY', trackingKey: 'totalPokedollarsEarned' },
         { title: "Économe", desc: "Accumuler {target} Pokédollars sans dépenser", target: [2000, 5000, 10000], difficulty: 'MEDIUM', trackingKey: 'currentMoney', special: 'savings' },
-        { title: "Magnat des Shards", desc: "Collecter {target} shards au total", target: [10, 25, 50], difficulty: 'MEDIUM', trackingKey: 'totalShards' }
+        { title: "Magnat des Shards", desc: "Collecter {target} shards au total", target: [10, 25, 50], difficulty: 'MEDIUM', trackingKey: 'totalShards' },
+        { title: "Écologiste", desc: "Utiliser le Recycleur {target} fois", target: [2, 4, 8], difficulty: 'EASY', trackingKey: 'recyclerUsed' }
     ],
-    
+
     [QUEST_TYPES.COLLECTION]: [
         { title: "Chasseur de Shinys", desc: "Obtenir {target} créatures Shiny", target: [1, 3, 5], difficulty: 'HARD', trackingKey: 'shiniesObtained' },
-        
-        
-        
         { title: "Éleveur Légendaire", desc: "Obtenir {target} créatures Légendaires", target: [1, 2, 3], difficulty: 'HARD', trackingKey: 'legendariesObtainedDuringQuest', special: 'legendary_counter' },
-        
-       
         { title: "Arc-en-Ciel", desc: "Obtenir des créatures de {target} types différents", target: [5, 8, 11], difficulty: 'MEDIUM', trackingKey: 'newTypesDuringQuest', special: 'rainbow' },
-        
-        { title: "Collectionneur Expert", desc: "Ouvrir {target} œufs", target: [50, 100, 200], difficulty: 'EASY', trackingKey: 'eggsOpened' }
+        { title: "Collectionneur Expert", desc: "Ouvrir {target} œufs", target: [20, 40, 80], difficulty: 'EASY', trackingKey: 'eggsOpened' },
+        { title: "Trappeur Assidu", desc: "Capturer {target} créatures manuellement", target: [5, 10, 20], difficulty: 'MEDIUM', trackingKey: 'creature_captured' },
+        { title: "Chance de l'Éleveur", desc: "Faire éclore {target} œufs de rareté Rare ou supérieure", target: [2, 5, 10], difficulty: 'HARD', trackingKey: 'incubator_hatched_rare_plus' }
     ],
-    
-     
+
     [QUEST_TYPES.MASTERY]: [
         { title: "Entraîneur Dévoué", desc: "Faire monter une créature au niveau {target}", target: [25, 50, 75], difficulty: 'MEDIUM', trackingKey: 'maxCreatureLevel' },
-        
-        
+        { title: "Tacticien", desc: "Utiliser {target} Boosts temporaires (Attaque+, Défense+...)", target: [3, 5, 10], difficulty: 'MEDIUM', trackingKey: 'statBoostUsed' },
+        { title: "Fusion Parfaite", desc: "Réaliser {target} fusions de doublons", target: [5, 10, 20], difficulty: 'MEDIUM', trackingKey: 'fusion_completed' }
     ],
-    
+
     [QUEST_TYPES.PRESTIGE]: [
-        { title: "Renaissance", desc: "Effectuer {target} prestige", target: [5, 15, 50], difficulty: 'EXTREME', trackingKey: 'prestigeCount' },
-       
+        { title: "Renaissance", desc: "Effectuer {target} prestige", target: [5, 15, 50], difficulty: 'EXTREME', trackingKey: 'prestigeCount' }
     ],
-    
+
     [QUEST_TYPES.CHALLENGE]: [
-        
-        
-        { title: "Maître des Statuts", desc: "Infliger {target} effets de statut", target: [10, 25, 50], difficulty: 'MEDIUM', trackingKey: 'statusInflicted' }
+        { title: "Maître des Statuts", desc: "Infliger {target} effets de statut", target: [5, 12, 25], difficulty: 'MEDIUM', trackingKey: 'statusInflicted' },
+        { title: "Survivant de la Tour", desc: "Atteindre l'étage {target} de la Tour de Combat", target: [5, 10, 15], difficulty: 'HARD', trackingKey: 'towerFloor' }
+    ],
+
+    [QUEST_TYPES.EXPLORATION]: [
+        { title: "Aventurier", desc: "Lancer {target} expéditions", target: [1, 2, 3], difficulty: 'MEDIUM', trackingKey: 'expeditionLaunched' }
     ]
 };
 
@@ -4106,7 +4348,7 @@ const VITAMINS = {
         name: "HP Up",
         description: "Augmente le gain de PV par seconde de +5% (permanent)",
         icon: "💊",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hp-up.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/hp-up.png",
         rarity: 'rare',
         effect: {
             stat: 'hp',
@@ -4118,7 +4360,7 @@ const VITAMINS = {
         name: "Protein",
         description: "Augmente le gain d'Attaque par seconde de +5% (permanent)",
         icon: "🥤",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/protein.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/protein.png",
         rarity: 'rare',
         effect: {
             stat: 'attack',
@@ -4130,7 +4372,7 @@ const VITAMINS = {
         name: "Iron",
         description: "Augmente le gain de Défense par seconde de +5% (permanent)",
         icon: "⚙️",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iron.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/iron.png",
         rarity: 'rare',
         effect: {
             stat: 'defense',
@@ -4142,10 +4384,34 @@ const VITAMINS = {
         name: "Calcium",
         description: "Augmente le gain de Vitesse par seconde de +5% (permanent)",
         icon: "💉",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/calcium.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/calcium.png",
         rarity: 'rare',
         effect: {
             stat: 'speed',
+            value: 0.05,
+            duration: null
+        }
+    },
+    calcium_spatk: {
+        name: "Calcium (Att. Spé.)",
+        description: "Augmente le gain d'Attaque Spéciale par seconde de +5% (permanent)",
+        icon: "💉",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/calcium.png",
+        rarity: 'rare',
+        effect: {
+            stat: 'spattack',
+            value: 0.05,
+            duration: null
+        }
+    },
+    zinc: {
+        name: "Zinc",
+        description: "Augmente le gain de Défense Spéciale par seconde de +5% (permanent)",
+        icon: "🔬",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/zinc.png",
+        rarity: 'rare',
+        effect: {
+            stat: 'spdefense',
             value: 0.05,
             duration: null
         }
@@ -4154,7 +4420,7 @@ const VITAMINS = {
         name: "Rare Candy",
         description: "Augmente TOUS les gains de stats par seconde de +3% (permanent)",
         icon: "🍬",
-		img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png",
         rarity: 'epic',
         effect: {
             stat: 'all',
@@ -4287,6 +4553,39 @@ const STAT_BOOSTERS = {
             value: 0.10,
             duration: 900000
         }
+    },
+    time_dust_1h: {
+        name: "Time Dust I",
+        description: "Ressource rare : applique instantanément l'équivalent de 1h de gains passifs de stats.",
+        icon: "⌛",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/stardust.png",
+        rarity: 'legendary',
+        effect: {
+            type: 'timeDust',
+            hours: 1
+        }
+    },
+    time_dust_3h: {
+        name: "Time Dust II",
+        description: "Ressource très rare : applique instantanément l'équivalent de 3h de gains passifs de stats.",
+        icon: "⏳",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/star-piece.png",
+        rarity: 'legendary',
+        effect: {
+            type: 'timeDust',
+            hours: 3
+        }
+    },
+    time_dust_9h: {
+        name: "Time Dust III",
+        description: "Ressource mythique : applique instantanément l'équivalent de 9h de gains passifs de stats.",
+        icon: "🕰️",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/comet-shard.png",
+        rarity: 'legendary',
+        effect: {
+            type: 'timeDust',
+            hours: 9
+        }
     }
 };
 
@@ -4333,8 +4632,9 @@ const KEY_ITEMS = {
 // Ordre strict : le joueur doit accomplir chaque mécanique consciemment pour avancer.
 const STORY_QUEST_ORDER = [
     'training', 'recruitment', 'rarity_hunt', 'exploration', 'hoarding',
-    'evolution', 'shop_improvements', 'pension_storage', 'vitamin_intake', 'stat_boost_used', 'equip_item', 
-    'synergy_discovery', 'duplicates_system', 'fusion_evolution','tower_climb', 'ultimate_intro', 'arena_first','the_wall', 'arena_second', 'rebirth', 'recycler_intro', 'collection_synergy', 'arena_third', 'first_expedition'
+    'evolution', 'shop_improvements', 'pension_storage', 'vitamin_intake', 'stat_boost_used', 'equip_item',
+    'synergy_discovery', 'genetics_stage_1', 'genetics_stage_2', 'genetics_stage_3', 'genetics_stage_4', 'duplicates_system', 'fusion_evolution', 'tower_climb', 'ultimate_intro', 'arena_first', 'the_wall', 'arena_second', 'rebirth', 'recycler_intro', 'collection_bonus', 'arena_third', 'first_expedition'
+
 ];
 
 const STORY_QUESTS = {
@@ -4385,9 +4685,9 @@ const STORY_QUESTS = {
     'hoarding': {
         id: 'story_hoarding',
         title: "Réserve",
-        description: "Possédez au total 10 Pokémon différents.",
-        dialogue: "J'ai besoin de plus de données. Agrandissez votre PC : équipe et stockage réunis, atteignez 10 Pokémon !",
-        target: 10,
+        description: "Possédez au total 5 Pokémon différents.",
+        dialogue: "J'ai besoin de plus de données. Agrandissez votre PC : équipe et stockage réunis, atteignez 5 Pokémon !",
+        target: 5,
         trackingKey: 'totalOwned',
         difficulty: 'EASY',
         rewards: { pokedollars: 1000, tokens: 30 }
@@ -4396,10 +4696,10 @@ const STORY_QUESTS = {
     'evolution': {
         id: 'story_evolution',
         title: "Première Évolution",
-        description: "Faites évoluer votre starter (Weedle → Kakuna ou Caterpie → Metapod).",
-        dialogue: "Pas touche à  tes autres Pokémons ! Je sais à quel points tu as envie de te concentrer sur ton magnifique insecte ! ",
+        description: "Faites évoluer un Pokémon (n'importe lequel).",
+        dialogue: "Tes Pokémon peuvent évoluer en gagnant des niveaux. Fais évoluer au moins un d'entre eux pour valider cette quête !",
         target: 1,
-        trackingKey: 'starter_evolved',
+        trackingKey: 'evolutionCount',
         difficulty: 'EASY',
         rewards: { pokedollars: 800, tokens: 25 }
     },
@@ -4554,14 +4854,14 @@ const STORY_QUESTS = {
         difficulty: 'EASY',
         rewards: { pokedollars: 600, tokens: 25 }
     },
-    // Synergie de collection (Pokédex)
-    'collection_synergy': {
-        id: 'story_collection_synergy',
-        title: "Synergie de collection",
-        description: "Activez une synergie de collection dans le Pokédex (famille complète avec prestige).",
-        dialogue: "Dans le Pokédex, onglet Synergies, certaines familles de Pokémon donnent des bonus si vous possédez tous les membres avec au moins 1 prestige. Complétez une famille et montez le prestige de chaque membre pour activer une synergie de collection !",
+    // Bonus de collection (Pokédex)
+    'collection_bonus': {
+        id: 'story_collection_bonus',
+        title: "Bonus de collection",
+        description: "Activez un bonus de collection dans le Pokédex (famille complète avec prestige).",
+        dialogue: "Dans le Pokédex, onglet Bonus collection, certaines familles de Pokémon donnent des bonus si vous possédez tous les membres avec au moins 1 prestige. Complétez une famille et montez le prestige de chaque membre pour activer un bonus de collection !",
         target: 1,
-        trackingKey: 'collectionSynergyActive',
+        trackingKey: 'collectionBonusActive',
         difficulty: 'MEDIUM',
         rewards: { pokedollars: 2000, tokens: 55 }
     },
@@ -4584,6 +4884,66 @@ const STORY_QUESTS = {
         trackingKey: 'expeditionLaunched',
         difficulty: 'EASY',
         rewards: { pokedollars: 800, tokens: 30 }
+    },
+    'genetics_stage_1': {
+        id: 'story_genetics_stage_1',
+        title: "Manipulation Génétique I",
+        description: "Faites éclore 3 œufs via incubateur.",
+        dialogue: "Je suis chercheur à la Sylph SARL, antenne de Cramois'Île. Notre protocole de manipulation génétique exige des cycles stables. Fais éclore 3 œufs dans les incubateurs pour calibrer le système.",
+        target: 3,
+        trackingKey: 'incubator_hatched',
+        difficulty: 'MEDIUM',
+        rewards: {
+            pokedollars: 2500,
+            tokens: 40,
+            unlocks: { autoIncubatorSlots: 1 }
+        }
+    },
+    'genetics_stage_2': {
+        id: 'story_genetics_stage_2',
+        title: "Manipulation Génétique II",
+        description: "Faites éclore 2 œufs Rare, Epic ou Légendaire via incubateur.",
+        dialogue: "Bien. On passe aux lignées instables. Il me faut deux éclosions de qualité rare ou supérieure. Priorise les bons spécimens, pas les déchets.",
+        target: 2,
+        trackingKey: 'incubator_hatched_rare_plus',
+        difficulty: 'MEDIUM',
+        rewards: {
+            pokedollars: 3000,
+            tokens: 45,
+            unlocks: { autoIncubatorSlots: 1 }
+        }
+    },
+    'genetics_stage_3': {
+        id: 'story_genetics_stage_3',
+        title: "Manipulation Génétique III",
+        description: "Achetez 1 niveau d'Incubation rapide et faites éclore 1 œuf Epic via incubateur.",
+        dialogue: "On optimise le protocole: améliore la vitesse d'incubation en boutique puis valide une éclosion Epic. La théorie dit que ça devrait tenir. La théorie ment souvent.",
+        target: 2,
+        trackingKey: 'genetics_stage_3_combo',
+        difficulty: 'HARD',
+        specialParams: {
+            requires: ['incubation_speed_upgraded', 'incubator_hatched_epic']
+        },
+        rewards: {
+            pokedollars: 4000,
+            tokens: 55,
+            unlocks: { autoIncubatorSlots: 1 }
+        }
+    },
+    'genetics_stage_4': {
+        id: 'story_genetics_stage_4',
+        title: "Manipulation Génétique IV",
+        description: "Faites éclore 1 œuf Légendaire via incubateur.",
+        dialogue: "Dernier test. Une éclosion légendaire en environnement automatisé et je signe l'autorisation complète. Si ça explose, je n'étais jamais là.",
+        target: 1,
+        trackingKey: 'incubator_hatched_legendary',
+        difficulty: 'HARD',
+        rewards: {
+            pokedollars: 6000,
+            tokens: 80,
+            unlocks: { autoIncubatorSlots: 1 },
+            eggs: { [RARITY.LEGENDARY]: 1 }
+        }
     }
 };
 
@@ -4599,7 +4959,7 @@ const STORY_QUEST_GUIDES = {
         ],
         where: "Zone de combat (en haut) → combats automatiques → le starter gagne de l’XP et finit par monter de niveau."
     },
-    
+
     story_recruitment: {
         title: "Recrutement — Capturer un Rattata",
         steps: [
@@ -4609,6 +4969,36 @@ const STORY_QUEST_GUIDES = {
             "Choisissez une Poké Ball et validez. Une fois le Rattata capturé, la quête est validée."
         ],
         where: "Zone de combat → mode capture ciblée (Rattata) → vaincre un Rattata → fenêtre de capture → Poké Ball."
+    },
+    rocket_recruit_meowth: {
+        title: "Team Rocket — Capturer Miaouss",
+        steps: [
+            "Ouvrez l'onglet Quêtes puis la section Missions Team Rocket.",
+            "Activez le mode capture ciblée et sélectionnez Meowth/Miaouss.",
+            "Vainquez-le puis capturez-le avec une Ball.",
+            "Validez la récompense de quête pour gagner de la Confiance Team Rocket."
+        ],
+        where: "Combat → capture ciblée sur Meowth/Miaouss → capture réussie → onglet Quêtes."
+    },
+    rocket_capture_persian: {
+        title: "Team Rocket — Capturer Persian",
+        steps: [
+            "Activez la capture ciblée et sélectionnez Persian.",
+            "Combattez jusqu'à rencontrer Persian.",
+            "Capturez-le avec une Ball adaptée.",
+            "Validez la quête dans l'onglet Quêtes."
+        ],
+        where: "Combat → capture ciblée sur Persian → capture réussie."
+    },
+    rocket_first_stake: {
+        title: "Team Rocket — Premier contrat staking",
+        steps: [
+            "Ouvrez l'onglet Team Rocket puis Marché de Staking.",
+            "Cliquez sur Sélectionner et fournissez les ressources demandées.",
+            "Attendez la fin du timer du contrat.",
+            "Réclamez le contrat pour valider la quête."
+        ],
+        where: "Team Rocket → Marché de Staking → Contrats en cours → Réclamer."
     },
     story_exploration: {
         title: "Exploration — Passer en Zone 2 (changer de zone)",
@@ -4630,30 +5020,30 @@ const STORY_QUEST_GUIDES = {
         where: "Zone de combat → mode capture ciblée (Pidgey) → vaincre un Pidgey → fenêtre de capture → Ball."
     },
     story_hoarding: {
-        title: "Réserve — Avoir 10 Pokémon au total",
+        title: "Réserve — Avoir 5 Pokémon au total",
         steps: [
             "Pour obtenir de nouveaux pokémon, vous pouvez capturer des pokémon en combat ou ouvrir des œufs.",
             "Mais attention, dans ce jeu, vous ne pouvez pas avoir deux fois le même pokémon",
-            "Il vous faut donc 10 pokémon différents en tout.",
+            "Il vous faut donc 5 pokémon différents en tout.",
             "Vous pouvez consulter votre stockage à gauche de l'écran."
         ],
         where: "Captures en combat (centre) + œufs (Extras). Total visible dans l’onglet Équipe (équipe + stockage)."
     },
     story_evolution: {
-        title: "Évolution — Faire évoluer le starter",
+        title: "Première Évolution — Faire évoluer un Pokémon",
         steps: [
-            "Les starters évoluent tôt (ex. Chenipan niveau 7 → Chrysacier).",
-            "Dans l'onglet Équipe sur la gauche de l'écran (ou Stockage/Pension), cliquez sur votre starter.",
+            "Les Pokémon évoluent en atteignant un certain niveau (ex. Chenipan niveau 7 → Chrysacier).",
+            "Dans l'onglet Équipe (ou Stockage/Pension), cliquez sur un Pokémon qui peut évoluer.",
             "Dans la fiche, si le niveau requis est atteint, un bouton « Évoluer » apparaît.",
-            "Cliquez sur « Évoluer » : faire évoluer le starter une fois valide la quête."
+            "Cliquez sur « Évoluer » : n'importe quelle évolution valide la quête."
         ],
-        where: "Onglet Équipe → cliquer sur le starter → bouton Évoluer dans la fiche (niveau requis atteint)."
+        where: "Onglet Équipe → cliquer sur un Pokémon → bouton Évoluer dans la fiche (niveau requis atteint)."
     },
     story_shop_improvements: {
         title: "Boutique d'améliorations — Acheter une amélioration de pension",
         steps: [
             "Ouvrez l'onglet Boutique en haut.",
-            "Cliquez sur le sous-onglet « 💰 Améliorations » (ou il s'ouvre automatiquement pour cette quête).",
+            "Cliquez sur le sous-onglet «  Améliorations » (ou il s'ouvre automatiquement pour cette quête).",
             "Repérez l'amélioration « Pension Pokemon » (slots + transfert de stats).",
             "Achetez au moins un niveau avec vos Pokédollars."
         ],
@@ -4798,15 +5188,15 @@ const STORY_QUEST_GUIDES = {
         ],
         where: "Onglet Équipe → cliquer sur un Pokémon → dans la fiche détaillée, bouton Prestige / Renaissance (niveau max requis)."
     },
-    story_collection_synergy: {
-        title: "Collection Pokédex",
+    story_collection_bonus: {
+        title: "Bonus de collection",
         steps: [
-            "Ouvrez le Pokédex, puis le sous-onglet « Collection ».",
+            "Ouvrez le Pokédex, puis le sous-onglet « Bonus collection ».",
             "Les Collections vous permettent de gagner des bonus selon les prestiges des Pokémons de la collection.",
             "Pour activer une collection : posséder tous les Pokémon de la famille et avoir au moins 1 prestige sur chacun.",
             "Le niveau de la collection est égale au plus petit prestige de la collection."
         ],
-        where: "Pokédex → Synergies ; compléter une famille (tous les membres avec prestige ≥ 1) puis combattre."
+        where: "Pokédex → Bonus collection ; compléter une famille (tous les membres avec prestige ≥ 1) puis combattre."
     },
     story_arena_third: {
         title: "Troisième Arène — Maîtriser les mécaniques avancées",
@@ -4826,7 +5216,59 @@ const STORY_QUEST_GUIDES = {
             "La puissance du pokémon est calculer à partir de ses statistiques."
         ],
         where: "Onglet Expéditions → choisir une mission → sélectionner des Pokémon → Lancer."
+    },
+    story_genetics_stage_1: {
+        title: "Manipulation Génétique I — Démarrer l'automatisation",
+        steps: [
+            "Ouvrez l'onglet Extras puis localisez le panneau des incubateurs.",
+            "Placez des œufs dans les incubateurs et attendez les éclosions.",
+            "Faites éclore 3 œufs via incubateur pour valider l'étape.",
+            "La récompense débloque l'auto-incubation de l'incubateur 1."
+        ],
+        where: "Extras → Incubateurs → placer des œufs et collecter les éclosions."
+    },
+    story_genetics_stage_2: {
+        title: "Manipulation Génétique II — Prioriser la qualité",
+        steps: [
+            "Continuez à utiliser les incubateurs.",
+            "Faites éclore 2 œufs de rareté Rare, Epic ou Légendaire.",
+            "Les œufs Common ne comptent pas pour cette étape."
+        ],
+        where: "Extras → Incubateurs → favoriser les œufs rare+."
+    },
+    story_genetics_stage_3: {
+        title: "Manipulation Génétique III — Vitesse + éclosion Epic",
+        steps: [
+            "Ouvrez Boutique → Améliorations.",
+            "Achetez au moins 1 niveau de l'amélioration « Incubation rapide ».",
+            "Puis faites éclore 1 œuf Epic via incubateur.",
+            "Les deux conditions sont requises pour valider la quête."
+        ],
+        where: "Boutique → Améliorations (Incubation rapide), puis Extras → Incubateurs."
+    },
+    story_genetics_stage_4: {
+        title: "Manipulation Génétique IV — Validation finale",
+        steps: [
+            "Obtenez un œuf Légendaire (drops, récompenses, boutique).",
+            "Placez-le dans un incubateur et terminez l'éclosion.",
+            "Valider cette étape débloque l'auto-incubation sur l'incubateur 4."
+        ],
+        where: "Extras → Incubateurs, avec un œuf Légendaire."
     }
+};
+
+// Base URL des sprites items PokeAPI (gen5 = HM/TM par type)
+const POKEAPI_ITEMS_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gen5";
+
+// CT (Capsules Techniques) - pour affichage dans inventaire / récompenses (sprites PokeAPI gen5)
+const CT_ITEMS_DISPLAY = {
+    'ct_Surf': { name: "CT Surf", description: "Enseigne Surf.", icon: "🌊", img: `${POKEAPI_ITEMS_BASE}/hm-water.png` },
+    'ct_Lance-Flammes': { name: "CT Lance-Flammes", description: "Enseigne Lance-Flammes.", icon: "🔥", img: `${POKEAPI_ITEMS_BASE}/hm-fire.png` },
+    'ct_LanceFlammes': { name: "CT Lance-Flammes", description: "Enseigne Lance-Flammes.", icon: "🔥", img: `${POKEAPI_ITEMS_BASE}/hm-fire.png` },
+    'ct_Tonnerre': { name: "CT Tonnerre", description: "Enseigne Tonnerre.", icon: "⚡", img: `${POKEAPI_ITEMS_BASE}/hm-electric.png` },
+    'ct_Psyko': { name: "CT Psyko", description: "Enseigne Psyko.", icon: "🔮", img: `${POKEAPI_ITEMS_BASE}/hm-psychic.png` },
+    'ct_Laser Glace': { name: "CT Laser Glace", description: "Enseigne Laser Glace.", icon: "❄️", img: `${POKEAPI_ITEMS_BASE}/hm-ice.png` },
+    'ct_LaserGlace': { name: "CT Laser Glace", description: "Enseigne Laser Glace.", icon: "❄️", img: `${POKEAPI_ITEMS_BASE}/hm-ice.png` }
 };
 
 // Combiner tous les objets
@@ -4834,15 +5276,17 @@ const ALL_ITEMS = {
     ...VITAMINS,
     ...STAT_BOOSTERS,
     ...HELD_ITEMS,
-...BALLS,
-'prism_iv': {
-    name: "Prisme d'Optimisation",
-    description: "Regénère les IVs d'une créature en conservant les meilleurs résultats.",
-    icon: "💎",
-    rarity: 'legendary',
-    type: 'consumable'
-},
-...KEY_ITEMS	// ✅ C'est cette ligne qui manquait !
+    ...CT_ITEMS_DISPLAY,
+    ...BALLS,
+    'prism_iv': {
+        name: "Prisme d'Optimisation",
+        description: "Regénère les IVs d'une créature en conservant les meilleurs résultats.",
+        icon: "💎",
+        img: "img/Prism.png",
+        rarity: 'legendary',
+        type: 'consumable'
+    },
+    ...KEY_ITEMS	// ✅ C'est cette ligne qui manquait !
 };
 
 
@@ -4855,7 +5299,7 @@ const SHOP_ITEMS = {
     xpBoost1h: {
         name: "Boost XP (1h)",
         description: "+20% XP pendant 1 heure",
-        cost: 10,
+        cost: 20,
         type: 'boost',
         duration: 3600000, // 1h en ms
         effect: { type: 'xp', value: 0.2 }
@@ -4863,7 +5307,7 @@ const SHOP_ITEMS = {
     xpBoost24h: {
         name: "Boost XP (24h)",
         description: "+20% XP pendant 24 heures",
-        cost: 50,
+        cost: 120,
         type: 'boost',
         duration: 86400000, // 24h en ms
         effect: { type: 'xp', value: 0.2 }
@@ -4871,7 +5315,7 @@ const SHOP_ITEMS = {
     moneyBoost1h: {
         name: "Boost Pokédollars (1h)",
         description: "+50% Pokédollars pendant 1 heure",
-        cost: 15,
+        cost: 25,
         type: 'boost',
         duration: 3600000,
         effect: { type: 'money', value: 0.5 }
@@ -4879,7 +5323,7 @@ const SHOP_ITEMS = {
     eggDropBoost: {
         name: "Boost Drop Œufs (1h)",
         description: "+10% chance de drop d'œufs pendant 1 heure",
-        cost: 20,
+        cost: 30,
         type: 'boost',
         duration: 3600000,
         effect: { type: 'eggDrop', value: 0.1 }
@@ -4887,7 +5331,7 @@ const SHOP_ITEMS = {
     shinyBoost: {
         name: "Charme Shiny (1h)",
         description: "x2 chance de shiny pendant 1 heure",
-        cost: 100,
+        cost: 150,
         type: 'boost',
         duration: 3600000,
         effect: { type: 'shiny', value: 1.0 }
@@ -4895,7 +5339,7 @@ const SHOP_ITEMS = {
     commonEgg: {
         name: "Œuf Common x5",
         description: "Lot de 5 œufs Common",
-        cost: 5,
+        cost: 8,
         type: 'egg',
         rarity: RARITY.COMMON,
         amount: 5
@@ -4903,7 +5347,7 @@ const SHOP_ITEMS = {
     rareEgg: {
         name: "Œuf Rare x3",
         description: "Lot de 3 œufs Rare",
-        cost: 20,
+        cost: 30,
         type: 'egg',
         rarity: RARITY.RARE,
         amount: 3
@@ -4911,7 +5355,7 @@ const SHOP_ITEMS = {
     epicEgg: {
         name: "Œuf Epic",
         description: "1 œuf Epic garanti",
-        cost: 50,
+        cost: 80,
         type: 'egg',
         rarity: RARITY.EPIC,
         amount: 1
@@ -4919,7 +5363,7 @@ const SHOP_ITEMS = {
     legendaryEgg: {
         name: "Œuf Légendaire",
         description: "1 œuf Légendaire garanti !",
-        cost: 200,
+        cost: 280,
         type: 'egg',
         rarity: RARITY.LEGENDARY,
         amount: 1
@@ -4927,23 +5371,23 @@ const SHOP_ITEMS = {
     pensionSlot: {
         name: "Slot Pension Permanent",
         description: "+1 slot de pension définitif",
-        cost: [150,200,250,300,350,400,450,500,550,600],
+        cost: [220, 300, 380, 470, 560, 660, 770, 890, 1020, 1160],
         type: 'permanent',
-		maxLevel: 10,
+        maxLevel: 10,
         effect: { type: 'pensionSlot', value: 1 }
     },
     permanentXP: {
         name: "Boost XP Permanent",
         description: "+5% XP permanent (cumulable)",
-        cost: [150,200,250,300,350,400,450,500,550,600],
+        cost: [220, 300, 380, 470, 560, 660, 770, 890, 1020, 1160],
         type: 'permanent',
-		maxLevel: 10,
+        maxLevel: 10,
         effect: { type: 'permanentXP', value: 0.05 }
     },
-	pokeball: {
+    pokeball: {
         name: "Pokéball x5",
         description: "Taux de capture standard. (Lot de 5)",
-        cost: 1, // 200 * 5
+        cost: 2, // 200 * 5
         type: 'item',
         item: 'pokeball',
         amount: 5
@@ -4951,7 +5395,7 @@ const SHOP_ITEMS = {
     greatball: {
         name: "Super Ball x5",
         description: "Taux de capture x1.5. (Lot de 5)",
-        cost: 3,
+        cost: 5,
         type: 'item',
         item: 'greatball',
         amount: 5
@@ -4959,7 +5403,7 @@ const SHOP_ITEMS = {
     hyperball: {
         name: "Hyper Ball x5",
         description: "Taux de capture x2.0. (Lot de 5)",
-        cost: 7,
+        cost: 12,
         type: 'item',
         item: 'hyperball',
         amount: 5
@@ -4968,11 +5412,17 @@ const SHOP_ITEMS = {
     masterball_token: {
         name: "Master Ball",
         description: "Capture garantie à 100%.",
-        cost: 50, // Coût en Jetons
+        cost: 80, // Coût en Jetons
         type: 'item',
         item: 'masterball',
         amount: 1
-    }
+    },
+    // CT (Capsules Techniques) - Enseignent des attaques aux Pokémon compatibles
+    ct_Surf: { name: "CT Surf", description: "Enseigne Surf à un Pokémon compatible.", cost: 25, type: 'ct', item: 'ct_Surf', moveName: 'Surf' },
+    ct_LanceFlammes: { name: "CT Lance-Flammes", description: "Enseigne Lance-Flammes à un Pokémon compatible.", cost: 25, type: 'ct', item: 'ct_Lance-Flammes', moveName: 'Lance-Flammes' },
+    ct_Tonnerre: { name: "CT Tonnerre", description: "Enseigne Tonnerre à un Pokémon compatible.", cost: 25, type: 'ct', item: 'ct_Tonnerre', moveName: 'Tonnerre' },
+    ct_Psyko: { name: "CT Psyko", description: "Enseigne Psyko à un Pokémon compatible.", cost: 25, type: 'ct', item: 'ct_Psyko', moveName: 'Psyko' },
+    ct_LaserGlace: { name: "CT Laser Glace", description: "Enseigne Laser Glace à un Pokémon compatible.", cost: 25, type: 'ct', item: 'ct_Laser Glace', moveName: 'Laser Glace' }
 };
 
 // ... (après la constante ZONE_ENEMY_POOLS)
@@ -4990,7 +5440,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 1000, max: 3000 },
             tokens: { min: 1, max: 3, chance: 0.4 },
             eggs: { [RARITY.COMMON]: { amount: 1, chance: 0.3 } },
-            items: { 'pokeball': { amount: 2, chance: 0.5 }, 'leftovers': { amount: 1, chance: 0.01 } },
+            items: { 'pokeball': { amount: 2, chance: 0.5 }, 'leftovers': { amount: 1, chance: 0.01 }, 'ct_Surf': { amount: 1, chance: 0.08 } },
             // ✅ NOUVEAU NOM : 'requirements' au lieu de 'bonuses'
             // Plus de 'multiplier', plus de 'label' manuel
             requirements: [
@@ -5006,16 +5456,16 @@ const EXPEDITION_DEFINITIONS = {
         duration: 7200, // 2 heures
         requiredLevel: 15,
         difficulty: 3000,
-		teamSize: 1,
+        teamSize: 1,
         rewardPool: {
             pokedollars: { min: 4000, max: 8000 },
             tokens: { min: 2, max: 5, chance: 0.6 },
             shards: { amount: 2, chance: 0.3 },
-            items: { 'greatball': { amount: 2, chance: 0.4 }, 'magnet': { amount: 1, chance: 0.05 } }, // Item fictif ou réel
+            items: { 'greatball': { amount: 2, chance: 0.4 }, 'ct_Tonnerre': { amount: 1, chance: 0.15 } },
             requirements: [
-                { type: 'type', value: TYPES.ELECTRIC},
-                { type: 'type', value: TYPES.STEEL},
-                { type: 'type', value: TYPES.WATER} 
+                { type: 'type', value: TYPES.ELECTRIC },
+                { type: 'type', value: TYPES.STEEL },
+                { type: 'type', value: TYPES.WATER }
             ]
         }
     },
@@ -5026,7 +5476,7 @@ const EXPEDITION_DEFINITIONS = {
         duration: 14400, // 4 heures
         requiredLevel: 25,
         difficulty: 6000,
-		teamSize: 1,
+        teamSize: 1,
         rewardPool: {
             pokedollars: { min: 8000, max: 15000 },
             tokens: { min: 5, max: 10, chance: 0.8 },
@@ -5034,9 +5484,9 @@ const EXPEDITION_DEFINITIONS = {
             shards: { amount: 3, chance: 0.4 },
             items: { 'hard_stone': { amount: 1, chance: 0.1 }, 'talent_reroll': { amount: 1, chance: 0.05 } },
             requirements: [
-                { type: 'type', value: TYPES.ROCK},
-                { type: 'type', value: TYPES.GROUND},
-                { type: 'talent', value: 'robustesse'}
+                { type: 'type', value: TYPES.ROCK },
+                { type: 'type', value: TYPES.GROUND },
+                { type: 'talent', value: 'robustesse' }
             ]
         }
     },
@@ -5047,26 +5497,26 @@ const EXPEDITION_DEFINITIONS = {
         duration: 21600, // 6 heures
         requiredLevel: 40,
         difficulty: 12000,
-		teamSize: 1,
+        teamSize: 1,
         rewardPool: {
             pokedollars: { min: 15000, max: 30000 },
             tokens: { min: 10, max: 20, chance: 1.0 },
             eggs: { [RARITY.EPIC]: { amount: 1, chance: 0.1 } },
             items: { 'spell_tag': { amount: 1, chance: 0.1 }, 'talent_choice': { amount: 1, chance: 0.02 } },
             requirements: [
-                { type: 'type', value: TYPES.GHOST},
-                { type: 'type', value: TYPES.DARK},
-                { type: 'type', value: TYPES.PSYCHIC}
+                { type: 'type', value: TYPES.GHOST },
+                { type: 'type', value: TYPES.DARK },
+                { type: 'type', value: TYPES.PSYCHIC }
             ]
         }
     },
-	'frozen_tundra': {
+    'frozen_tundra': {
         id: 'frozen_tundra',
         name: "Toundra Gelée",
         description: "Un désert de glace mordant. Survivre demande du sang-froid.",
         duration: 10800, // 3 heures
         requiredLevel: 30,
-        difficulty: 9000, 
+        difficulty: 9000,
         teamSize: 2, // Escouade Duo
         rewardPool: {
             pokedollars: { min: 5000, max: 10000 },
@@ -5106,7 +5556,7 @@ const EXPEDITION_DEFINITIONS = {
         description: "Des énigmes millénaires protègent ce lieu sacré.",
         duration: 1440, // 4 heures
         requiredLevel: 50,
-        difficulty: 22000, 
+        difficulty: 22000,
         teamSize: 2, // Escouade Duo
         rewardPool: {
             pokedollars: { min: 20000, max: 40000 },
@@ -5132,7 +5582,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 100000, max: 200000 },
             tokens: { min: 50, max: 100, chance: 1.0 },
             eggs: { [RARITY.LEGENDARY]: { amount: 1, chance: 0.05 } }, // 5% chance d'oeuf légendaire
-            items: { 'masterball': { amount: 1, chance: 0.02 }, 'lucky_egg': { amount: 1, chance: 0.1 } },
+            items: { 'masterball': { amount: 1, chance: 0.02 }, 'lucky_egg': { amount: 1, chance: 0.1 }, 'time_dust_1h': { amount: 1, chance: 0.01 }, 'time_dust_3h': { amount: 1, chance: 0.0025 }, 'time_dust_9h': { amount: 1, chance: 0.0005 } },
             requirements: [
                 { type: 'type', value: TYPES.DRAGON },
                 { type: 'type', value: TYPES.GHOST },
@@ -5161,6 +5611,110 @@ const EXPEDITION_DEFINITIONS = {
             ]
         }
     },
+    'scorching_desert': {
+        id: 'scorching_desert',
+        name: "Désert Impitoyable",
+        description: "Des tempêtes de sable constantes cachent d'anciens trésors enfouis.",
+        duration: 5400, // 1.5 heures
+        requiredLevel: 22,
+        difficulty: 5500,
+        teamSize: 1,
+        rewardPool: {
+            pokedollars: { min: 4000, max: 7500 },
+            tokens: { min: 2, max: 6, chance: 0.6 },
+            shards: { amount: 2, chance: 0.4 },
+            items: { 'soft_sand': { amount: 1, chance: 0.05 }, 'hyperball': { amount: 3, chance: 0.3 } },
+            requirements: [
+                { type: 'type', value: TYPES.GROUND },
+                { type: 'type', value: TYPES.ROCK },
+                { type: 'type', value: TYPES.FIRE }
+            ]
+        }
+    },
+    'miasma_swamp': {
+        id: 'miasma_swamp',
+        name: "Marais Miasmique",
+        description: "Un bourbier toxique où la moindre égratignure peut être fatale.",
+        duration: 9000, // 2.5 heures
+        requiredLevel: 35,
+        difficulty: 10000,
+        teamSize: 2, // Escouade Duo
+        rewardPool: {
+            pokedollars: { min: 6000, max: 12000 },
+            tokens: { min: 4, max: 8, chance: 0.7 },
+            eggs: { [RARITY.RARE]: { amount: 1, chance: 0.25 } },
+            items: { 'black_sludge': { amount: 1, chance: 0.05 }, 'greatball': { amount: 2, chance: 0.4 } },
+            requirements: [
+                { type: 'type', value: TYPES.POISON },
+                { type: 'type', value: TYPES.BUG },
+                { type: 'type', value: TYPES.DARK }
+            ]
+        }
+    },
+    'deep_abyss': {
+        id: 'deep_abyss',
+        name: "Abysses Océaniques",
+        description: "Une fosse marine insondable. La pression de l'eau y est écrasante.",
+        duration: 18000, // 5 heures
+        requiredLevel: 55,
+        difficulty: 20000,
+        teamSize: 2, // Escouade Duo
+        rewardPool: {
+            pokedollars: { min: 25000, max: 45000 },
+            tokens: { min: 15, max: 25, chance: 0.9 },
+            eggs: { [RARITY.EPIC]: { amount: 1, chance: 0.15 } },
+            shards: { amount: 5, chance: 0.6 },
+            items: { 'mystic_water': { amount: 1, chance: 0.08 }, 'hyperball': { amount: 3, chance: 0.5 }, 'time_dust_1h': { amount: 1, chance: 0.003 } },
+            requirements: [
+                { type: 'type', value: TYPES.WATER },
+                { type: 'type', value: TYPES.DARK },
+                { type: 'talent', value: 'robustesse' } // Talent vital pour survivre à la pression
+            ]
+        }
+    },
+    'cyber_space': {
+        id: 'cyber_space',
+        name: "Réseau Virtuel",
+        description: "Un espace numérique corrompu rempli de virus et de données rares.",
+        duration: 10800, // 3 heures (Temps court mais difficulté brutale)
+        requiredLevel: 65,
+        difficulty: 26000,
+        teamSize: 1, // Solo très difficile
+        rewardPool: {
+            pokedollars: { min: 35000, max: 55000 },
+            tokens: { min: 25, max: 40, chance: 1.0 },
+            shards: { amount: 8, chance: 0.7 },
+            items: { 'upgrade': { amount: 1, chance: 0.05 }, 'talent_reroll': { amount: 1, chance: 0.1 }, 'time_dust_1h': { amount: 1, chance: 0.004 }, 'time_dust_3h': { amount: 1, chance: 0.001 } },
+            requirements: [
+                { type: 'type', value: TYPES.ELECTRIC },
+                { type: 'type', value: TYPES.PSYCHIC },
+                { type: 'type', value: TYPES.STEEL },
+                { type: 'talent', value: 'sniper' }
+            ]
+        }
+    },
+    'meteor_crater': {
+        id: 'meteor_crater',
+        name: "Cratère Cosmique",
+        description: "Le point d'impact d'une météorite. Une énergie extraterrestre en émane.",
+        duration: 36000, // 10 heures (Gros raid de jour)
+        requiredLevel: 75,
+        difficulty: 28000,
+        teamSize: 3, // Escouade Trio (Raid)
+        rewardPool: {
+            pokedollars: { min: 80000, max: 150000 },
+            tokens: { min: 40, max: 80, chance: 1.0 },
+            eggs: { [RARITY.LEGENDARY]: { amount: 1, chance: 0.03 }, [RARITY.EPIC]: { amount: 1, chance: 0.3 } },
+            shards: { amount: 15, chance: 1.0 },
+            items: { 'star_piece': { amount: 3, chance: 0.5 }, 'comet_shard': { amount: 1, chance: 0.1 }, 'time_dust_1h': { amount: 1, chance: 0.008 }, 'time_dust_3h': { amount: 1, chance: 0.002 }, 'time_dust_9h': { amount: 1, chance: 0.0004 } },
+            requirements: [
+                { type: 'type', value: TYPES.PSYCHIC },
+                { type: 'type', value: TYPES.DRAGON },
+                { type: 'type', value: TYPES.ROCK },
+                { type: 'talent', value: 'phoenix' }
+            ]
+        }
+    },
     'volcano_exp': {
         id: 'volcano_exp',
         name: "Cœur du Volcan",
@@ -5168,17 +5722,17 @@ const EXPEDITION_DEFINITIONS = {
         duration: 28000, // 8 heures
         requiredLevel: 60,
         difficulty: 25000,
-		teamSize: 1,
+        teamSize: 1,
         rewardPool: {
             pokedollars: { min: 30000, max: 60000 },
             tokens: { min: 20, max: 40, chance: 1.0 },
             eggs: { [RARITY.LEGENDARY]: { amount: 1, chance: 0.01 } }, // Très rare chance de légendaire
             shards: { amount: 10, chance: 0.8 },
-            items: { 'choice_band': { amount: 1, chance: 0.05 }, 'flame_orb': { amount: 1, chance: 0.05 } },
+            items: { 'choice_band': { amount: 1, chance: 0.05 }, 'flame_orb': { amount: 1, chance: 0.05 }, 'time_dust_1h': { amount: 1, chance: 0.006 }, 'time_dust_3h': { amount: 1, chance: 0.0015 } },
             requirements: [
-                { type: 'type', value: TYPES.FIRE},
-                { type: 'type', value: TYPES.DRAGON},
-                { type: 'talent', value: 'collecteur'}
+                { type: 'type', value: TYPES.FIRE },
+                { type: 'type', value: TYPES.DRAGON },
+                { type: 'talent', value: 'collecteur' }
             ]
         }
     }
@@ -5212,7 +5766,7 @@ const EXPEDITION_BIOMES = {
     'mine_cave': 'CAVE',
     'haunted_mansion': 'DARK',
     'volcano_exp': 'VOLCANO',
-    
+
     // Nouvelles missions avancées
     'frozen_tundra': 'ICE',
     'sky_pillar': 'SKY',
@@ -5223,57 +5777,57 @@ const EXPEDITION_BIOMES = {
 
 // --- STOCK DE L'ÉPICERIE (POKÉMART) ---
 const POKEMART_ITEMS = {
-    'pokeball_1': { 
-        name: "Pokéball", 
-        description: "Taux de capture standard (x1.0).", 
-        type: 'item', 
-        itemId: 'pokeball', 
-        amount: 1, 
+    'pokeball_1': {
+        name: "Pokéball",
+        description: "Taux de capture standard (x1.0).",
+        type: 'item',
+        itemId: 'pokeball',
+        amount: 1,
         cost: 200,
         icon: "🔴"
     },
-    'pokeball_10': { 
-        name: "Pokéball x10", 
-        description: "Lot économique de 10 Pokéballs.", 
-        type: 'item', 
-        itemId: 'pokeball', 
-        amount: 10, 
+    'pokeball_10': {
+        name: "Pokéball x10",
+        description: "Lot économique de 10 Pokéballs.",
+        type: 'item',
+        itemId: 'pokeball',
+        amount: 10,
         cost: 1800, // 10% de réduction
         icon: "🔴"
     },
-    'greatball_1': { 
-        name: "Super Ball", 
-        description: "Taux de capture amélioré (x1.5).", 
-        type: 'item', 
-        itemId: 'greatball', 
-        amount: 1, 
+    'greatball_1': {
+        name: "Super Ball",
+        description: "Taux de capture amélioré (x1.5).",
+        type: 'item',
+        itemId: 'greatball',
+        amount: 1,
         cost: 600,
         icon: "🔵"
     },
-    'greatball_10': { 
-        name: "Super Ball x10", 
-        description: "Lot économique de 10 Super Balls.", 
-        type: 'item', 
-        itemId: 'greatball', 
-        amount: 10, 
+    'greatball_10': {
+        name: "Super Ball x10",
+        description: "Lot économique de 10 Super Balls.",
+        type: 'item',
+        itemId: 'greatball',
+        amount: 10,
         cost: 5400,
         icon: "🔵"
     },
-    'hyperball_1': { 
-        name: "Hyper Ball", 
-        description: "Excellent taux de capture (x2.0).", 
-        type: 'item', 
-        itemId: 'hyperball', 
-        amount: 1, 
+    'hyperball_1': {
+        name: "Hyper Ball",
+        description: "Excellent taux de capture (x2.0).",
+        type: 'item',
+        itemId: 'hyperball',
+        amount: 1,
         cost: 1500,
         icon: "⚫"
     },
-    'hyperball_10': { 
-        name: "Hyper Ball x10", 
-        description: "Lot économique de 10 Hyper Balls.", 
-        type: 'item', 
-        itemId: 'hyperball', 
-        amount: 10, 
+    'hyperball_10': {
+        name: "Hyper Ball x10",
+        description: "Lot économique de 10 Hyper Balls.",
+        type: 'item',
+        itemId: 'hyperball',
+        amount: 10,
         cost: 13500,
         icon: "⚫"
     }
@@ -5311,71 +5865,263 @@ const DUST_SHOP_ITEMS = {
         description: "Augmente de 10% les chances du prochain œuf d'être Shiny (non cumulable).",
         cost: 10000
     },
-	'auto_catcher': {
+    'auto_catcher': {
         id: 'auto_catcher',
         name: "Module Porygon-Z (Auto-Catch)",
         description: "Automatise la capture selon vos filtres. Requiert le Badge Maître.",
         cost: 10000, // Prix élevé en Poussière
         requiredBadge: 'master' // Condition bloquante
     },
-	'prism_iv_shop': {
-    id: 'prism_iv', // L'ID de l'item à donner
-    name: "Prisme d'Optimisation",
-    description: "Relance les IVs d'un Pokémon (Garde le meilleur).",
-    cost: 5000, // Très cher en poussière
-    type: 'item',
-    item: 'prism_iv',
-    amount: 1
-}
+    'prism_iv_shop': {
+        id: 'prism_iv', // L'ID de l'item à donner
+        name: "Prisme d'Optimisation",
+        description: "Relance les IVs d'un Pokémon (Garde le meilleur).",
+        cost: 5000, // Très cher en poussière
+        type: 'item',
+        item: 'prism_iv',
+        amount: 1
+    },
+    'time_dust_1h_shop': {
+        id: 'time_dust_1h_shop',
+        name: "Time Dust I",
+        description: "Ressource très rare : +1h de gains passifs de stats instantanés.",
+        cost: 18000,
+        type: 'item',
+        item: 'time_dust_1h',
+        amount: 1
+    },
+    'time_dust_3h_shop': {
+        id: 'time_dust_3h_shop',
+        name: "Time Dust II",
+        description: "Ressource très rare : +3h de gains passifs de stats instantanés.",
+        cost: 50000,
+        type: 'item',
+        item: 'time_dust_3h',
+        amount: 1
+    },
+    'time_dust_9h_shop': {
+        id: 'time_dust_9h_shop',
+        name: "Time Dust III",
+        description: "Ressource mythique : +9h de gains passifs de stats instantanés.",
+        cost: 135000,
+        type: 'item',
+        item: 'time_dust_9h',
+        amount: 1
+    }
+};
+
+// ============================================================
+// TEAM ROCKET MODULE (Banque / Prêt / Staking / Casino)
+// ============================================================
+const TEAM_ROCKET_QUEST_ORDER = [
+    'rocket_recruit_meowth',
+    'rocket_capture_persian',
+    'rocket_first_stake'
+];
+
+const TEAM_ROCKET_QUESTS = {
+    'rocket_recruit_meowth': {
+        id: 'rocket_recruit_meowth',
+        title: "Patte Blanche",
+        description: "Capturez un Miaouss pour prouver votre loyauté à la Team Rocket.",
+        dialogue: "On n'engage pas n'importe qui. Ramène un Miaouss capturé en personne, et on parlera business.",
+        target: 1,
+        trackingKey: 'creature_captured',
+        requiredSpecies: 'Meowth',
+        difficulty: 'EASY',
+        tags: ['team_rocket'],
+        rewards: { pokedollars: 1200, tokens: 30, items: { 'greatball': 3 } }
+    },
+    'rocket_capture_persian': {
+        id: 'rocket_capture_persian',
+        title: "Ascension Féline",
+        description: "Capturez un Persian pour montrer votre sérieux à la Team Rocket.",
+        dialogue: "Miaouss, c'est l'entrée. Persian, c'est le niveau supérieur. Ramène-en un vivant.",
+        target: 1,
+        trackingKey: 'creature_captured',
+        requiredSpecies: 'Persian',
+        difficulty: 'MEDIUM',
+        tags: ['team_rocket'],
+        rewards: { pokedollars: 2500, tokens: 55, items: { 'hyperball': 2 } }
+    },
+    'rocket_first_stake': {
+        id: 'rocket_first_stake',
+        title: "Blanchiment Organisé",
+        description: "Terminez 1 contrat de staking Team Rocket.",
+        dialogue: "Le vrai business, c'est le contrat. Lance-en un et reviens quand il est clôturé.",
+        target: 1,
+        trackingKey: 'rocket_staking_completed',
+        difficulty: 'MEDIUM',
+        tags: ['team_rocket'],
+        rewards: { pokedollars: 3000, tokens: 65, items: { 'greatball': 5 } }
+    }
+};
+
+const ROCKET_TRUST_LEVELS = {
+    1: { requiredXp: 0, label: "Recrue" },
+    2: { requiredXp: 100, label: "Associé" },
+    3: { requiredXp: 260, label: "Lieutenant" },
+    4: { requiredXp: 520, label: "Capitaine" },
+    5: { requiredXp: 900, label: "Exécutif" }
+};
+
+const ROCKET_STAKING_CONTRACT_POOLS = {
+    1: [
+        {
+            id: 'rk_c1_item_pokeball',
+            requestedType: 'item',
+            requestedKey: 'pokeball',
+            amount: 40,
+            durationMinutes: 60,
+            rewardRJ: 6
+        },
+        {
+            id: 'rk_c1_poke_common',
+            requestedType: 'pokemon_rarity',
+            requestedKey: RARITY.COMMON,
+            amount: 2,
+            durationMinutes: 90,
+            rewardRJ: 9
+        }
+    ],
+    2: [
+        {
+            id: 'rk_c2_item_greatball',
+            requestedType: 'item',
+            requestedKey: 'greatball',
+            amount: 18,
+            durationMinutes: 120,
+            rewardRJ: 18
+        },
+        {
+            id: 'rk_c2_poke_rare',
+            requestedType: 'pokemon_rarity',
+            requestedKey: RARITY.RARE,
+            amount: 2,
+            durationMinutes: 180,
+            rewardRJ: 24
+        }
+    ],
+    3: [
+        {
+            id: 'rk_c3_item_hyperball',
+            requestedType: 'item',
+            requestedKey: 'hyperball',
+            amount: 12,
+            durationMinutes: 240,
+            rewardRJ: 40
+        },
+        {
+            id: 'rk_c3_poke_epic',
+            requestedType: 'pokemon_rarity',
+            requestedKey: RARITY.EPIC,
+            amount: 1,
+            durationMinutes: 240,
+            rewardRJ: 55
+        }
+    ],
+    4: [
+        {
+            id: 'rk_c4_item_masterball',
+            requestedType: 'item',
+            requestedKey: 'masterball',
+            amount: 1,
+            durationMinutes: 360,
+            rewardRJ: 95
+        },
+        {
+            id: 'rk_c4_poke_legend',
+            requestedType: 'pokemon_rarity',
+            requestedKey: RARITY.LEGENDARY,
+            amount: 1,
+            durationMinutes: 480,
+            rewardRJ: 120
+        }
+    ],
+    5: [
+        {
+            id: 'rk_c5_item_timedust',
+            requestedType: 'item',
+            requestedKey: 'time_dust_1h',
+            amount: 1,
+            durationMinutes: 720,
+            rewardRJ: 190
+        },
+        {
+            id: 'rk_c5_poke_legend_duo',
+            requestedType: 'pokemon_rarity',
+            requestedKey: RARITY.LEGENDARY,
+            amount: 2,
+            durationMinutes: 720,
+            rewardRJ: 230
+        }
+    ]
+};
+
+const ROCKET_CASINO_CONFIG = {
+    minStakeRJ: 5,
+    maxStakeRJ: 500,
+    symbols: [
+        { key: 'grimer', weight: 32, payout: 0 },
+        { key: 'koffing', weight: 28, payout: 0.5 },
+        { key: 'zubat', weight: 20, payout: 1.2 },
+        { key: 'persian', weight: 12, payout: 2.5 },
+        { key: 'giovanni', weight: 6, payout: 8 },
+        { key: 'rocket_jackpot', weight: 2, payout: 25 }
+    ],
+    rewards: {
+        rare: { itemKey: 'masterball', chance: 0.01, amount: 1 },
+        legendary: { itemKey: 'time_dust_3h', chance: 0.003, amount: 1 }
+    }
 };
 
 // --- DÉFINITION DES ZONES (Noms, Niveaux, Difficulté) ---
 const ZONES = {
     // DÉBUT (Badge 1)
     1: { name: "Bourg Palette", levelRange: [2, 5], multiplier: 1, maxTier: 10 },
-    2: { name: "Route 22", levelRange: [3, 6], multiplier: 4, maxTier: 15 },
-    3: { name: "Route 2", levelRange: [4, 7], multiplier: 8, maxTier: 20 },
-    4: { name: "Forêt de Jade", levelRange: [5, 9], multiplier: 16, maxTier: 25, requiredEpics: 1 },
+    2: { name: "Route 22", levelRange: [3, 6], multiplier: 6, maxTier: 15 },
+    3: { name: "Route 2", levelRange: [4, 7], multiplier: 18, maxTier: 20 },
+    4: { name: "Forêt de Jade", levelRange: [5, 9], multiplier: 54, maxTier: 25, requiredEpics: 1 },
 
     // AZURIA (Badge 2)
-    5: { name: "Route 3 (Vers Mont)", levelRange: [8, 12], multiplier: 32, maxTier: 30 },
-    6: { name: "Mont Sélénite", levelRange: [10, 15], multiplier: 61, maxTier: 35, requiredBosses: 1 },
-    7: { name: "Route 4 (Sortie)", levelRange: [12, 16], multiplier: 110, maxTier: 40 },
-    8: { name: "Pont Pépite (Route 24)", levelRange: [14, 18], multiplier: 187, maxTier: 45 },
-    9: { name: "Cap d'Azuria (Route 25)", levelRange: [15, 20], multiplier: 300, maxTier: 50 },
+    5: { name: "Route 3 (Vers Mont)", levelRange: [8, 12], multiplier: 162, maxTier: 30 },
+    6: { name: "Mont Sélénite", levelRange: [10, 15], multiplier: 405, maxTier: 35, requiredBosses: 1 },
+    7: { name: "Route 4 (Sortie)", levelRange: [12, 16], multiplier: 810, maxTier: 40 },
+    8: { name: "Pont Pépite (Route 24)", levelRange: [14, 18], multiplier: 1539, maxTier: 45 },
+    9: { name: "Cap d'Azuria (Route 25)", levelRange: [15, 20], multiplier: 2770, maxTier: 50 },
 
     // CARMIN (Badge 3)
-    10: { name: "Route 5 (Pension)", levelRange: [16, 21], multiplier: 450, maxTier: 55 },
-    11: { name: "Route 6 (Sud)", levelRange: [17, 22], multiplier: 50, maxTier: 60 },
-    12: { name: "Cave Taupiqueur", levelRange: [18, 25], multiplier: 75, maxTier: 65, requiredEpics: 2 },
-    13: { name: "Route 11 (Est)", levelRange: [19, 24], multiplier: 100, maxTier: 70 },
+    10: { name: "Route 5 (Pension)", levelRange: [16, 21], multiplier: 4710, maxTier: 55 },
+    11: { name: "Route 6 (Sud)", levelRange: [17, 22], multiplier: 7534, maxTier: 60 },
+    12: { name: "Cave Taupiqueur", levelRange: [18, 25], multiplier: 11302, maxTier: 65, requiredEpics: 2 },
+    13: { name: "Route 11 (Est)", levelRange: [19, 24], multiplier: 15823, maxTier: 70 },
 
     // LAVANVILLE (Badge 4)
-    14: { name: "Route 9 (Est Azuria)", levelRange: [20, 26], multiplier: 150, maxTier: 75 },
-    15: { name: "Route 10 (Centrale)", levelRange: [22, 28], multiplier: 220, maxTier: 80 },
-    16: { name: "Grotte Sombre", levelRange: [24, 30], multiplier: 350, maxTier: 85, requiredBosses: 2 },
-    17: { name: "Tour Pokémon", levelRange: [25, 32], multiplier: 500, maxTier: 90, requiredEpics: 3 },
-    18: { name: "Route 8 (Ouest)", levelRange: [26, 33], multiplier: 750, maxTier: 95 },
-    19: { name: "Route 7 (Céladopole)", levelRange: [27, 34], multiplier: 1000, maxTier: 100 },
+    14: { name: "Route 9 (Est Azuria)", levelRange: [20, 26], multiplier: 20570, maxTier: 75 },
+    15: { name: "Route 10 (Centrale)", levelRange: [22, 28], multiplier: 24684, maxTier: 80 },
+    16: { name: "Grotte Sombre", levelRange: [24, 30], multiplier: 27152, maxTier: 85, requiredBosses: 2 },
+    17: { name: "Tour Pokémon", levelRange: [25, 32], multiplier: 29868, maxTier: 90, requiredEpics: 3 },
+    18: { name: "Route 8 (Ouest)", levelRange: [26, 33], multiplier: 32855, maxTier: 95 },
+    19: { name: "Route 7 (Céladopole)", levelRange: [27, 34], multiplier: 36140, maxTier: 100 },
 
     // PARMANIE (Badge 5 & 6)
-    20: { name: "Piste Cyclable (R17)", levelRange: [28, 35], multiplier: 1500, maxTier: 100 },
-    21: { name: "Pont Silence (R12-15)", levelRange: [30, 38], multiplier: 2200, maxTier: 100 },
-    22: { name: "Parc Safari", levelRange: [32, 40], multiplier: 3500, maxTier: 100, requiredBosses: 3 },
+    20: { name: "Piste Cyclable (R17)", levelRange: [28, 35], multiplier: 39754, maxTier: 100 },
+    21: { name: "Pont Silence (R12-15)", levelRange: [30, 38], multiplier: 43730, maxTier: 100 },
+    22: { name: "Parc Safari", levelRange: [32, 40], multiplier: 48103, maxTier: 100, requiredBosses: 3 },
 
     // CRAMOIS'ÎLE (Badge 7)
-    23: { name: "Chenaux (Surf)", levelRange: [35, 42], multiplier: 5000, maxTier: 100 },
-    24: { name: "Iles Écume", levelRange: [38, 45], multiplier: 8000, maxTier: 100, requiredBosses: 4 },
-    25: { name: "Manoir Pokémon", levelRange: [40, 48], multiplier: 12000, maxTier: 100, requiredEpics: 5 },
+    23: { name: "Chenaux (Surf)", levelRange: [35, 42], multiplier: 52913, maxTier: 100 },
+    24: { name: "Iles Écume", levelRange: [38, 45], multiplier: 58204, maxTier: 100, requiredBosses: 4 },
+    25: { name: "Manoir Pokémon", levelRange: [40, 48], multiplier: 64025, maxTier: 100, requiredEpics: 5 },
 
     // LIGUE (Badge 8)
-    26: { name: "Centrale (Optionnel)", levelRange: [42, 50], multiplier: 20000, maxTier: 100, requiredBosses: 5 },
-    27: { name: "Route 23 (Victoire)", levelRange: [45, 55], multiplier: 40000, maxTier: 100 },
-    28: { name: "Route Victoire", levelRange: [50, 60], multiplier: 80000, maxTier: 100, requiredBosses: 3 },
+    26: { name: "Centrale (Optionnel)", levelRange: [42, 50], multiplier: 70427, maxTier: 100, requiredBosses: 5 },
+    27: { name: "Route 23 (Victoire)", levelRange: [45, 55], multiplier: 77470, maxTier: 100 },
+    28: { name: "Route Victoire", levelRange: [50, 60], multiplier: 85217, maxTier: 100, requiredBosses: 3 },
 
     // END GAME
-    29: { name: "Caverne Azurée", levelRange: [60, 70], multiplier: 250000, maxTier: 100, requiredBosses: 4 },
-    30: { name: "Monde Distorsion", levelRange: [70, 100], multiplier: 1000000, maxTier: 100, requiredBosses: 5 }
+    29: { name: "Caverne Azurée", levelRange: [60, 70], multiplier: 93739, maxTier: 100, requiredBosses: 4 },
+    30: { name: "Monde Distorsion", levelRange: [70, 100], multiplier: 103113, maxTier: 100, requiredBosses: 5 }
 };
 
 // --- POPULATION DES ZONES (Avec Biomes pour Surf/Pêche) ---
@@ -5398,7 +6144,7 @@ const ZONE_POKEMON = {
     },
     // Zone 4 : Forêt de Jade
     4: ['Caterpie', 'Metapod', 'Weedle', 'Kakuna', 'Pikachu', 'Pidgey', 'Pidgeotto'],
-    
+
     // Zone 5 : Route 3
     5: {
         land: ['Pidgey', 'Spearow', 'Jigglypuff', 'Mankey', 'Sandshrew', 'Ekans'],
@@ -5406,7 +6152,7 @@ const ZONE_POKEMON = {
     },
     // Zone 6 : Mont Sélénite
     6: ['Zubat', 'Geodude', 'Paras', 'Clefairy'],
-    
+
     // Zone 7 : Route 4
     7: {
         land: ['Rattata', 'Spearow', 'Ekans', 'Sandshrew', 'Mankey'],
@@ -5426,7 +6172,7 @@ const ZONE_POKEMON = {
     },
     // Zone 10 : Route 5
     10: ['Pidgey', 'Rattata', 'Jigglypuff', 'Meowth', 'Mankey', 'Abra'],
-    
+
     // Zone 11 : Route 6
     11: {
         land: ['Pidgey', 'Rattata', 'Jigglypuff', 'Meowth', 'Mankey', 'Psyduck'],
@@ -5435,7 +6181,7 @@ const ZONE_POKEMON = {
     },
     // Zone 12 : Cave Taupiqueur
     12: ['Diglett', 'Dugtrio'],
-    
+
     // Zone 13 : Route 11
     13: {
         land: ['Drowzee', 'Ekans', 'Sandshrew', 'Spearow'],
@@ -5456,16 +6202,16 @@ const ZONE_POKEMON = {
     },
     // Zone 16 : Grotte Sombre
     16: ['Zubat', 'Geodude', 'Machop', 'Onix', 'Graveler', 'Golbat', 'Cubone'],
-    
+
     // Zone 17 : Tour Pokémon
     17: ['Gastly', 'Haunter', 'Cubone', 'Zubat', 'Golbat'],
-    
+
     // Zone 18 : Route 8
     18: ['Pidgey', 'Meowth', 'Mankey', 'Growlithe', 'Vulpix', 'Abra', 'Kadabra'],
-    
+
     // Zone 19 : Route 7
     19: ['Pidgey', 'Meowth', 'Mankey', 'Growlithe', 'Vulpix', 'Bellsprout', 'Oddish'],
-    
+
     // Zone 20 : Piste Cyclable
     20: {
         land: ['Rattata', 'Raticate', 'Spearow', 'Fearow', 'Doduo', 'Dodrio', 'Snorlax', 'Grimer', 'Muk', 'Ponyta'],
@@ -5497,10 +6243,10 @@ const ZONE_POKEMON = {
     },
     // Zone 25 : Manoir Pokémon
     25: ['Raticate', 'Vulpix', 'Growlithe', 'Grimer', 'Muk', 'Koffing', 'Weezing', 'Ponyta', 'Rapidash', 'Magmar', 'Ditto'],
-    
+
     // Zone 26 : Centrale
     26: ['Magnemite', 'Magneton', 'Voltorb', 'Electrode', 'Pikachu', 'Raichu', 'Electabuzz'],
-    
+
     // Zone 27 : Route 23
     27: {
         land: ['Spearow', 'Fearow', 'Ekans', 'Arbok', 'Sandshrew', 'Sandslash', 'Nidorina', 'Nidorino', 'Mankey', 'Primeape'],
@@ -5509,7 +6255,7 @@ const ZONE_POKEMON = {
     },
     // Zone 28 : Route Victoire
     28: ['Machop', 'Machoke', 'Geodude', 'Graveler', 'Onix', 'Zubat', 'Golbat', 'Venomoth', 'Marowak'],
-    
+
     // Zone 29 : Caverne Azurée
     29: {
         land: ['Parasect', 'Kadabra', 'Alakazam', 'Raichu', 'Sandslash', 'Arbok', 'Gloom', 'Weepinbell', 'Ditto', 'Dodrio', 'Venomoth', 'Chansey', 'Wigglytuff'],
@@ -5524,7 +6270,7 @@ const ZONE_POKEMON = {
 const GAME_SPEEDS = {
     // Temps pour remplir la barre ATB à vitesse normale (Plus c'est haut, plus c'est lent)
     // 1200ms = 1.2 secondes. C'est le rythme "humain" idéal.
-    BASE_TURN_TIME:800, 
+    BASE_TURN_TIME: 800,
 
     // Temps d'attente une fois la barre pleine avant d'attaquer (Le "Métronome")
     // Permet de voir "Ah, il est prêt !"
@@ -5536,7 +6282,7 @@ const GAME_SPEEDS = {
 
     // Durée de la transition CSS des barres de vie (Lissage)
     HEALTH_BAR_TRANSITION: '0.2s',
-    
+
     // Temps entre la mort d'un ennemi et l'apparition du suivant
     RESPAWN_DELAY: 1000
 };

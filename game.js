@@ -30,8 +30,8 @@ class Game {
         };
         this.pokedexSortBy = 'id';   // Critère par défaut
         this.pokedexSortOrder = 'asc'; // Ordre par défaut
-        this.pokedexSubTab = 'pokedex'; // 'pokedex' | 'synergies'
-        this.collectionSynergyTab = 'all'; // 'all' ou id de famille
+        this.pokedexSubTab = 'pokedex'; // 'pokedex' | 'collectionbonuses'
+        this.collectionBonusTab = 'all'; // 'all' ou id de famille
         this.captureMode = 0; // 0 = OFF, 1 = ALL, 2 = TARGET
         this.captureTargets = null; // Nom du Pokémon ciblé
         this.zoneProgress = {};
@@ -97,7 +97,7 @@ class Game {
         this.gameLoopId = null;
 
         // ✅ Variables pour la Tour de Combat
-        this.combatTickets = 0;
+        this.combatTickets = 100;
         this.marquesDuTriomphe = 0; // Notre nouvelle monnaie
         this.towerRecord = 0;
         this.towerState = {
@@ -118,9 +118,14 @@ class Game {
             respawn: { level: 0, baseCost: 500, costMultiplier: 1.5, name: "Fast Respawn ", description: " Rédui le délai de réapparation des adversaires! ", effect: " - 50 ms par niveau", maxLevel: 15 },
             recycle: { level: 0, baseCost: 500, costMultiplier: 1.5, name: "Recycleur de balls ", description: " Obtiens la probabilité de conserver la ball lancée ! ", effect: " 2.5% par niveau", maxLevel: 10 },
             second_chance: { level: 0, baseCost: 500, costMultiplier: 1.5, name: "Seconde chance ", description: " Obtiens une chance de d'obtenir un deuxième lancé ! ", effect: " 1% par niveau", maxLevel: 25 },
-
-
+            incubatorSlots: { level: 0, baseCost: 1500, costMultiplier: 2, name: "Slot d'incubateur", description: "Débloque un emplacement d'incubateur supplémentaire (max 4)", effect: "+1 incubateur", maxLevel: 3 },
+            incubationSpeed: { level: 0, baseCost: 800, costMultiplier: 1.8, name: "Incubation rapide", description: "Réduit le temps d'incubation des œufs", effect: "-10% temps par niveau", maxLevel: 5 },
         };
+
+        // Incubateurs : tableau de 4 slots. Chaque slot : null ou { rarity, startTime, durationMs }
+        this.incubators = [null, null, null, null];
+        this.autoIncubation = this.createDefaultAutoIncubationState();
+        this.offlineIncubationLastReport = null;
 
 
 
@@ -131,6 +136,10 @@ class Game {
         this.sortBy = 'none';
         this.sortOrder = 'desc';
         this.autoSelectEnabled = false;
+        // Flags individuels pour les fonctionnalités auto
+        this.autoSwitchDisadvantage = true;
+        this.autoSwitchStamina = true;
+        this.autoUltimate = true;
         this.badges = {};
         Object.keys(ACCOUNT_TALENTS).forEach(talentKey => {
             this.badges[talentKey] = false;
@@ -191,6 +200,7 @@ class Game {
 
             // --- ÉCONOMIE & PROGRESSION ---
             totalPokedollarsEarned: 0, // (Anciennement totalGoldEarned)
+            totalRocketBankInterestGained: 0, // Total intérêts générés par la banque Team Rocket
             prestigeCount: 0,          // (Anciennement prestigesDone)
             upgradesPurchased: 0,      // Pour "Investisseur Avisé"
             badgesEarned: 0,           // Pour "Collectionneur de Badges"
@@ -203,6 +213,10 @@ class Game {
             startTime: Date.now(),
             totalPlayTime: 0
         };
+
+        this.teamRocketState = this.createDefaultTeamRocketState();
+        this.refreshRocketContractsIfNeeded(true);
+        this.rocketBankOptionsOpen = false;
 
         // 2. Progression des Succès (On garde ça séparé, c'est propre)
         this.achievementsProgress = {};
@@ -265,6 +279,7 @@ class Game {
             }
         });
 
+        this.initBalanceTelemetry();
         this.init();
     }
 
@@ -288,6 +303,7 @@ class Game {
             this.startGameLoop();
             this.startAutoSave();
             this.runSanityCheck();
+            this.resetBalanceTelemetrySession('loaded_save');
 
             // Sécurité : Si par hasard aucune quête n'est chargée, on en lance une
             if (this.quests.length === 0) {
@@ -306,6 +322,230 @@ class Game {
                 this.showConceptModal();
             }
         }
+    }
+
+    // ---------------------------------------------------------
+    // BALANCE TELEMETRY (auto metrics + export)
+    // ---------------------------------------------------------
+    initBalanceTelemetry() {
+        this.balanceTelemetry = {
+            enabled: true,
+            sessionStartedAt: Date.now(),
+            samples: [],
+            events: [],
+            maxSamples: 7200, // ~2h at 1 sample/sec
+            maxEvents: 5000,
+            lastSnapshot: null
+        };
+        this.resetBalanceTelemetrySession('auto');
+    }
+
+    resetBalanceTelemetrySession(label = 'manual') {
+        if (!this.balanceTelemetry) this.initBalanceTelemetry();
+        this.balanceTelemetry.sessionStartedAt = Date.now();
+        this.balanceTelemetry.samples = [];
+        this.balanceTelemetry.events = [];
+        this.balanceTelemetry.lastSnapshot = this.buildBalanceSnapshot();
+        this.balanceTelemetry.samples.push({
+            t: Date.now(),
+            ...this.balanceTelemetry.lastSnapshot,
+            tokenDelta: 0
+        });
+        this.trackBalanceEvent('session_reset', { label });
+    }
+
+    buildBalanceSnapshot() {
+        const stats = this.stats || {};
+        const won = Number(stats.combatsWon) || 0;
+        const lost = Number(stats.combatsLost) || 0;
+        return {
+            zone: (typeof currentZone !== 'undefined' ? Number(currentZone) : 1) || 1,
+            combatsWon: won,
+            combatsLost: lost,
+            combatsTotal: won + lost,
+            totalPokedollarsEarned: Number(stats.totalPokedollarsEarned) || 0,
+            questTokens: Number(this.questTokens) || 0,
+            questsCompleted: Number(this.questsCompleted) || 0,
+            pokedollars: Number(this.pokedollars) || 0
+        };
+    }
+
+    updateBalanceTelemetryTick() {
+        const tel = this.balanceTelemetry;
+        if (!tel || !tel.enabled) return;
+        const now = Date.now();
+        const snapshot = this.buildBalanceSnapshot();
+        const prev = tel.lastSnapshot || snapshot;
+        const tokenDelta = snapshot.questTokens - prev.questTokens;
+
+        tel.samples.push({
+            t: now,
+            ...snapshot,
+            tokenDelta
+        });
+
+        if (tel.samples.length > tel.maxSamples) {
+            tel.samples.splice(0, tel.samples.length - tel.maxSamples);
+        }
+
+        tel.lastSnapshot = snapshot;
+    }
+
+    trackBalanceEvent(type, payload = {}) {
+        const tel = this.balanceTelemetry;
+        if (!tel || !tel.enabled) return;
+        tel.events.push({
+            t: Date.now(),
+            type,
+            ...payload
+        });
+        if (tel.events.length > tel.maxEvents) {
+            tel.events.splice(0, tel.events.length - tel.maxEvents);
+        }
+    }
+
+    countBalanceEvents(type, sinceTs) {
+        const tel = this.balanceTelemetry;
+        if (!tel) return 0;
+        return tel.events.filter(e => e.type === type && e.t >= sinceTs).length;
+    }
+
+    buildBalanceReport(windowMinutes = 30) {
+        const tel = this.balanceTelemetry;
+        if (!tel || !tel.samples || tel.samples.length === 0) return null;
+
+        const now = Date.now();
+        const windowMs = Math.max(1, Number(windowMinutes) || 30) * 60 * 1000;
+        const sinceTs = now - windowMs;
+        const samples = tel.samples.filter(s => s.t >= sinceTs);
+        const useSamples = samples.length >= 2 ? samples : tel.samples;
+        if (useSamples.length < 2) return null;
+
+        const first = useSamples[0];
+        const last = useSamples[useSamples.length - 1];
+        const durationMs = Math.max(1000, last.t - first.t);
+        const durationMin = durationMs / 60000;
+
+        const wins = Math.max(0, last.combatsWon - first.combatsWon);
+        const losses = Math.max(0, last.combatsLost - first.combatsLost);
+        const combats = wins + losses;
+        const cpm = combats / durationMin;
+        const winRate = combats > 0 ? (wins / combats) * 100 : 0;
+
+        const moneyEarned = Math.max(0, last.totalPokedollarsEarned - first.totalPokedollarsEarned);
+        const moneyPerMin = moneyEarned / durationMin;
+
+        let tokensGained = 0;
+        let tokensSpent = 0;
+        useSamples.forEach((s, idx) => {
+            if (idx === 0) return;
+            if (s.tokenDelta > 0) tokensGained += s.tokenDelta;
+            else tokensSpent += Math.abs(s.tokenDelta);
+        });
+        const tokenNet = Math.max(0, last.questTokens - first.questTokens);
+
+        const questsCompleted = Math.max(0, last.questsCompleted - first.questsCompleted);
+
+        return {
+            generatedAt: new Date(now).toISOString(),
+            windowMinutes: Number(windowMinutes) || 30,
+            durationMin: Number(durationMin.toFixed(2)),
+            zoneReached: last.zone,
+            combats: {
+                total: combats,
+                wins,
+                losses,
+                cpm: Number(cpm.toFixed(2)),
+                winRatePct: Number(winRate.toFixed(2))
+            },
+            economy: {
+                moneyEarned,
+                moneyPerMin: Number(moneyPerMin.toFixed(2)),
+                tokensGained,
+                tokensSpent,
+                tokenNet
+            },
+            quests: {
+                generated: this.countBalanceEvents('quest_generated', sinceTs),
+                accepted: this.countBalanceEvents('quest_accepted', sinceTs),
+                refused: this.countBalanceEvents('quest_refused', sinceTs),
+                abandoned: this.countBalanceEvents('quest_abandoned', sinceTs),
+                claimed: this.countBalanceEvents('quest_claimed', sinceTs),
+                completed: questsCompleted
+            },
+            expeditions: {
+                launched: this.countBalanceEvents('expedition_launched', sinceTs),
+                claimed: this.countBalanceEvents('expedition_claimed', sinceTs)
+            }
+        };
+    }
+
+    formatBalanceReportMarkdown(windowMinutes = 30) {
+        const report = this.buildBalanceReport(windowMinutes);
+        if (!report) return '# Balance Report\n\nNo data yet.';
+
+        return [
+            '# Balance Auto Report',
+            '',
+            `Generated: ${report.generatedAt}`,
+            `Window: ${report.windowMinutes} min`,
+            '',
+            '## Core',
+            '',
+            '| KPI | Current |',
+            '| --- | --- |',
+            `| Zone reached | ${report.zoneReached} |`,
+            `| Combats per minute | ${report.combats.cpm} |`,
+            `| Win rate | ${report.combats.winRatePct}% |`,
+            '',
+            '## Economy',
+            '',
+            '| KPI | Current |',
+            '| --- | --- |',
+            `| Money earned | ${report.economy.moneyEarned} |`,
+            `| Money per minute | ${report.economy.moneyPerMin} |`,
+            `| Tokens gained | ${report.economy.tokensGained} |`,
+            `| Tokens spent | ${report.economy.tokensSpent} |`,
+            `| Tokens net | ${report.economy.tokenNet} |`,
+            '',
+            '## Quests',
+            '',
+            '| KPI | Current |',
+            '| --- | --- |',
+            `| Generated | ${report.quests.generated} |`,
+            `| Accepted | ${report.quests.accepted} |`,
+            `| Refused | ${report.quests.refused} |`,
+            `| Abandoned | ${report.quests.abandoned} |`,
+            `| Claimed | ${report.quests.claimed} |`,
+            `| Completed | ${report.quests.completed} |`,
+            '',
+            '## Expeditions',
+            '',
+            '| KPI | Current |',
+            '| --- | --- |',
+            `| Launched | ${report.expeditions.launched} |`,
+            `| Claimed | ${report.expeditions.claimed} |`,
+            ''
+        ].join('\n');
+    }
+
+    exportBalanceReport(windowMinutes = 30, format = 'json') {
+        const fmt = (format || 'json').toLowerCase();
+        const data = fmt === 'md'
+            ? this.formatBalanceReportMarkdown(windowMinutes)
+            : JSON.stringify(this.buildBalanceReport(windowMinutes), null, 2);
+        const mime = fmt === 'md' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+        const ext = fmt === 'md' ? 'md' : 'json';
+        const blob = new Blob([data], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `balance-report-${Date.now()}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if (typeof toast !== 'undefined') toast.success('Balance', `Rapport exporté (${ext}).`);
     }
 
     // SÉCURITÉ : Vérifie l'intégrité de la base de données (Compatible Zones Complexes)
@@ -450,6 +690,7 @@ class Game {
         this.updateZoneSelector();
         this.updateDisplay();
         this.startGameLoop();
+        this.resetBalanceTelemetrySession('manual_starter_start');
 
         // 5. Initialisation des Quêtes pour le nouveau joueur
         this.nextQuestTimer = 60000; // Première quête dans 1 minute
@@ -516,7 +757,10 @@ class Game {
         }
 
         // 2. Appliquer l'effet
-        if (item.effect.duration === null) {
+        if (item.effect && item.effect.type === 'timeDust') {
+            const hoursPerUse = Number(item.effect.hours) || 0;
+            this.applyTimeDust(hoursPerUse, amountToUse, item);
+        } else if (item.effect.duration === null) {
             // ✅ VITAMINE (Permanent) : On envoie la quantité totale ici
             this.applyVitamin(item, amountToUse);
         } else {
@@ -529,6 +773,54 @@ class Game {
         this.updateItemsDisplay();
         this.updatePlayerStatsDisplay();
         return true;
+    }
+
+    getPassiveStatGainPerSecond() {
+        this.calculateTeamStats();
+        const pensionStats = this.calculatePensionStats();
+
+        const hpBonus = 1 + this.getAccountTalentBonus('hp_mult');
+        const baseContribution = 0.10;
+        const towerBonus = this.permanentBoosts.team_contribution || 0;
+        const teamContributionRate = baseContribution + towerBonus;
+
+        const vitaminBonus = {
+            hp: 1 + (this.activeVitamins.hp || 0) + (this.activeVitamins.all || 0),
+            attack: 1 + (this.activeVitamins.attack || 0) + (this.activeVitamins.all || 0),
+            spattack: 1 + (this.activeVitamins.spattack || 0) + (this.activeVitamins.all || 0),
+            defense: 1 + (this.activeVitamins.defense || 0) + (this.activeVitamins.all || 0),
+            spdefense: 1 + (this.activeVitamins.spdefense || 0) + (this.activeVitamins.all || 0),
+            speed: 1 + (this.activeVitamins.speed || 0) + (this.activeVitamins.all || 0)
+        };
+
+        return {
+            hp: Math.floor(this.playerTeamStats.hp * teamContributionRate * hpBonus * vitaminBonus.hp) + Math.floor(pensionStats.hp * hpBonus * vitaminBonus.hp),
+            attack: Math.floor(this.playerTeamStats.attack * teamContributionRate * vitaminBonus.attack) + Math.floor(pensionStats.attack * vitaminBonus.attack),
+            spattack: Math.floor(this.playerTeamStats.spattack * teamContributionRate * vitaminBonus.spattack) + Math.floor(pensionStats.spattack * vitaminBonus.spattack),
+            defense: Math.floor(this.playerTeamStats.defense * teamContributionRate * vitaminBonus.defense) + Math.floor(pensionStats.defense * vitaminBonus.defense),
+            spdefense: Math.floor(this.playerTeamStats.spdefense * teamContributionRate * vitaminBonus.spdefense) + Math.floor(pensionStats.spdefense * vitaminBonus.spdefense),
+            speed: Math.floor(this.playerTeamStats.speed * teamContributionRate * vitaminBonus.speed) + Math.floor(pensionStats.speed * vitaminBonus.speed)
+        };
+    }
+
+    applyTimeDust(hours, quantity = 1, itemDef = null) {
+        const safeHours = Number(hours) || 0;
+        const safeQty = Math.max(1, Math.floor(Number(quantity) || 1));
+        const totalSeconds = Math.floor(safeHours * 3600 * safeQty);
+        if (totalSeconds <= 0) return;
+
+        const perSecondGain = this.getPassiveStatGainPerSecond();
+        this.playerMainStats.hp += perSecondGain.hp * totalSeconds;
+        this.playerMainStats.attack += perSecondGain.attack * totalSeconds;
+        this.playerMainStats.spattack += perSecondGain.spattack * totalSeconds;
+        this.playerMainStats.defense += perSecondGain.defense * totalSeconds;
+        this.playerMainStats.spdefense += perSecondGain.spdefense * totalSeconds;
+        this.playerMainStats.speed += perSecondGain.speed * totalSeconds;
+
+        const fmt = (v) => (typeof formatNumber === 'function' ? formatNumber(v) : v);
+        const itemName = (itemDef && itemDef.name) ? itemDef.name : 'Time Dust';
+        logMessage(`⏳ ${safeQty}x ${itemName} utilisé : +${safeHours * safeQty}h de gains passifs appliqués instantanément !`);
+        logMessage(`📈 Gains Time Dust — HP +${fmt(perSecondGain.hp * totalSeconds)}, ATK +${fmt(perSecondGain.attack * totalSeconds)}, ATK SP +${fmt(perSecondGain.spattack * totalSeconds)}, DEF +${fmt(perSecondGain.defense * totalSeconds)}, DEF SP +${fmt(perSecondGain.spdefense * totalSeconds)}, SPD +${fmt(perSecondGain.speed * totalSeconds)}`);
     }
 
     hasCreatureInCollection(name, type) {
@@ -574,7 +866,9 @@ class Game {
             logMessage(`✅ ${quantity}x ${item.name} utilisés ! +${(totalBonus * 100).toFixed(0)}% Stats (Perm.)`);
         } else {
             this.activeVitamins[effect.stat] = (this.activeVitamins[effect.stat] || 0) + totalBonus;
-            logMessage(`✅ ${quantity}x ${item.name} utilisés ! +${(totalBonus * 100).toFixed(0)}% ${effect.stat.toUpperCase()} (Perm.)`);
+            const statLabels = { hp: 'PV', attack: 'Attaque', defense: 'Défense', speed: 'Vitesse', spattack: 'Att. Spé.', spdefense: 'Déf. Spé.' };
+            const statLabel = statLabels[effect.stat] || effect.stat;
+            logMessage(`✅ ${quantity}x ${item.name} utilisés ! +${(totalBonus * 100).toFixed(0)}% ${statLabel} (Perm.)`);
         }
 
         // Recalculer et Sauvegarder immédiatement
@@ -671,11 +965,178 @@ class Game {
         if (this.towerState.isActive && this.towerState.buffs && this.towerState.buffs.max_hp_mult) {
             total = Math.floor(total * this.towerState.buffs.max_hp_mult);
         }
-        // Collection Synergies (Water Starters → max_hp_mult 1% par prestige)
-        const collHpMult = (this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {}).max_hp_mult || 0;
+        // Bonus de collection (Water Starters → max_hp_mult 1% par prestige)
+        const collHpMult = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).max_hp_mult || 0;
         total = Math.floor(total * (1 + collHpMult));
 
         return total;
+    }
+
+    createDefaultAutoIncubationState() {
+        const defaultPriority = Array.isArray(AUTO_INCUBATION_DEFAULT_PRIORITY) && AUTO_INCUBATION_DEFAULT_PRIORITY.length
+            ? [...AUTO_INCUBATION_DEFAULT_PRIORITY]
+            : [RARITY.LEGENDARY, RARITY.EPIC, RARITY.RARE, RARITY.COMMON];
+        return {
+            unlockedAutoSlots: 0,
+            slotSettings: [0, 1, 2, 3].map(() => ({
+                enabled: false,
+                priorityOrder: [...defaultPriority],
+                autoCollectOnlyWhenReady: true
+            }))
+        };
+    }
+
+    normalizePriorityOrder(priorityOrder) {
+        const allowed = [RARITY.LEGENDARY, RARITY.EPIC, RARITY.RARE, RARITY.COMMON];
+        const next = [];
+        if (Array.isArray(priorityOrder)) {
+            priorityOrder.forEach(r => {
+                if (allowed.includes(r) && !next.includes(r)) next.push(r);
+            });
+        }
+        allowed.forEach(r => {
+            if (!next.includes(r)) next.push(r);
+        });
+        return next;
+    }
+
+    normalizeAutoIncubationState(rawState) {
+        const defaults = this.createDefaultAutoIncubationState();
+        const normalized = {
+            unlockedAutoSlots: Math.max(0, Math.min(4, Number(rawState && rawState.unlockedAutoSlots) || 0)),
+            slotSettings: []
+        };
+        for (let i = 0; i < 4; i++) {
+            const rawSlot = rawState && Array.isArray(rawState.slotSettings) ? rawState.slotSettings[i] : null;
+            const base = defaults.slotSettings[i];
+            normalized.slotSettings.push({
+                enabled: !!(rawSlot && rawSlot.enabled),
+                priorityOrder: this.normalizePriorityOrder(rawSlot && rawSlot.priorityOrder ? rawSlot.priorityOrder : base.priorityOrder),
+                autoCollectOnlyWhenReady: rawSlot && rawSlot.autoCollectOnlyWhenReady !== undefined
+                    ? !!rawSlot.autoCollectOnlyWhenReady
+                    : true
+            });
+        }
+        return normalized;
+    }
+
+    createDefaultTeamRocketState() {
+        return {
+            rj: 0,
+            trustLevel: 1,
+            trustXp: 0,
+            questProgress: {
+                captures: 0,
+                interestsGenerated: 0,
+                stakingCompleted: 0,
+                teamRocketQuestsCompleted: 0
+            },
+            bank: {
+                balance: 0,
+                accruedUnclaimed: 0,
+                totalInterestGenerated: 0,
+                interestDisplayOffset: 0,
+                depositLockedUntil: 0,
+                lastInterestTickAt: Date.now(),
+                interestCarry: 0,
+                autoInjectCombatHalf: false,
+                autoInjectInterests: false
+            },
+            loan: {
+                active: false,
+                principal: 0,
+                taxRate: 0,
+                totalDebt: 0,
+                remainingDebt: 0,
+                repaidTotal: 0,
+                withholdingRate: 0.5
+            },
+            staking: {
+                activeContracts: [],
+                availableContracts: [],
+                completedContracts: 0,
+                contractSeed: Math.floor(Math.random() * 1000000),
+                maxAvailableContracts: 3,
+                nextContractReadyAt: 0
+            },
+            casino: {
+                stats: {
+                    spins: 0,
+                    rjSpent: 0,
+                    rjWon: 0,
+                    jackpots: 0
+                }
+            }
+        };
+    }
+
+    normalizeTeamRocketState(rawState) {
+        const defaults = this.createDefaultTeamRocketState();
+        const safe = (rawState && typeof rawState === 'object') ? rawState : {};
+        const bank = (safe.bank && typeof safe.bank === 'object') ? safe.bank : {};
+        const loan = (safe.loan && typeof safe.loan === 'object') ? safe.loan : {};
+        const staking = (safe.staking && typeof safe.staking === 'object') ? safe.staking : {};
+        const questProgress = (safe.questProgress && typeof safe.questProgress === 'object') ? safe.questProgress : {};
+        const casino = (safe.casino && typeof safe.casino === 'object') ? safe.casino : {};
+        const casinoStats = (casino.stats && typeof casino.stats === 'object') ? casino.stats : {};
+
+        const normalized = {
+            rj: Math.max(0, Number(safe.rj) || 0),
+            trustLevel: Math.max(1, Number(safe.trustLevel) || 1),
+            trustXp: Math.max(0, Number(safe.trustXp) || 0),
+            questProgress: {
+                captures: Math.max(0, Number(questProgress.captures) || 0),
+                interestsGenerated: Math.max(0, Number(questProgress.interestsGenerated) || 0),
+                stakingCompleted: Math.max(0, Number(questProgress.stakingCompleted) || 0),
+                teamRocketQuestsCompleted: Math.max(0, Number(questProgress.teamRocketQuestsCompleted) || 0)
+            },
+            bank: {
+                balance: Math.max(0, Number(bank.balance) || 0),
+                accruedUnclaimed: Math.max(0, Number(bank.accruedUnclaimed) || 0),
+                totalInterestGenerated: Math.max(0, Number(bank.totalInterestGenerated) || 0),
+                interestDisplayOffset: Math.max(0, Number(bank.interestDisplayOffset) || 0),
+                depositLockedUntil: Math.max(0, Number(bank.depositLockedUntil) || 0),
+                lastInterestTickAt: Math.max(0, Number(bank.lastInterestTickAt) || Date.now()),
+                interestCarry: Math.max(0, Number(bank.interestCarry) || 0),
+                autoInjectCombatHalf: (bank.autoInjectCombatHalf !== undefined)
+                    ? !!bank.autoInjectCombatHalf
+                    : !!bank.autoInjectCombatGains,
+                autoInjectInterests: (bank.autoInjectInterests !== undefined)
+                    ? !!bank.autoInjectInterests
+                    : !!bank.autoInjectCombatGains
+            },
+            loan: {
+                active: !!loan.active,
+                principal: Math.max(0, Number(loan.principal) || 0),
+                taxRate: Number.isFinite(Number(loan.taxRate)) ? Number(loan.taxRate) : defaults.loan.taxRate,
+                totalDebt: Math.max(0, Number(loan.totalDebt) || 0),
+                remainingDebt: Math.max(0, Number(loan.remainingDebt) || 0),
+                repaidTotal: Math.max(0, Number(loan.repaidTotal) || 0),
+                withholdingRate: Number.isFinite(Number(loan.withholdingRate)) ? Number(loan.withholdingRate) : defaults.loan.withholdingRate
+            },
+            staking: {
+                activeContracts: Array.isArray(staking.activeContracts) ? staking.activeContracts : [],
+                availableContracts: Array.isArray(staking.availableContracts) ? staking.availableContracts : [],
+                completedContracts: Math.max(0, Number(staking.completedContracts) || 0),
+                contractSeed: Math.max(0, Number(staking.contractSeed) || 0),
+                maxAvailableContracts: Math.max(1, Math.min(3, Number(staking.maxAvailableContracts) || 3)),
+                nextContractReadyAt: Math.max(0, Number(staking.nextContractReadyAt) || 0)
+            },
+            casino: {
+                stats: {
+                    spins: Math.max(0, Number(casinoStats.spins) || 0),
+                    rjSpent: Math.max(0, Number(casinoStats.rjSpent) || 0),
+                    rjWon: Math.max(0, Number(casinoStats.rjWon) || 0),
+                    jackpots: Math.max(0, Number(casinoStats.jackpots) || 0)
+                }
+            }
+        };
+
+        this.teamRocketState = normalized;
+        this.syncRocketTrustLevelFromXp();
+        this.refreshRocketContractsIfNeeded();
+        this.cleanupExpiredRocketStakes();
+        return normalized;
     }
 
     catchUpPassiveStats(deltaTime) {
@@ -738,6 +1199,8 @@ class Game {
             this.checkCompletedNotifications();
             this.checkActiveExpeditions();
             this.updateQuestTimerDisplay();  // Timer de quête (pas besoin de ms)
+            this.processAutoIncubatorsOnline();
+            this.updateIncubatorsDisplay(); // Timer des incubateurs
             if (typeof narrativeManager !== 'undefined' && narrativeManager.checkMilestones) {
                 narrativeManager.checkMilestones(this);
             }
@@ -746,6 +1209,23 @@ class Game {
             const tierModal = document.getElementById('zoneTierModal');
             if (tierModal && tierModal.classList.contains('show')) {
                 if (window.showZoneTierModal) window.showZoneTierModal();
+            }
+
+            const now = Date.now();
+            const rocketTab = document.getElementById('teamrocketTab');
+            if (rocketTab && rocketTab.classList.contains('active')) {
+                if (!this._lastRocketLoanUiTick || (now - this._lastRocketLoanUiTick) >= 1000) {
+                    this._lastRocketLoanUiTick = now;
+                    if (typeof window.updateTeamRocketBankRealtimeUI === 'function') {
+                        window.updateTeamRocketBankRealtimeUI(this);
+                    }
+                    if (typeof window.updateTeamRocketLoanRealtimeUI === 'function') {
+                        window.updateTeamRocketLoanRealtimeUI(this);
+                    }
+                    if (typeof window.updateTeamRocketStakingRealtimeUI === 'function') {
+                        window.updateTeamRocketStakingRealtimeUI(this);
+                    }
+                }
             }
         }, 500); // 2 fois par seconde suffit largement pour l'UI statique
 
@@ -773,6 +1253,8 @@ class Game {
     // OPTIMISATION : Logique lente (1 fois/sec) - Économise le CPU
     // OPTIMISATION : Logique lente (1 fois/sec) - Inclut maintenant les Statuts !
     updateLowFreqLogic() {
+        const now = Date.now();
+
         // 1. Régénération
         this.incrementPlayerStats();
         this.regenerateStamina();
@@ -781,6 +1263,28 @@ class Game {
         this.updateStatBoosts();
 
         this.updateQuestTimer(1000);
+        this.tickRocketBank(now);
+        const rocketContractSpawned = this.tickRocketContractBoard(now);
+        this.cleanupExpiredRocketStakes();
+        if (rocketContractSpawned) {
+            if (typeof toast !== 'undefined' && toast && typeof toast.info === 'function') {
+                toast.info("Team Rocket", "Nouveau contrat disponible.");
+            } else {
+                logMessage("🕶️ Nouveau contrat Team Rocket disponible.");
+            }
+            const rocketTab = document.getElementById('teamrocketTab');
+            if (rocketTab && rocketTab.classList.contains('active')) {
+                this.updateTeamRocketDisplay();
+            }
+        }
+        const rocketMinute = Math.floor(now / 60000);
+        if (this._lastRocketUiMinute !== rocketMinute) {
+            this._lastRocketUiMinute = rocketMinute;
+            const rocketTab = document.getElementById('teamrocketTab');
+            if (rocketTab && rocketTab.classList.contains('active')) {
+                this.updateTeamRocketDisplay();
+            }
+        }
 
         // 3. ✅ GESTION DES STATUTS (DoT & Durée)
         // C'est ici que les statuts avancent et s'enlèvent !
@@ -835,6 +1339,8 @@ class Game {
                 }
             }
         }
+
+        this.updateBalanceTelemetryTick();
     }
 
     // ========================================
@@ -884,20 +1390,19 @@ class Game {
         const averageCombatDuration = this.combatCooldown + avgCombatTime;
         let maxPossibleCombats = Math.floor(missedTime / averageCombatDuration);
 
-        // 🛑 SÉCURITÉ ANTI-CRASH : On limite à 2000 combats max (environ 1-2h de simu intense)
-        const MAX_SAFE_SIMULATION = 2000;
-        if (maxPossibleCombats > MAX_SAFE_SIMULATION) {
-            console.warn(`⚠️ Trop de combats (${maxPossibleCombats}). Plafonné à ${MAX_SAFE_SIMULATION}.`);
-            maxPossibleCombats = MAX_SAFE_SIMULATION;
+        if (maxPossibleCombats <= 0) {
+            // Pas assez de temps pour un combat complet, mais on applique quand même l'incubation hors-ligne
+            let stats = {
+                simulated: 0, won: 0, lost: 0, xp: 0, money: 0, items: {},
+                captured: 0, capturedPokemonList: [], time: missedTime,
+                incubation: this.createOfflineIncubationStats()
+            };
+            this.simulateIncubatorsForElapsedOffline(missedTime, stats);
+            this.offlineIncubationLastReport = stats.incubation;
+            return;
         }
 
-        if (maxPossibleCombats <= 0) return;
-
         console.log(`🔄 Simulation: ${maxPossibleCombats} combats (Moyenne: ${(averageCombatDuration / 1000).toFixed(2)}s)`);
-
-        // D. Préparation Simulation
-        const originalLogFunction = window.logMessage;
-        window.logMessage = function () { }; // On coupe les logs
 
         // Objet unique pour tout suivre
         let stats = {
@@ -907,118 +1412,174 @@ class Game {
             xp: 0,
             money: 0,
             items: {},
+            captured: 0,
             capturedPokemonList: [],
-            time: missedTime
+            time: missedTime,
+            incubation: this.createOfflineIncubationStats()
         };
 
-        // E. BOUCLE DE SIMULATION
-        for (let i = 0; i < maxPossibleCombats; i++) {
-            // 1. Vérif équipe en vie
-            this.faintedThisCombat = new Set();
-            this.currentPlayerCreature = this.getFirstAliveCreature();
-            if (!this.currentPlayerCreature) break; // Game Over, on arrête
+        const MIN_OFFLINE_FOR_MODAL_MS = 30000;
 
-            this.activeCreatureIndex = this.playerTeam.indexOf(this.currentPlayerCreature);
+        // D. Préparation du rendu initial
+        if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
+            this.initOfflineReportUi(stats, maxPossibleCombats);
+        }
 
-            // 2. SIMULATION DU COMBAT (Une seule fois !)
-            // simulateCombat doit retourner un objet {xp, money...} si victoire, ou null si défaite
-            const result = this.simulateCombat();
+        // Coupe les logs normaux
+        const originalLogFunction = window.logMessage;
+        window.logMessage = function () { };
 
-            stats.simulated++;
+        // Paramètres pour l'animation Async
+        const durationLimit = 10000; // max 10 secondes d'animation
+        const minDuration = 1000; // min 1 seconde
+        const baseSpeed = 20; // 20 combats par seconde à simuler visuellement
 
-            if (result) {
-                // Victoire
-                stats.won++;
-                stats.xp += result.xp || 0;
-                stats.money += result.money || 0;
-                if (result.items) {
-                    for (const [itemName, count] of Object.entries(result.items)) {
-                        // On additionne dans le total global
-                        stats.items[itemName] = (stats.items[itemName] || 0) + count;
-                    }
-                }
-                if (result.captured) {
-                    stats.captured++;
-                    // On ajoute le Pokémon à la liste (limite à 50 pour pas exploser le modal si besoin)
-                    if (stats.capturedPokemonList.length < 50) {
-                        stats.capturedPokemonList.push(result.captured);
-                    }
-                }
+        // Calcul intelligent de la durée cible
+        let targetDurationMs = (maxPossibleCombats / baseSpeed) * 1000;
+        targetDurationMs = Math.max(minDuration, Math.min(targetDurationMs, durationLimit));
+
+        let currentCombat = 0;
+        let startTime = null;
+        let isSkipped = false;
+
+        // Bouton Skip Modal
+        this.offlineSimSkip = () => { isSkipped = true; };
+
+        // E. BOUCLE D'ANIMATION ET DE SIMULATION (Asynchrone via requestAnimationFrame)
+        const step = (timestamp) => {
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+
+            let targetCombats = 0;
+            if (isSkipped || elapsed >= targetDurationMs) {
+                targetCombats = maxPossibleCombats;
             } else {
-                // Défaite
-                stats.lost++;
+                targetCombats = Math.floor((elapsed / targetDurationMs) * maxPossibleCombats);
             }
 
-            // 3. Regen Stamina (Post-Combat)
-            const regenTicks = Math.floor(this.combatCooldown / 1000);
-            for (let j = 0; j < regenTicks; j++) {
-                this.regenerateStamina();
+            const combatsToRun = targetCombats - currentCombat;
+
+            // F. BATCH SIMULATION
+            for (let i = 0; i < combatsToRun; i++) {
+                // 1. Vérif équipe en vie
+                this.faintedThisCombat = new Set();
+                this.currentPlayerCreature = this.getFirstAliveCreature();
+
+                // Si toute l'équipe fainte, on stoppe net la simulation
+                if (!this.currentPlayerCreature) {
+                    targetCombats = currentCombat + i;
+                    maxPossibleCombats = targetCombats;
+                    isSkipped = true;
+                    break;
+                }
+
+                this.activeCreatureIndex = this.playerTeam.indexOf(this.currentPlayerCreature);
+
+                // 2. Le Combat (Une seule fois !)
+                const result = this.simulateCombat();
+                stats.simulated++;
+
+                if (result) {
+                    // Victoire
+                    stats.won++;
+                    stats.xp += result.xp || 0;
+                    stats.money += result.money || 0;
+                    if (result.items) {
+                        for (const [itemName, count] of Object.entries(result.items)) {
+                            stats.items[itemName] = (stats.items[itemName] || 0) + count;
+                        }
+                    }
+                    if (result.captured) {
+                        stats.captured++;
+                        if (stats.capturedPokemonList.length < 50) {
+                            stats.capturedPokemonList.push(result.captured);
+                        }
+                    }
+                } else {
+                    // Défaite
+                    stats.lost++;
+                }
+
+                // 3. Regen Stamina (Post-Combat)
+                const regenTicks = Math.floor(this.combatCooldown / 1000);
+                for (let j = 0; j < regenTicks; j++) {
+                    this.regenerateStamina();
+                }
+
+                this.combatState = 'waiting';
             }
 
-            // Reset état
-            this.combatState = 'waiting';
-        }
+            currentCombat = targetCombats;
 
-        // F. Nettoyage et Affichage
-        window.logMessage = originalLogFunction; // On remet les logs
+            // G. RAFRAICHISSEMENT UI PENDANT
+            if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
+                this.updateOfflineReportUi(stats, currentCombat, maxPossibleCombats);
+            }
 
-        // Soins complets gratuits après l'absence (Qualité de vie)
-        for (const creature of this.playerTeam) {
-            creature.heal();
-            creature.currentStamina = creature.maxStamina;
-            creature.clearStatusEffect();
-        }
+            // H. CONDITION DE BOUCLE OU FIN
+            if (currentCombat < maxPossibleCombats && !isSkipped) {
+                window.requestAnimationFrame(step);
+            } else {
+                // I. FINALE NETTOYAGE
+                window.logMessage = originalLogFunction; // Remet les logs
 
-        this.combatState = 'waiting';
-        this.lastCombatTime = Date.now();
+                // Soins complets gratuits après l'absence (Qualité de vie)
+                for (const creature of this.playerTeam) {
+                    creature.heal();
+                    creature.currentStamina = creature.maxStamina;
+                    creature.clearStatusEffect();
+                }
 
-        // Log console pour débug
-        console.log(`✅ Fin Simu: ${stats.simulated} combats, ${stats.won} wins, Gain: ${stats.money}$`);
+                this.combatState = 'waiting';
+                this.lastCombatTime = Date.now();
 
-        // Log Joueur
-        const xpFormatted = typeof formatNumber === 'function' ? formatNumber(stats.xp) : stats.xp;
-        logMessage(`⚡ Rattrapage terminé : ${stats.simulated} combats simulés.`);
+                // Incubateurs auto
+                this.simulateIncubatorsForElapsedOffline(missedTime, stats);
+                this.offlineIncubationLastReport = stats.incubation;
 
-        this.updateItemsDisplay();
-        this.updateDisplay();
+                this.updateItemsDisplay();
+                this.updateDisplay();
 
-        // G. Lancer le Modal (Seulement si on a simulé quelque chose)
-        if (stats.simulated > 0) {
-            this.showOfflineReport(stats);
-        }
+                logMessage(`⚡ Rattrapage terminé : ${stats.simulated} combats simulés.`);
+                console.log(`✅ Fin Simu: ${stats.simulated} combats, ${stats.won} wins, Gain: ${stats.money}$`);
+
+                // Rendu final des Grids d'objets et oeufs
+                if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
+                    this.finalizeOfflineReportUi(stats);
+                }
+            }
+        };
+
+        window.requestAnimationFrame(step);
     }
 
-
-
-    showOfflineReport(stats) {
+    initOfflineReportUi(stats, maxPossibleCombats) {
         const modal = document.getElementById('offlineModal');
         if (!modal) return;
 
-        // 1. Calculs de temps précis
         const totalSeconds = Math.floor(stats.time / 1000);
         const h = Math.floor(totalSeconds / 3600);
         const m = Math.floor((totalSeconds % 3600) / 60);
         const s = Math.floor(totalSeconds % 60);
-
-        // 2. Formatage dynamique (Ex: "1h 30m" ou "45s")
         let timeStr = "";
-        if (h > 0) {
-            timeStr = `${h}h ${m}m ${s}s`;
-        } else if (m > 0) {
-            timeStr = `${m}m ${s}s`;
-        } else {
-            timeStr = `${s}s`; // Juste les secondes si très court
-        }
-        // 2. HTML Structure
-        // On recrée tout le contenu du modal dynamiquement pour être propre
+        if (h > 0) timeStr = `${h}h ${m}m ${s}s`;
+        else if (m > 0) timeStr = `${m}m ${s}s`;
+        else timeStr = `${s}s`;
+
         modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content" style="position: relative; overflow: hidden; display: flex; flex-direction: column;">
             <div class="modal-header">
-                <h2>Offline report</h2>
-                <div style="cursor:pointer;" onclick="closeOfflineModal()">✕</div>
+                <h2>Rapport Hors-Ligne</h2>
             </div>
             
-            <div class="modal-body">
+            <div class="offline-progress-container">
+                <div id="offlineProgressBarNeutral" class="offline-progress-fill">
+                    <div class="offline-progress-stripes"></div>
+                </div>
+                <div id="offlineProgressTextNeutral" class="offline-progress-text">0%</div>
+            </div>
+            
+            <div class="modal-body" style="flex: 1; overflow-y: auto;">
                 <div class="offline-summary">
                     <div class="offline-time" id="offlineTimeDisplay">${timeStr}</div>
                     <div class="offline-subtitle">Temps écoulé</div>
@@ -1026,82 +1587,199 @@ class Game {
 
                 <div class="stats-row">
                     <div class="mini-stat">
-                        <span class="val" style="color:#ef4444">${formatNumber(stats.simulated)}</span>
-                        <span class="lbl">Combats</span>
+                        <span class="val" id="anim-simulated" style="color:#ef4444">0</span>
+                        <span class="lbl" id="lbl-simulated">Combats / ${formatNumber(maxPossibleCombats)}</span>
                     </div>
                     <div class="mini-stat">
-                        <span class="val" style="color:#f59e0b">+${formatNumber(stats.money)}</span>
+                        <span class="val" id="anim-money" style="color:#f59e0b">+0</span>
                         <span class="lbl">Argent</span>
                     </div>
                     <div class="mini-stat">
-                        <span class="val" style="color:#8b5cf6">+${formatNumber(stats.xp)}</span>
+                        <span class="val" id="anim-xp" style="color:#8b5cf6">+0</span>
                         <span class="lbl">XP</span>
                     </div>
                 </div>
 
-                <div class="section-title">📦 Butin (${formatNumber(Object.values(stats.items).reduce((a, b) => a + b, 0))})</div>
-                <div class="loot-scroll-area" id="lootArea">
-                    </div>
+                <div id="offlineDynamicLootContainer" style="display:none;">
+                    <div class="section-title">📦 Butin (<span id="anim-loot-count">0</span>)</div>
+                    <div class="loot-scroll-area" id="lootArea"></div>
+                </div>
 
-                <div class="section-title" id="captureTitle">🕸️ Captures (${formatNumber(stats.captured)})</div>
-                <div class="pokemon-grid" id="captureGrid">
+                <div id="offlineDynamicIncubationContainer" style="display:none;">
+                    <div class="section-title" id="incubationTitle">🥚 Incubations automatiques</div>
+                    <div class="offline-incubation-panel" id="offlineIncubationPanel">
+                        <div class="offline-incubation-summary" id="offlineIncubationSummary"></div>
+                        <div class="offline-incubation-columns">
+                            <div class="offline-incubation-column">
+                                <div class="offline-incubation-subtitle">Par rareté</div>
+                                <div id="offlineIncubationByRarity"></div>
+                            </div>
+                            <div class="offline-incubation-column">
+                                <div class="offline-incubation-subtitle">Par incubateur</div>
+                                <div id="offlineIncubationBySlot"></div>
+                            </div>
+                        </div>
+                        <div class="offline-incubation-subtitle">Aperçu Pokémon obtenus</div>
+                        <div id="offlineIncubationPreview" class="offline-incubation-preview"></div>
                     </div>
+                </div>
+
+                <div id="offlineDynamicCaptureContainer" style="display:none;">
+                    <div class="section-title" id="captureTitle">🕸️ Captures (<span id="anim-captured">0</span>)</div>
+                    <div class="pokemon-grid" id="captureGrid"></div>
+                </div>
             </div>
 
             <div class="modal-footer">
-                <button class="claim-btn" onclick="closeOfflineModal()">Tout Récupérer</button>
+                <button class="claim-btn skip-sim-btn" onclick="if(window.game && window.game.offlineSimSkip) window.game.offlineSimSkip()"><span style="font-size:16px;">⏩</span> Passer l'animation</button>
             </div>
         </div>
-    `;
+        `;
 
-        // 3. Remplissage des ITEMS (Loot)
-        const lootArea = document.getElementById('lootArea');
-        const items = Object.entries(stats.items);
-
-        if (items.length === 0) {
-            lootArea.innerHTML = '<div style="text-align:center; padding:10px; color:#cbd5e1; font-style:italic;">Aucun objet trouvé</div>';
-        } else {
-            items.forEach(([key, count]) => {
-                const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                const iconPath = getItemIconPath(key);
-                const rarityClass = getRarityClass(key);
-
-                lootArea.innerHTML += `
-                <div class="loot-item ${rarityClass}">
-                    <img src="${iconPath}" class="item-icon" onerror="this.src='assets/items/unknown.png'">
-                    <div class="item-info">
-                        <span class="item-name">${displayName}</span>
-                    </div>
-                    <span class="item-qty "> x${formatNumber(count)}</span>
-                </div>
-            `;
-            });
+        // Désactiver la fermeture pendant la simulation (clic extérieur interdit temporairement)
+        if (modal._offlineBackdropClick) {
+            modal.removeEventListener('click', modal._offlineBackdropClick);
+            modal._offlineBackdropClick = null;
         }
 
-        // 4. Remplissage des CAPTURES (Pokémon)
-        const captureGrid = document.getElementById('captureGrid');
-        // On suppose que stats.capturedPokemonList est un tableau [{name: 'Pikachu', shiny: false}, ...]
-        // Si tu n'as pas encore cette liste, voir étape 4 ci-dessous.
+        modal.style.display = 'flex';
+    }
 
-        if (!stats.capturedPokemonList || stats.capturedPokemonList.length === 0) {
-            captureGrid.style.display = 'none';
-            document.getElementById('captureTitle').style.display = 'none';
-        } else {
+    updateOfflineReportUi(stats, currentCombat, maxPossibleCombats) {
+        const elSim = document.getElementById('anim-simulated');
+        const elMoney = document.getElementById('anim-money');
+        const elXp = document.getElementById('anim-xp');
+        const bar = document.getElementById('offlineProgressBarNeutral');
+        const txt = document.getElementById('offlineProgressTextNeutral');
+
+        if (elSim) elSim.innerHTML = formatNumber(stats.simulated);
+        if (elMoney) elMoney.innerHTML = '+' + formatNumber(stats.money);
+        if (elXp) elXp.innerHTML = '+' + formatNumber(stats.xp);
+
+        let percent = 0;
+        if (maxPossibleCombats > 0) percent = Math.floor((currentCombat / maxPossibleCombats) * 100);
+
+        if (bar) bar.style.width = percent + '%';
+        if (txt) txt.innerHTML = percent + '%';
+    }
+
+    finalizeOfflineReportUi(stats) {
+        const modal = document.getElementById('offlineModal');
+        if (!modal) return;
+
+        // On peut maintenant fermer la modal !
+        if (!modal._offlineBackdropClick) {
+            modal._offlineBackdropClick = function (e) {
+                if (e.target === modal) closeOfflineModal();
+            };
+            modal.addEventListener('click', modal._offlineBackdropClick);
+        }
+
+        const closeBtnHTML = '<div style="cursor:pointer;" onclick="closeOfflineModal()">✕</div>';
+        const header = modal.querySelector('.modal-header');
+        if (header && !header.innerHTML.includes('✕')) {
+            header.innerHTML += closeBtnHTML;
+        }
+
+        // Transformer le bouton "Skip" en "Tout récupérer"
+        const footerBtn = modal.querySelector('.modal-footer button');
+        if (footerBtn) {
+            footerBtn.className = 'claim-btn claim-button-glow'; // petite classe stylée si tu veux
+            footerBtn.onclick = closeOfflineModal;
+            footerBtn.innerHTML = 'Tout Récupérer';
+        }
+
+        // 1. Lancer l'UI Loot (Seulement s'il y a du loot)
+        const lootContainer = document.getElementById('offlineDynamicLootContainer');
+        const lootArea = document.getElementById('lootArea');
+        if (lootContainer && lootArea) {
+            const items = Object.entries(stats.items);
+            const totalLootCount = items.reduce((a, b) => a + b[1], 0);
+
+            if (totalLootCount > 0) {
+                lootContainer.style.display = 'block';
+                document.getElementById('anim-loot-count').innerHTML = formatNumber(totalLootCount);
+
+                let lootHtml = '';
+                items.forEach(([key, count]) => {
+                    const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    const iconPath = getItemIconPath(key);
+                    const rarityClass = getRarityClass(key);
+                    lootHtml += `
+                    <div class="loot-item ${rarityClass}">
+                        <img src="${iconPath}" class="item-icon" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'">
+                        <div class="item-info">
+                            <span class="item-name">${displayName}</span>
+                        </div>
+                        <span class="item-qty "> x${formatNumber(count)}</span>
+                    </div>`;
+                });
+                lootArea.innerHTML = lootHtml;
+            }
+        }
+
+        // 2. Incubations Auto
+        const incubationContainer = document.getElementById('offlineDynamicIncubationContainer');
+        if (incubationContainer && stats.incubation && stats.incubation.hatchedTotal > 0) {
+            incubationContainer.style.display = 'block';
+
+            const incubation = stats.incubation;
+            document.getElementById('incubationTitle').textContent = `🥚 Incubations automatiques (${formatNumber(incubation.hatchedTotal)})`;
+
+            document.getElementById('offlineIncubationSummary').innerHTML = `
+                <div class="offline-incubation-pill">Éclosions: <strong>${formatNumber(incubation.hatchedTotal)}</strong></div>
+                <div class="offline-incubation-pill">Placés auto: <strong>${formatNumber(incubation.placedTotal)}</strong></div>
+            `;
+
+            const rarityOrder = [RARITY.LEGENDARY, RARITY.EPIC, RARITY.RARE, RARITY.COMMON];
+            const rarityLabel = { [RARITY.LEGENDARY]: 'Légendaire', [RARITY.EPIC]: 'Epic', [RARITY.RARE]: 'Rare', [RARITY.COMMON]: 'Common' };
+
+            const byRarity = document.getElementById('offlineIncubationByRarity');
+            byRarity.innerHTML = rarityOrder
+                .filter(r => (incubation.byRarity[r] || 0) > 0)
+                .map(r => `<div class="offline-incubation-row"><span>${rarityLabel[r]}</span><strong>${formatNumber(incubation.byRarity[r])}</strong></div>`)
+                .join('') || '<div class="offline-incubation-empty">Aucune éclosion.</div>';
+
+            const bySlot = document.getElementById('offlineIncubationBySlot');
+            bySlot.innerHTML = [0, 1, 2, 3]
+                .filter(i => (incubation.bySlot[i] || 0) > 0)
+                .map(i => `<div class="offline-incubation-row"><span>Incubateur ${i + 1}</span><strong>${formatNumber(incubation.bySlot[i])}</strong></div>`)
+                .join('') || '<div class="offline-incubation-empty">Aucune éclosion.</div>';
+
+            const preview = document.getElementById('offlineIncubationPreview');
+            if (Array.isArray(incubation.obtainedPokemonPreview) && incubation.obtainedPokemonPreview.length > 0) {
+                preview.innerHTML = incubation.obtainedPokemonPreview
+                    .map(p => {
+                        const shiny = p.isShiny ? ' ✨' : '';
+                        return `<span class="offline-incubation-pokemon-chip">${p.name}${shiny}</span>`;
+                    }).join('');
+            } else {
+                preview.innerHTML = '<div class="offline-incubation-empty">Aucun Pokémon listé.</div>';
+            }
+        }
+
+        // 3. Captures
+        const captureContainer = document.getElementById('offlineDynamicCaptureContainer');
+        const captureGrid = document.getElementById('captureGrid');
+        if (captureContainer && captureGrid && stats.capturedPokemonList && stats.capturedPokemonList.length > 0) {
+            captureContainer.style.display = 'block';
+            document.getElementById('anim-captured').innerHTML = formatNumber(stats.captured);
+
+            let captureHtml = '';
             stats.capturedPokemonList.forEach(poke => {
                 const sprite = getPokemonSpritePath(poke.name, poke.shiny);
                 const shinyEffect = poke.shiny ? '<span class="shiny-sparkle">✨</span>' : '';
                 const bgStyle = poke.shiny ? 'background: #fffbeb; border-color: #f59e0b;' : '';
 
-                captureGrid.innerHTML += `
+                captureHtml += `
                 <div class="poke-capture" style="${bgStyle}">
                     ${shinyEffect}
-                    <img src="${sprite}" onerror="this.src='assets/sprites/unknown.png'" title="${poke.name}">
+                    <img src="${sprite}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/substitute.png'" title="${poke.name}">
                 </div>
-            `;
+                `;
             });
+            captureGrid.innerHTML = captureHtml;
         }
-
-        modal.style.display = 'flex';
     }
 
     getSpawnDelay() {
@@ -1241,34 +1919,34 @@ class Game {
         // Créer le modal
         const modal = document.createElement('div');
         modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-    `;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100 %;
+                    height: 100 %;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    justify - content: center;
+                    align - items: center;
+                    z - index: 10000;
+                    `;
 
         const content = document.createElement('div');
         content.style.cssText = `
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 30px;
-        border-radius: 15px;
-        max-width: 600px;
-        max-height: 80vh;
-        overflow-y: auto;
-        border: 2px solid #a855f7;
-        box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
-    `;
+                    background: linear - gradient(135deg, #1e293b 0 %, #0f172a 100 %);
+                    padding: 30px;
+                    border - radius: 15px;
+                    max - width: 600px;
+                    max - height: 80vh;
+                    overflow - y: auto;
+                    border: 2px solid #a855f7;
+                    box - shadow: 0 0 30px rgba(168, 85, 247, 0.5);
+                    `;
 
         let html = `
-        <h2 style="color: #a855f7; margin-bottom: 20px; text-align: center;">
+                        < h2 style = "color: #a855f7; margin-bottom: 20px; text-align: center;" >
             🌟 Choisir un Talent pour ${creature.name}
-        </h2>
+        </h2 >
         <p style="color: #94a3b8; text-align: center; margin-bottom: 20px;">
             Talent actuel : <strong>${PASSIVE_TALENTS[creature.passiveTalent].name}</strong>
         </p>
@@ -1331,7 +2009,7 @@ class Game {
         >
             Annuler
         </button>
-    `;
+                    `;
 
         content.innerHTML = html;
         modal.appendChild(content);
@@ -1349,7 +2027,7 @@ class Game {
 
         const newTalentInfo = PASSIVE_TALENTS[talentKey];
         logMessage(`🌟 ${creature.name} : ${oldTalentInfo.name} → ${newTalentInfo.name} !`);
-        logMessage(`📜 ${newTalentInfo.description}`);
+        logMessage(`📜 ${newTalentInfo.description} `);
 
         this.calculateTeamStats();
         this.updateDisplay();
@@ -1486,9 +2164,9 @@ class Game {
         this.currentEnemy = this.getOrCreateEnemy();
         this.combatState = 'starting';
         this.combatStartTime = Date.now();
-        if (this.getCollectionSynergyDetails && this.getCollectionSynergyDetails().some(d => d.isActive)) {
+        if (this.getCollectionBonusDetails && this.getCollectionBonusDetails().some(d => d.isActive)) {
             this.checkSpecialQuests('synergyActive');
-            this.checkSpecialQuests('collectionSynergyActive');
+            this.checkSpecialQuests('collectionBonusActive');
         }
 
         logMessage("Combat contre " + this.currentEnemy.name + " niveau " + this.currentEnemy.level + " - Preparation...");
@@ -1562,7 +2240,7 @@ class Game {
 
                     // ✅ Réactiver les logs
                     window.logMessage = originalLogFunction;
-                    logMessage(`✅ ${eggsOpened} œufs ${rarity} ouverts !`);
+                    logMessage(`✅ ${eggsOpened} œufs ${rarity} ouverts!`);
                 }
             }
             // Shift+Clic : Ouvrir 5 œufs
@@ -1580,11 +2258,14 @@ class Game {
             }
 
             // ✅ Mettre à jour l'affichage UNE SEULE FOIS à la fin
-            this.updateEggsDisplay();
-            this.updateTeamDisplay();
-            this.updatePlayerStatsDisplay();
-            this.updatePokedexDisplay();
-            this.updateStorageDisplay();
+            // 🛑 OPTIMISATION : Déporter les mises à jour DOM lourdes hors du thread de clic
+            requestAnimationFrame(() => {
+                this.updateEggsDisplay();
+                this.updateTeamDisplay();
+                this.updatePlayerStatsDisplay();
+                this.updatePokedexDisplay();
+                this.updateStorageDisplay();
+            });
 
             setTimeout(() => {
                 isProcessingEgg = false;
@@ -1650,7 +2331,7 @@ class Game {
             if (indicator) {
                 const time = new Date().toLocaleTimeString();
                 // On garde le point vert (.auto-save-dot) et on change juste le texte à côté
-                indicator.innerHTML = `<span class="auto-save-dot"></span> Sauvegardé à ${time}`;
+                indicator.innerHTML = `< span class= "auto-save-dot" ></span > Sauvegardé à ${time}`;
 
                 // Petit effet visuel (flash vert sur le texte)
                 indicator.style.color = "#16a34a";
@@ -1663,42 +2344,646 @@ class Game {
 
 
     incrementPlayerStats() {
-        this.calculateTeamStats();
-        const pensionStats = this.calculatePensionStats();
-
-        const hpBonus = 1 + this.getAccountTalentBonus('hp_mult');
-
-        const baseContribution = 0.10;
-        const towerBonus = this.permanentBoosts.team_contribution || 0;
-        const teamContributionRate = baseContribution + towerBonus;
-
-        // ✅ AJOUTER LES BONUS DES VITAMINES ICI
-        const vitaminBonus = {
-            hp: 1 + (this.activeVitamins.hp || 0) + (this.activeVitamins.all || 0),
-            attack: 1 + (this.activeVitamins.attack || 0) + (this.activeVitamins.all || 0),
-            spattack: 1 + (this.activeVitamins.spattack || 0) + (this.activeVitamins.all || 0),
-            defense: 1 + (this.activeVitamins.defense || 0) + (this.activeVitamins.all || 0),
-            spdefense: 1 + (this.activeVitamins.spdefense || 0) + (this.activeVitamins.all || 0),
-            speed: 1 + (this.activeVitamins.speed || 0) + (this.activeVitamins.all || 0)
-        };
-
-        // A. Équipe avec vitamines
-        this.playerMainStats.hp += Math.floor(this.playerTeamStats.hp * teamContributionRate * hpBonus * vitaminBonus.hp);
-        this.playerMainStats.attack += Math.floor(this.playerTeamStats.attack * teamContributionRate * vitaminBonus.attack);
-        this.playerMainStats.spattack += Math.floor(this.playerTeamStats.spattack * teamContributionRate * vitaminBonus.spattack);
-        this.playerMainStats.defense += Math.floor(this.playerTeamStats.defense * teamContributionRate * vitaminBonus.defense);
-        this.playerMainStats.spdefense += Math.floor(this.playerTeamStats.spdefense * teamContributionRate * vitaminBonus.spdefense);
-        this.playerMainStats.speed += Math.floor(this.playerTeamStats.speed * teamContributionRate * vitaminBonus.speed);
-
-        // B. Pension avec vitamines
-        this.playerMainStats.hp += Math.floor(pensionStats.hp * hpBonus * vitaminBonus.hp);
-        this.playerMainStats.attack += Math.floor(pensionStats.attack * vitaminBonus.attack);
-        this.playerMainStats.spattack += Math.floor(pensionStats.spattack * vitaminBonus.spattack);
-        this.playerMainStats.defense += Math.floor(pensionStats.defense * vitaminBonus.defense);
-        this.playerMainStats.spdefense += Math.floor(pensionStats.spdefense * vitaminBonus.spdefense);
-        this.playerMainStats.speed += Math.floor(pensionStats.speed * vitaminBonus.speed);
+        const gain = this.getPassiveStatGainPerSecond();
+        this.playerMainStats.hp += gain.hp;
+        this.playerMainStats.attack += gain.attack;
+        this.playerMainStats.spattack += gain.spattack;
+        this.playerMainStats.defense += gain.defense;
+        this.playerMainStats.spdefense += gain.spdefense;
+        this.playerMainStats.speed += gain.speed;
 
         this.updatePlayerStatsDisplay();
+    }
+
+    addCombatPokedollars(amount, source = 'combat') {
+        const raw = Math.max(0, Math.floor(Number(amount) || 0));
+        if (raw <= 0) return { net: 0, withheld: 0 };
+
+        let withheld = 0;
+        const tr = this.teamRocketState || this.createDefaultTeamRocketState();
+        if (tr.loan && tr.loan.active && tr.loan.remainingDebt > 0) {
+            const ratio = tr.loan.withholdingRate || 0.5;
+            withheld = Math.min(tr.loan.remainingDebt, Math.floor(raw * ratio));
+            tr.loan.remainingDebt = Math.max(0, tr.loan.remainingDebt - withheld);
+            tr.loan.repaidTotal = (tr.loan.repaidTotal || 0) + withheld;
+            if (tr.loan.remainingDebt <= 0) {
+                tr.loan.active = false;
+                logMessage("💳 Dette Team Rocket remboursée. Prélèvement arrêté.");
+            }
+            this.teamRocketState = tr;
+        }
+
+        const net = Math.max(0, raw - withheld);
+        let injectedToBank = 0;
+        let creditedToWallet = net;
+        const isCombatSource = (source === 'combat' || source === 'combat_simulated');
+        const injectCombatHalf = !!(tr.bank && tr.bank.autoInjectCombatHalf);
+        if (isCombatSource && injectCombatHalf) {
+            injectedToBank = Math.floor(net * 0.5);
+            creditedToWallet = Math.max(0, net - injectedToBank);
+            tr.bank.balance = (tr.bank.balance || 0) + injectedToBank;
+        }
+        this.pokedollars += creditedToWallet;
+        this.stats.totalPokedollarsEarned = (this.stats.totalPokedollarsEarned || 0) + net;
+        this.checkAchievements('totalPokedollarsEarned');
+        this.checkSpecialQuests('pokedollars_gained');
+
+        if (withheld > 0 && source !== 'silent') {
+            logMessage(`🚨 Team Rocket prélève ${formatNumber(withheld)}$ pour rembourser la dette.`);
+        }
+        return { net, withheld, injectedToBank, creditedToWallet };
+    }
+
+    getRocketLoanCap() {
+        const tr = this.teamRocketState || this.createDefaultTeamRocketState();
+        const interests = Math.floor((tr.bank && tr.bank.totalInterestGenerated) || 0);
+        return interests;
+    }
+
+    canTakeRocketLoan(amount) {
+        const tr = this.teamRocketState || this.createDefaultTeamRocketState();
+        if (tr.loan && tr.loan.active && tr.loan.remainingDebt > 0) {
+            return { ok: false, reason: 'Un prêt Team Rocket est déjà actif.' };
+        }
+        const req = Math.max(0, Math.floor(Number(amount) || 0));
+        if (req <= 0) return { ok: false, reason: 'Montant invalide.' };
+        const cap = this.getRocketLoanCap();
+        if (req > cap) return { ok: false, reason: `Plafond dépassé (${formatNumber(cap)}$ max).` };
+        return { ok: true, reason: '' };
+    }
+
+    takeRocketLoan(amount) {
+        const check = this.canTakeRocketLoan(amount);
+        if (!check.ok) {
+            logMessage(`❌ ${check.reason}`);
+            return false;
+        }
+        const principal = Math.floor(Number(amount) || 0);
+        const tr = this.teamRocketState;
+        const debt = principal;
+        tr.loan.active = true;
+        tr.loan.principal = principal;
+        tr.loan.totalDebt = debt;
+        tr.loan.remainingDebt = debt;
+        tr.loan.repaidTotal = 0;
+        this.pokedollars += principal;
+        logMessage(`💼 Prêt Team Rocket accordé: +${formatNumber(principal)}$ (dette: ${formatNumber(debt)}$).`);
+        this.updatePlayerStatsDisplay();
+        return true;
+    }
+
+    rocketDeposit(amount) {
+        const val = Math.max(0, Math.floor(Number(amount) || 0));
+        if (val <= 0) return false;
+        if (this.pokedollars < val) {
+            logMessage("❌ Fonds insuffisants pour dépôt Team Rocket.");
+            return false;
+        }
+        this.pokedollars -= val;
+        const bank = this.teamRocketState.bank;
+        bank.balance += val;
+        if (!bank.lastInterestTickAt) bank.lastInterestTickAt = Date.now();
+        logMessage(`🏦 Dépôt Team Rocket: ${formatNumber(val)}$.`);
+        this.updatePlayerStatsDisplay();
+        return true;
+    }
+
+    rocketWithdraw(amount) {
+        const bank = this.teamRocketState.bank;
+        const req = Math.max(0, Math.floor(Number(amount) || 0));
+        if (req <= 0) return false;
+        if (bank.balance < req) {
+            logMessage("❌ Solde banque Team Rocket insuffisant.");
+            return false;
+        }
+        bank.balance -= req;
+        this.pokedollars += req;
+        logMessage(`🏦 Retrait Team Rocket: ${formatNumber(req)}$.`);
+        this.updatePlayerStatsDisplay();
+        return true;
+    }
+
+    tickRocketBank(now = Date.now()) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.bank) return;
+        const bank = tr.bank;
+        const loan = tr.loan || {};
+        const lastTick = Number(bank.lastInterestTickAt) || now;
+        const elapsedMs = Math.max(0, now - lastTick);
+        if (elapsedMs < 60000) return;
+        const ticks = Math.floor(elapsedMs / 60000);
+        bank.lastInterestTickAt = lastTick + (ticks * 60000);
+        if (bank.balance <= 0) return;
+
+        const trustLevel = Math.max(1, Math.floor(Number(tr.trustLevel) || 1));
+        const perMinuteRate = (trustLevel / 100) / 60;
+        const carry = Math.max(0, Number(bank.interestCarry) || 0);
+        const totalGain = (bank.balance * perMinuteRate * ticks) + carry;
+        const gain = Math.floor(totalGain);
+        bank.interestCarry = Math.max(0, totalGain - gain);
+        if (gain <= 0) return;
+
+        if (bank.autoInjectInterests) {
+            bank.balance += gain;
+        } else {
+            this.pokedollars += gain;
+        }
+        bank.accruedUnclaimed += gain;
+        bank.totalInterestGenerated += gain;
+        this.stats.totalRocketBankInterestGained = (this.stats.totalRocketBankInterestGained || 0) + gain;
+        tr.questProgress.interestsGenerated = (tr.questProgress.interestsGenerated || 0) + gain;
+
+        if (loan.active && loan.remainingDebt > 0) {
+            const autoDebtPay = Math.min(loan.remainingDebt, Math.floor(gain * 0.15));
+            if (autoDebtPay > 0) {
+                loan.remainingDebt -= autoDebtPay;
+                loan.repaidTotal += autoDebtPay;
+                if (loan.remainingDebt <= 0) loan.active = false;
+            }
+        }
+    }
+
+    addRocketTrustProgress(type, value, meta = {}) {
+        const delta = Math.max(0, Math.floor(Number(value) || 0));
+        if (delta <= 0) return;
+        const tr = this.teamRocketState;
+        if (type === 'capture') {
+            const species = String(meta.species || '').toLowerCase();
+            const isRocketSpecies = species === 'meowth' || species === 'miaouss' || species === 'persian';
+            if (!isRocketSpecies) return;
+            tr.questProgress.captures = (tr.questProgress.captures || 0) + delta;
+        }
+        if (type === 'staking') tr.questProgress.stakingCompleted = (tr.questProgress.stakingCompleted || 0) + delta;
+        if (type === 'quest') tr.questProgress.teamRocketQuestsCompleted = (tr.questProgress.teamRocketQuestsCompleted || 0) + delta;
+
+        const weight = (type === 'capture') ? 2 : (type === 'quest' ? 40 : 25);
+        tr.trustXp += Math.max(1, Math.floor(delta * weight));
+        this.syncRocketTrustLevelFromXp();
+    }
+
+    syncRocketTrustLevelFromXp() {
+        if (typeof ROCKET_TRUST_LEVELS === 'undefined') return;
+        const tr = this.teamRocketState;
+        let lvl = 1;
+        Object.keys(ROCKET_TRUST_LEVELS).forEach(k => {
+            const id = Number(k);
+            if (tr.trustXp >= (ROCKET_TRUST_LEVELS[id].requiredXp || 0)) lvl = Math.max(lvl, id);
+        });
+        if (lvl > tr.trustLevel) {
+            tr.trustLevel = lvl;
+            logMessage(`📈 Confiance Team Rocket montée au niveau ${lvl}.`);
+            this.refreshRocketContractsIfNeeded(true);
+        } else {
+            tr.trustLevel = lvl;
+        }
+    }
+
+    getCreatureRocketSignature(creature) {
+        if (!creature) return '';
+        return [
+            creature.name || '',
+            creature.rarity || '',
+            creature.level || 0,
+            creature.isShiny ? 1 : 0,
+            creature.ivHP || 0,
+            creature.ivAttack || 0,
+            creature.ivDefense || 0,
+            creature.ivSpeed || 0
+        ].join('|');
+    }
+
+    isCreatureRocketLocked(creature) {
+        const sig = this.getCreatureRocketSignature(creature);
+        if (!sig) return false;
+        const active = (this.teamRocketState && this.teamRocketState.staking && this.teamRocketState.staking.activeContracts) || [];
+        const now = Date.now();
+        return active.some(c => c.status === 'active' && c.endAt > now && Array.isArray(c.lockedCreatureSignatures) && c.lockedCreatureSignatures.includes(sig));
+    }
+
+    generateRocketContracts(count = 1) {
+        if (typeof ROCKET_STAKING_CONTRACT_POOLS === 'undefined') return [];
+        const tr = this.teamRocketState;
+        const lvl = Math.max(1, tr.trustLevel || 1);
+        const pool = []
+            .concat(ROCKET_STAKING_CONTRACT_POOLS[Math.max(1, lvl - 1)] || [])
+            .concat(ROCKET_STAKING_CONTRACT_POOLS[lvl] || [])
+            .concat(ROCKET_STAKING_CONTRACT_POOLS[Math.min(5, lvl + 1)] || []);
+
+        const picks = [];
+        const localPool = pool.slice();
+        const wanted = Math.max(1, Math.floor(Number(count) || 1));
+        while (localPool.length > 0 && picks.length < wanted) {
+            const idx = Math.floor(Math.random() * localPool.length);
+            const tpl = localPool.splice(idx, 1)[0];
+            picks.push({
+                contractId: `${tpl.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+                requestedType: tpl.requestedType,
+                requestedKey: tpl.requestedKey,
+                amount: tpl.amount,
+                durationMinutes: tpl.durationMinutes,
+                rewardRJ: tpl.rewardRJ,
+                status: 'open'
+            });
+        }
+        return picks;
+    }
+
+    getRocketContractRespawnDelayMs() {
+        return 120000 + Math.floor(Math.random() * 360000); // 2 à 8 min, comme les quêtes
+    }
+
+    startRocketContractRespawnIfNeeded(now = Date.now()) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking) return;
+        const staking = tr.staking;
+        const maxSlots = Math.max(1, Number(staking.maxAvailableContracts) || 3);
+        const availableCount = Array.isArray(staking.availableContracts) ? staking.availableContracts.length : 0;
+        if (availableCount >= maxSlots) {
+            staking.nextContractReadyAt = 0;
+            return;
+        }
+        if (!staking.nextContractReadyAt || staking.nextContractReadyAt <= now) {
+            staking.nextContractReadyAt = now + this.getRocketContractRespawnDelayMs();
+        }
+    }
+
+    tickRocketContractBoard(now = Date.now()) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking) return false;
+        const staking = tr.staking;
+        const maxSlots = Math.max(1, Number(staking.maxAvailableContracts) || 3);
+        const available = Array.isArray(staking.availableContracts) ? staking.availableContracts : [];
+
+        if (available.length >= maxSlots) {
+            staking.nextContractReadyAt = 0;
+            return false;
+        }
+
+        this.startRocketContractRespawnIfNeeded(now);
+        if (!staking.nextContractReadyAt || now < staking.nextContractReadyAt) return false;
+
+        const missing = Math.max(0, maxSlots - available.length);
+        if (missing <= 0) {
+            staking.nextContractReadyAt = 0;
+            return false;
+        }
+
+        const generated = this.generateRocketContracts(1);
+        let spawned = false;
+        if (generated.length > 0) {
+            staking.availableContracts = available.concat(generated).slice(0, maxSlots);
+            spawned = true;
+        }
+
+        if (staking.availableContracts.length < maxSlots) {
+            staking.nextContractReadyAt = now + this.getRocketContractRespawnDelayMs();
+        } else {
+            staking.nextContractReadyAt = 0;
+        }
+        return spawned;
+    }
+
+    refreshRocketContractsIfNeeded(force = false) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking) return;
+        const staking = tr.staking;
+        const maxSlots = Math.max(1, Number(staking.maxAvailableContracts) || 3);
+        const available = Array.isArray(staking.availableContracts) ? staking.availableContracts : [];
+        const now = Date.now();
+
+        if (force) {
+            const missing = Math.max(0, maxSlots - available.length);
+            if (missing > 0) {
+                staking.availableContracts = available.concat(this.generateRocketContracts(missing)).slice(0, maxSlots);
+            }
+            staking.nextContractReadyAt = (staking.availableContracts.length < maxSlots)
+                ? now + this.getRocketContractRespawnDelayMs()
+                : 0;
+            return;
+        }
+
+        // Sécurité UX: ne jamais laisser le board vide (ex: save ancienne/migration/ordre de chargement)
+        if (available.length === 0) {
+            staking.availableContracts = this.generateRocketContracts(maxSlots).slice(0, maxSlots);
+            staking.nextContractReadyAt = (staking.availableContracts.length < maxSlots)
+                ? now + this.getRocketContractRespawnDelayMs()
+                : 0;
+            return;
+        }
+
+        if (available.length < maxSlots) {
+            this.startRocketContractRespawnIfNeeded(now);
+        } else {
+            staking.nextContractReadyAt = 0;
+        }
+    }
+
+    startRocketStake(contractId, selection = null) {
+        const tr = this.teamRocketState;
+        this.refreshRocketContractsIfNeeded();
+        const list = tr.staking.availableContracts || [];
+        const contract = list.find(c => c.contractId === contractId && c.status === 'open');
+        if (!contract) return false;
+
+        if (contract.requestedType === 'item') {
+            const have = this.items[contract.requestedKey] || 0;
+            if (have < contract.amount) {
+                logMessage("❌ Ressources insuffisantes pour ce contrat.");
+                return false;
+            }
+            this.items[contract.requestedKey] -= contract.amount;
+            if (this.items[contract.requestedKey] <= 0) delete this.items[contract.requestedKey];
+            contract.lockedItem = { key: contract.requestedKey, amount: contract.amount };
+        } else if (contract.requestedType === 'pokemon_rarity') {
+            const needed = contract.amount;
+            const selected = [];
+            const requestedIndexes = selection && Array.isArray(selection.storageIndexes)
+                ? selection.storageIndexes.map(v => Number(v)).filter(Number.isInteger)
+                : null;
+
+            if (requestedIndexes && requestedIndexes.length > 0) {
+                const uniqueIndexes = [...new Set(requestedIndexes)];
+                for (let i = 0; i < uniqueIndexes.length; i++) {
+                    const storageIndex = uniqueIndexes[i];
+                    const c = this.storage[storageIndex];
+                    if (!c) continue;
+                    if (this.isCreatureRocketLocked(c)) continue;
+                    if (c.rarity !== contract.requestedKey) continue;
+                    selected.push(c);
+                    if (selected.length >= needed) break;
+                }
+            } else {
+                for (let i = 0; i < this.storage.length; i++) {
+                    const c = this.storage[i];
+                    if (this.isCreatureRocketLocked(c)) continue;
+                    if (c.rarity === contract.requestedKey) selected.push(c);
+                    if (selected.length >= needed) break;
+                }
+            }
+
+            if (selected.length < needed) {
+                logMessage("❌ Pas assez de Pokémon compatibles (stockage) pour ce contrat.");
+                return false;
+            }
+            contract.lockedCreatureSignatures = selected.map(c => this.getCreatureRocketSignature(c));
+        } else {
+            return false;
+        }
+
+        contract.status = 'active';
+        contract.startAt = Date.now();
+        contract.endAt = contract.startAt + (contract.durationMinutes * 60000);
+        tr.staking.activeContracts.push(contract);
+        tr.staking.availableContracts = list.filter(c => c.contractId !== contractId);
+        this.startRocketContractRespawnIfNeeded();
+        logMessage(`🕶️ Contrat Team Rocket démarré (${contract.durationMinutes} min).`);
+        this.updateStorageDisplay();
+        this.updateItemsDisplay();
+        return true;
+    }
+
+    refuseRocketContract(contractId) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking || !Array.isArray(tr.staking.availableContracts)) return false;
+        const before = tr.staking.availableContracts.length;
+        tr.staking.availableContracts = tr.staking.availableContracts.filter(c => c.contractId !== contractId);
+        if (tr.staking.availableContracts.length === before) return false;
+        this.startRocketContractRespawnIfNeeded();
+        logMessage("🚫 Contrat Team Rocket refusé.");
+        return true;
+    }
+
+    claimRocketStake(contractId) {
+        const tr = this.teamRocketState;
+        const idx = tr.staking.activeContracts.findIndex(c => c.contractId === contractId);
+        if (idx < 0) return false;
+        const contract = tr.staking.activeContracts[idx];
+        if (Date.now() < contract.endAt) {
+            logMessage("⏳ Contrat encore en cours.");
+            return false;
+        }
+        contract.status = 'completed';
+        tr.rj += contract.rewardRJ;
+        tr.staking.completedContracts = (tr.staking.completedContracts || 0) + 1;
+        this.addRocketTrustProgress('staking', 1);
+        if (typeof this.checkSpecialQuests === 'function') this.checkSpecialQuests('rocket_staking_completed');
+        logMessage(`✅ Contrat terminé: +${contract.rewardRJ} RJ.`);
+        tr.staking.activeContracts.splice(idx, 1);
+        return true;
+    }
+
+    cleanupExpiredRocketStakes() {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking || !Array.isArray(tr.staking.activeContracts)) return;
+        tr.staking.activeContracts = tr.staking.activeContracts.filter(c => c && c.status === 'active');
+    }
+
+    spinRocketSlot(stakeRJ) {
+        if (typeof ROCKET_CASINO_CONFIG === 'undefined') return null;
+        const cfg = ROCKET_CASINO_CONFIG;
+        const stake = Math.floor(Number(stakeRJ) || 0);
+        if (stake < cfg.minStakeRJ || stake > cfg.maxStakeRJ) {
+            logMessage(`❌ Mise invalide (${cfg.minStakeRJ}-${cfg.maxStakeRJ} RJ).`);
+            return null;
+        }
+        if (this.teamRocketState.rj < stake) {
+            logMessage("❌ Pas assez de RJ.");
+            return null;
+        }
+        this.teamRocketState.rj -= stake;
+        this.teamRocketState.casino.stats.spins++;
+        this.teamRocketState.casino.stats.rjSpent += stake;
+
+        const rollSymbol = () => {
+            const total = cfg.symbols.reduce((s, e) => s + e.weight, 0);
+            let r = Math.random() * total;
+            for (const sym of cfg.symbols) {
+                r -= sym.weight;
+                if (r <= 0) return sym;
+            }
+            return cfg.symbols[0];
+        };
+        const a = rollSymbol();
+        const b = rollSymbol();
+        const c = rollSymbol();
+        let payout = 0;
+        if (a.key === b.key && b.key === c.key) {
+            payout = Math.floor(stake * (a.payout || 0));
+            if (a.key === 'rocket_jackpot') this.teamRocketState.casino.stats.jackpots++;
+        } else if (a.key === b.key || b.key === c.key || a.key === c.key) {
+            const mid = Math.max(a.payout || 0, b.payout || 0, c.payout || 0);
+            payout = Math.floor(stake * Math.max(0.2, mid * 0.2));
+        }
+
+        if (payout > 0) {
+            this.teamRocketState.rj += payout;
+            this.teamRocketState.casino.stats.rjWon += payout;
+            logMessage(`🎰 Casino Rocket: +${payout} RJ`);
+        } else {
+            logMessage("🎰 Casino Rocket: perdu.");
+        }
+
+        if (cfg.rewards && Math.random() < (cfg.rewards.rare.chance || 0)) {
+            this.addItem(cfg.rewards.rare.itemKey, cfg.rewards.rare.amount || 1);
+        }
+        if (cfg.rewards && Math.random() < (cfg.rewards.legendary.chance || 0)) {
+            this.addItem(cfg.rewards.legendary.itemKey, cfg.rewards.legendary.amount || 1);
+        }
+        return { reels: [a.key, b.key, c.key], payout };
+    }
+
+    getNumericInputValue(inputId, fallback = 0) {
+        const el = document.getElementById(inputId);
+        if (!el) return fallback;
+        return Math.max(0, Math.floor(Number(el.value) || fallback));
+    }
+
+    handleRocketDeposit() {
+        const amount = this.getNumericInputValue('rocketBankDepositInput', 0);
+        this.rocketDeposit(amount);
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketWithdraw() {
+        const amount = this.getNumericInputValue('rocketBankWithdrawInput', 0);
+        this.rocketWithdraw(amount);
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketBankOptionsToggle() {
+        this.rocketBankOptionsOpen = !this.rocketBankOptionsOpen;
+        this.updateTeamRocketDisplay();
+    }
+
+    resetRocketBankInterestCounter() {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.bank) return false;
+        const bank = tr.bank;
+        const currentDisplayBase = Math.max(0, Number(bank.totalInterestGenerated) || 0) + Math.max(0, Number(bank.interestCarry) || 0);
+        bank.interestDisplayOffset = currentDisplayBase;
+        logMessage("🧾 Affichage des intérêts cumulés réinitialisé (logique inchangée).");
+        return true;
+    }
+
+    setRocketBankAutoInjectCombatHalf(enabled) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.bank) return false;
+        tr.bank.autoInjectCombatHalf = !!enabled;
+        logMessage(tr.bank.autoInjectCombatHalf
+            ? "🏦 Option activée : 50% des gains de combat sont injectés en banque."
+            : "🏦 Option désactivée : les gains de combat vont entièrement au solde principal.");
+        return true;
+    }
+
+    setRocketBankAutoInjectInterests(enabled) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.bank) return false;
+        tr.bank.autoInjectInterests = !!enabled;
+        logMessage(tr.bank.autoInjectInterests
+            ? "🏦 Option activée : les intérêts sont réinjectés en banque."
+            : "🏦 Option désactivée : les intérêts vont au solde principal.");
+        return true;
+    }
+
+    handleRocketResetInterestCounter() {
+        this.resetRocketBankInterestCounter();
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketAutoInjectCombatHalfToggle(enabled) {
+        this.setRocketBankAutoInjectCombatHalf(enabled);
+        this.updateTeamRocketDisplay();
+        this.updatePlayerStatsDisplay();
+    }
+
+    handleRocketAutoInjectInterestsToggle(enabled) {
+        this.setRocketBankAutoInjectInterests(enabled);
+        this.updateTeamRocketDisplay();
+        this.updatePlayerStatsDisplay();
+    }
+
+    handleRocketTakeLoan() {
+        const amount = this.getNumericInputValue('rocketLoanInput', 0);
+        this.takeRocketLoan(amount);
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketStartContract(contractId) {
+        this.openRocketContractSelection(contractId);
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketRefuseContract(contractId) {
+        this.refuseRocketContract(contractId);
+        this.updateTeamRocketDisplay();
+    }
+
+    openRocketContractSelection(contractId) {
+        const tr = this.teamRocketState;
+        const list = (tr && tr.staking && Array.isArray(tr.staking.availableContracts)) ? tr.staking.availableContracts : [];
+        const contract = list.find(c => c.contractId === contractId && c.status === 'open');
+        if (!contract) {
+            logMessage("❌ Contrat introuvable.");
+            return false;
+        }
+
+        if (contract.requestedType === 'item') {
+            const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[contract.requestedKey]) ? ALL_ITEMS[contract.requestedKey] : null;
+            const options = [{
+                key: contract.requestedKey,
+                name: itemDef ? itemDef.name : contract.requestedKey,
+                img: itemDef ? itemDef.img : null,
+                icon: itemDef ? itemDef.icon : null,
+                have: this.items[contract.requestedKey] || 0,
+                needed: contract.amount
+            }];
+            if (typeof showRocketContractSelectModalUI === 'function') {
+                showRocketContractSelectModalUI(this, contract, options);
+                return true;
+            }
+            return this.startRocketStake(contractId);
+        }
+
+        if (contract.requestedType === 'pokemon_rarity') {
+            const options = [];
+            for (let i = 0; i < this.storage.length; i++) {
+                const c = this.storage[i];
+                if (!c) continue;
+                if (this.isCreatureRocketLocked(c)) continue;
+                if (c.rarity !== contract.requestedKey) continue;
+                options.push({
+                    storageIndex: i,
+                    name: c.name,
+                    level: c.level || 1,
+                    rarity: c.rarity || 'common',
+                    isShiny: !!c.isShiny
+                });
+            }
+            if (typeof showRocketContractSelectModalUI === 'function') {
+                showRocketContractSelectModalUI(this, contract, options);
+                return true;
+            }
+        }
+
+        return this.startRocketStake(contractId);
+    }
+
+    handleRocketConfirmContractSelection(contractId, storageIndexes) {
+        const selection = Array.isArray(storageIndexes) ? { storageIndexes } : null;
+        const ok = this.startRocketStake(contractId, selection);
+        if (ok) this.updateTeamRocketDisplay();
+        return ok;
+    }
+
+    handleRocketClaimContract(contractId) {
+        this.claimRocketStake(contractId);
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketCasinoSpin() {
+        const amount = this.getNumericInputValue('rocketCasinoStakeInput', 0);
+        this.spinRocketSlot(amount);
+        this.updateTeamRocketDisplay();
     }
 
 
@@ -1773,6 +3058,14 @@ class Game {
         defenseBoost += (synergies.defense_mult - 1);
         spdefenseBoost += (synergies.defense_mult - 1);
         speedBoost += (synergies.speed_mult ? synergies.speed_mult - 1 : 0);
+
+        // 2.5 Bonus de collection (appliqué en multiplicateur de DEF/DEF SP)
+        const collBonuses = this.getCollectionBonuses ? this.getCollectionBonuses() : {};
+        const collDefense = collBonuses.defense_mult || 0;
+        if (collDefense > 0) {
+            defenseBoost += collDefense;
+            spdefenseBoost += collDefense;
+        }
 
         // 3. Objets Tenus (Par le Pokémon actif)
         if (this.currentPlayerCreature && this.currentPlayerCreature.heldItem) {
@@ -1849,7 +3142,7 @@ class Game {
         // Retirer les boosts expirés
         this.activeStatBoosts = this.activeStatBoosts.filter(boost => {
             if (boost.endTime <= now) {
-                logMessage(`⏱️ Boost ${boost.stat.toUpperCase()} expiré !`);
+                logMessage(`⏱️ Boost ${boost.stat.toUpperCase()} expiré!`);
                 return false;
             }
             return true;
@@ -1981,7 +3274,7 @@ class Game {
             // --- TOUR JOUEUR ---
             if (simPlayerGauge >= threshold) {
                 simPlayerGauge -= threshold;
-                const playerMoveName = POKEMON_DEFAULT_MOVES[this.currentPlayerCreature.name] || 'Charge';
+                const playerMoveName = this.currentPlayerCreature.getMove ? this.currentPlayerCreature.getMove() : 'Charge';
                 const playerMove = MOVES_DB[playerMoveName];
                 const dmg = this.calculateSimulatedDamageForCatchup(
                     currentStats.attack, // Utilise la stat mise à jour
@@ -2005,7 +3298,7 @@ class Game {
             // --- TOUR ENNEMI ---
             if (simEnemyGauge >= threshold) {
                 simEnemyGauge -= threshold;
-                const enemyMoveName = POKEMON_DEFAULT_MOVES[enemy.name] || 'Charge';
+                const enemyMoveName = enemy.getMove ? enemy.getMove() : 'Charge';
                 const enemyMove = MOVES_DB[enemyMoveName];
                 const dmg = this.calculateSimulatedDamageForCatchup(
                     enemy.attack,
@@ -2082,10 +3375,10 @@ class Game {
             }
         }
 
-        // 3. Talents de compte (badges d'arène) + Collection Synergies
+        // 3. Talents de compte (badges d'arène) + Bonus de collection
         let damageMultiplier = 1.0;
         if (isPlayer) {
-            const collDmg = (this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {}).damage_mult || 0;
+            const collDmg = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).damage_mult || 0;
             damageMultiplier = 1 + this.getAccountTalentBonus('damage_mult') + collDmg;
         } else {
             // Resilience: -5% dégâts reçus
@@ -2136,10 +3429,10 @@ class Game {
             staminaMultiplier = 0.5;
         }
 
-        // 4. Talents de compte + Collection Synergies
+        // 4. Talents de compte + Bonus de collection
         let accountDamageMultiplier = 1.0;
         if (isPlayer) {
-            const collDmg = (this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {}).damage_mult || 0;
+            const collDmg = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).damage_mult || 0;
             accountDamageMultiplier = 1 + this.getAccountTalentBonus('damage_mult') + collDmg;
         } else {
             accountDamageMultiplier = 1 - this.getAccountTalentBonus('damage_reduction');
@@ -2189,17 +3482,15 @@ class Game {
         this.playerTeam.forEach(c => c.gainExp(expGain, teamTalents));
 
         // --- 3. ARGENT (Boss x5, Épique x2, aligné sur finalizeCombat) ---
-        let baseEarnings = currentZone * 2;
-        let pokedollars = Math.floor(baseEarnings + (Math.random() * baseEarnings * 2));
+        let pokedollars = Math.floor((currentZone * 20) + (Math.random() * currentZone * 10));
         if (isBoss) pokedollars *= 5;
         else if (isEpic) pokedollars *= 2;
         const collecteurBonus = this.getTalentStackBonus('collecteur');
         if (collecteurBonus > 0) pokedollars = Math.floor(pokedollars * (1 + collecteurBonus));
-        const collGold = (this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {}).gold_mult || 0;
+        const collGold = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).gold_mult || 0;
         const fortuneBonus = 1 + this.getAccountTalentBonus('pokedollars_mult') + collGold;
         pokedollars = Math.floor(pokedollars * fortuneBonus);
-        this.pokedollars += pokedollars;
-        this.checkAchievements('totalPokedollarsEarned');
+        this.addCombatPokedollars(pokedollars, 'combat_simulated');
 
         // --- 4. TIERS (même logique que finalizeCombat : source de vérité = zoneProgress) ---
         const zone = ZONES[currentZone];
@@ -2266,6 +3557,7 @@ class Game {
 
                     if (Math.random() < (baseChance * ballMult)) {
                         this.stats.creaturesObtained++;
+                        this.addRocketTrustProgress('capture', 1, { species: enemy.name });
 
                         // Création
                         const capturedCreature = new Creature(enemy.name, enemy.type, enemy.level, enemy.rarity, false, enemy.isShiny, enemy.secondaryType);
@@ -2336,13 +3628,13 @@ class Game {
         // Feedback
         const actualHeal = creature.currentHp - oldHp;
         if (actualHeal > 0) {
-            logMessage(`💚 ${creature.name} récupère ${formatNumber(actualHeal)} PV !`);
+            logMessage(`💚 ${creature.name} récupère ${formatNumber(actualHeal)} PV!`);
 
             // Texte flottant (Si disponible)
             const containerId = creature.isEnemy ? 'enemySpriteContainer' : 'playerSpriteContainer';
             const container = document.getElementById(containerId);
             if (container && window.showFloatingText) {
-                window.showFloatingText(`+${formatNumber(actualHeal)}`, container, 'ft-heal');
+                window.showFloatingText(`+ ${formatNumber(actualHeal)}`, container, 'ft-heal');
             }
 
             this.updateCombatDisplay();
@@ -2368,7 +3660,7 @@ class Game {
             return;
         }
 
-        logMessage(`⚡ ${creature.name} utilise son ultime : ${ult.name} !`);
+        logMessage(`⚡ ${creature.name} utilise son ultime : ${ult.name}!`);
         creature.ultimateCharge = 0; // Consomme la charge
 
         if (typeof this.checkSpecialQuests === 'function') this.checkSpecialQuests('ultimateUsed');
@@ -2378,7 +3670,7 @@ class Game {
             const maxHp = this.getPlayerMaxHp();
             const healAmount = Math.floor(maxHp * ult.effect.value);
             creature.mainAccountCurrentHp = Math.min(maxHp, creature.mainAccountCurrentHp + healAmount);
-            logMessage(`💚 ${creature.name} se soigne de ${healAmount} PV !`);
+            logMessage(`💚 ${creature.name} se soigne de ${healAmount} PV!`);
 
         } else if (ult.effect.type === 'MULTI_BUFF') {
             ult.effect.status.forEach(statusEffect => {
@@ -2388,12 +3680,12 @@ class Game {
                     sourceAtk *= ult.effect.statusMult;
                 }
                 creature.applyStatusEffect(statusEffect, sourceAtk);
-                logMessage(`💥 ${creature.name} applique ${creature.getStatusEffectName()} !`);
+                logMessage(`💥 ${creature.name} applique ${creature.getStatusEffectName()}!`);
             });
 
         } else if (ult.effect.type === 'APPLY_STATUS') {
             creature.applyStatusEffect(ult.effect.status, this.playerMainStats.attack);
-            logMessage(`💥 ${creature.name} applique ${creature.getStatusEffectName()} !`);
+            logMessage(`💥 ${creature.name} applique ${creature.getStatusEffectName()}!`);
 
         } else {
             // Si ce n'est pas un effet immédiat, on "arme" la prochaine attaque
@@ -2422,46 +3714,129 @@ class Game {
      * @param {string} description - La description.
      */
     scheduleTooltip(event, title, description) {
-        // 1. Si un timer existe déjà (on a bougé vite d'un item à l'autre), on l'annule
-        this.hideTooltip();
+        // 1. Annuler la fermeture programmée si la souris vient juste de "sortir" (Anti-clignotement)
+        if (this.hideTooltipTimer) {
+            clearTimeout(this.hideTooltipTimer);
+            this.hideTooltipTimer = null;
+        }
 
-        // 2. On capture la position de la souris MAINTENANT
-        const x = event.clientX;
-        const y = event.clientY;
-
-        // 3. On lance le timer
-        this.tooltipTimer = setTimeout(() => {
-            const tooltip = document.getElementById('customTooltip');
-            if (!tooltip) return;
-
-            // Remplir le contenu
-            tooltip.innerHTML = `<span class="tooltip-title">${title}</span>${description}`;
-
-            // Positionner (légèrement décalé de la souris pour ne pas gêner)
-            // On gère aussi le débordement à droite de l'écran
-            let left = x + 15;
-            let top = y + 15;
-
-            // Afficher
-            tooltip.style.left = left + 'px';
-            tooltip.style.top = top + 'px';
-            tooltip.style.display = 'block';
-
-        }, this.TOOLTIP_DELAY);
-    }
-
-
-
-    /**
-     * Cache l'infobulle et annule le timer en cours.
-     */
-    hideTooltip() {
+        // 2. Annuler tout autre chrono d'ouverture en attente
         if (this.tooltipTimer) {
             clearTimeout(this.tooltipTimer);
             this.tooltipTimer = null;
         }
+
+        const x = event.clientX;
+        const y = event.clientY;
         const tooltip = document.getElementById('customTooltip');
-        if (tooltip) tooltip.style.display = 'none';
+        if (!tooltip) return;
+
+        // Fonction pour remplir et positionner le tooltip
+        const showNow = () => {
+            tooltip.innerHTML = `<span class="tooltip-title">${title}</span>${description}`;
+            let left = x + 15;
+            let top = y + 15;
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.display = 'block';
+        };
+
+        // 3. Si le tooltip est DÉJÀ affiché (ex: UI qui se rafraîchit sous la souris),
+        // on l'actualise IMMÉDIATEMENT sans attendre les 300ms de confort.
+        if (tooltip.style.display === 'block') {
+            showNow();
+        } else {
+            // 4. Sinon (nouvel élément survolé), on utilise le Timer classique de lecture
+            this.tooltipTimer = setTimeout(showNow, this.TOOLTIP_DELAY);
+        }
+    }
+
+    /**
+     * Cache l'infobulle et annule le timer en cours.
+     * Utilise un debounce de 50ms pour ignorer les micro-sorties de souris (rafraîchissement DOM).
+     */
+    hideTooltip() {
+        // Annuler toute ouverture programmée
+        if (this.tooltipTimer) {
+            clearTimeout(this.tooltipTimer);
+            this.tooltipTimer = null;
+        }
+
+        // Lancer la fermeture avec 50ms de sursis
+        if (!this.hideTooltipTimer) {
+            this.hideTooltipTimer = setTimeout(() => {
+                const tooltip = document.getElementById('customTooltip');
+                if (tooltip) tooltip.style.display = 'none';
+                this.hideTooltipTimer = null;
+            }, 50);
+        }
+    }
+
+    /**
+     * Affiche l'infobulle pour voir l'apport de l'équipe principale
+     */
+    showTeamContributionTooltip(event) {
+        const baseContribution = 0.10;
+        const towerBonus = this.permanentBoosts.team_contribution || 0;
+        const teamContributionRate = baseContribution + towerBonus;
+        const vitaminBonus = {
+            hp: 1 + (this.activeVitamins.hp || 0) + (this.activeVitamins.all || 0),
+            attack: 1 + (this.activeVitamins.attack || 0) + (this.activeVitamins.all || 0),
+            defense: 1 + (this.activeVitamins.defense || 0) + (this.activeVitamins.all || 0),
+            speed: 1 + (this.activeVitamins.speed || 0) + (this.activeVitamins.all || 0)
+        };
+
+        const hpGain = (this.playerTeamStats.hp * teamContributionRate) * vitaminBonus.hp;
+        const attackGain = (this.playerTeamStats.attack * teamContributionRate) * vitaminBonus.attack;
+        const spAttackGain = (this.playerTeamStats.spattack * teamContributionRate) * vitaminBonus.attack;
+        const defenseGain = (this.playerTeamStats.defense * teamContributionRate) * vitaminBonus.defense;
+        const spDefenseGain = (this.playerTeamStats.spdefense * teamContributionRate) * vitaminBonus.defense;
+        const speedGain = (this.playerTeamStats.speed * teamContributionRate) * vitaminBonus.speed;
+
+        const headerFmt = (v) => typeof formatNumberHeader === 'function' ? formatNumberHeader(v) : (typeof formatNumber === 'function' ? formatNumber(v) : v);
+
+        const desc = `Taux de Transfert : ${(teamContributionRate * 100).toFixed(0)}%\n\n` +
+            `PV: <span style="color:#22c55e"><b>+${headerFmt(hpGain)}/s</b></span>\n` +
+            `ATK: <span style="color:#22c55e"><b>+${headerFmt(attackGain)}/s</b></span>\n` +
+            `ATK SP: <span style="color:#22c55e"><b>+${headerFmt(spAttackGain)}/s</b></span>\n` +
+            `DEF: <span style="color:#22c55e"><b>+${headerFmt(defenseGain)}/s</b></span>\n` +
+            `DEF SP: <span style="color:#22c55e"><b>+${headerFmt(spDefenseGain)}/s</b></span>\n` +
+            `VIT: <span style="color:#22c55e"><b>+${headerFmt(speedGain)}/s</b></span>`;
+
+        this.scheduleTooltip(event, "📈 Apport Équipe", desc);
+    }
+
+    /**
+     * Affiche l'infobulle pour voir l'apport de la pension
+     */
+    showPensionContributionTooltip(event) {
+        const pensionStats = this.calculatePensionStats(); // Gère déjà le taux de transfert (5%)
+        const vitaminBonus = {
+            hp: 1 + (this.activeVitamins.hp || 0) + (this.activeVitamins.all || 0),
+            attack: 1 + (this.activeVitamins.attack || 0) + (this.activeVitamins.all || 0),
+            defense: 1 + (this.activeVitamins.defense || 0) + (this.activeVitamins.all || 0),
+            speed: 1 + (this.activeVitamins.speed || 0) + (this.activeVitamins.all || 0)
+        };
+
+        const hpGain = pensionStats.hp * vitaminBonus.hp;
+        const attackGain = pensionStats.attack * vitaminBonus.attack;
+        const spAttackGain = pensionStats.spattack * vitaminBonus.attack;
+        const defenseGain = pensionStats.defense * vitaminBonus.defense;
+        const spDefenseGain = pensionStats.spdefense * vitaminBonus.defense;
+        const speedGain = pensionStats.speed * vitaminBonus.speed;
+
+        const headerFmt = (v) => typeof formatNumberHeader === 'function' ? formatNumberHeader(v) : (typeof formatNumber === 'function' ? formatNumber(v) : v);
+
+        // La pension utilise un taux fixe de 5% par défaut
+        const desc = `Taux de Transfert: 5 %\n\n` +
+            `PV: <span style="color:#22c55e"><b>+${headerFmt(hpGain)}/s</b></span>\n` +
+            `ATK: <span style="color:#22c55e"><b>+${headerFmt(attackGain)}/s</b></span>\n` +
+            `ATK SP: <span style="color:#22c55e"><b>+${headerFmt(spAttackGain)}/s</b></span>\n` +
+            `DEF: <span style="color:#22c55e"><b>+${headerFmt(defenseGain)}/s</b></span>\n` +
+            `DEF SP: <span style="color:#22c55e"><b>+${headerFmt(spDefenseGain)}/s</b></span>\n` +
+            `VIT: <span style="color:#22c55e"><b>+${headerFmt(speedGain)}/s</b></span>`;
+
+        this.scheduleTooltip(event, "📈 Apport Pension", desc);
     }
 
     // --- DÉBUT DES FONCTIONS DE CAPTURE À AJOUTER ---
@@ -2509,9 +3884,7 @@ class Game {
             ballsHTML += `
                 <button class="ball-select-btn" onclick="game.tryCapture('${type}')" ${count === 0 ? 'disabled' : ''}>
                     <div class="ball-count-badge">x${count}</div>
-                    
                     ${iconHTML}
-                    
                     <div style="font-weight:bold; font-size:12px; margin-bottom:2px;">${ballDef.name}</div>
                     <div style="font-size:11px; color:#666;">${visualRate.toFixed(0)}%</div>
                     <div class="capture-chance-bar">
@@ -2523,10 +3896,7 @@ class Game {
 
         // Contenu du Modal
         content.innerHTML = `
-            <div class="quest-completion-title" style="color: #3b82f6; margin-bottom:15px;">
-                Capture
-            </div>
-            
+            <div class="quest-completion-title" style="color: #3b82f6; margin-bottom:15px;">Capture</div>
             <div class="capture-layout">
                 <div class="capture-target-card rarity-${enemy.rarity}">
                     <div class="capture-scene">
@@ -2536,23 +3906,19 @@ class Game {
                     <span class="rarity-label ${enemy.rarity}" style="font-size:10px;">${enemy.rarity}</span>
                     <div style="font-size:11px; color:#666; margin-top:5px;">Niv. ${enemy.level}</div>
                 </div>
-
                 <div class="balls-grid">
                     ${ballsHTML}
                 </div>
             </div>
-
-            <button class="btn" style="background: #f1f5f9; color: #64748b; width: 100%; margin-top:20px; font-weight:bold;" onclick="game.skipCapture()">
-                Fuir (Ne pas capturer)
-            </button>
+            <button class="btn capture-flee-btn" onclick="game.skipCapture()">Fuir</button>
         `;
 
         modal.classList.add('show');
     }
     // OPTIMISATION : Cycle des modes avec Forçage de la Liste
     cycleCaptureMode() {
-        // 0 (OFF) -> 1 (ALL) -> 2 (TARGET) -> 0
-        this.captureMode = (this.captureMode + 1) % 3;
+        // 0 (OFF) <-> 2 (TARGET) uniquement (mode ALL supprimé)
+        this.captureMode = (this.captureMode === 0) ? 2 : 0;
 
         console.log("🔄 Changement mode : " + this.captureMode);
 
@@ -2575,6 +3941,7 @@ class Game {
     updateCaptureTargetList() {
         const grid = document.getElementById('captureTargetGrid');
         const wrapper = document.getElementById('captureTargetWrapper');
+        const limitText = document.getElementById('captureTargetLimit');
         if (!grid || !wrapper) return;
 
         const zoneId = (typeof currentZone !== 'undefined') ? currentZone : 1;
@@ -2585,6 +3952,14 @@ class Game {
         // Migration de sécurité
         if (this.captureTarget && !this.captureTargets.includes(this.captureTarget)) {
             this.captureTargets.push(this.captureTarget);
+        }
+
+        // Affichage du nombre de slots disponibles
+        const hasScope = (this.items['scope'] || 0) > 0;
+        const maxSlots = hasScope ? 2 : 1;
+        const currentSlots = this.captureTargets.length;
+        if (limitText) {
+            limitText.textContent = `${currentSlots}/${maxSlots} cible(s) sélectionnée(s)${hasScope ? ' (Jumelles actives)' : ''}`;
         }
 
         grid.innerHTML = '';
@@ -2622,7 +3997,7 @@ class Game {
         // Affichage du wrapper si mode Cible actif
         if (this.captureMode === 2) {
             wrapper.classList.add('show');
-            wrapper.style.display = 'block';
+            wrapper.style.display = 'flex';
         }
     }
     // MODIFICATION : Sélection Multi-Cibles (Compatible avec ton design Grid)
@@ -2672,13 +4047,14 @@ class Game {
     updateCaptureButtonDisplay() {
         const btn = document.getElementById('captureModeBtn');
         const wrapper = document.getElementById('captureTargetWrapper');
-        const icon = document.getElementById('captureIcon');
-        const text = document.getElementById('captureText');
 
         if (!btn) return;
 
         // Reset
-        btn.classList.remove('capture-off', 'capture-all', 'capture-target');
+        btn.classList.remove('capture-off', 'capture-target');
+        // Nettoyer l'ancien sprite s'il existe
+        btn.style.removeProperty('--sprite-url');
+        btn.classList.remove('has-sprite');
 
         if (wrapper && this.captureMode !== 2) {
             wrapper.classList.remove('show');
@@ -2687,34 +4063,45 @@ class Game {
 
         // Application du Mode
         if (this.captureMode === 0) {
+            // Mode OFF
             btn.classList.add('capture-off');
-            if (icon) icon.textContent = "🕸️";
-            if (text) text.textContent = "Capt. OFF";
-        }
-        else if (this.captureMode === 1) {
-            btn.classList.add('capture-all');
-            if (icon) icon.textContent = "🔴";
-            if (text) text.textContent = "Capt. TOUS";
         }
         else if (this.captureMode === 2) {
+            // Mode TARGET (ON)
             btn.classList.add('capture-target');
-            if (icon) icon.textContent = "🎯";
 
-            // ✅ Gestion du texte Multiple
             const count = this.captureTargets ? this.captureTargets.length : 0;
 
             if (count === 0) {
-                if (text) text.textContent = "Choisir...";
-            } else if (count === 1) {
-                const tName = this.captureTargets[0];
-                if (text) text.textContent = tName.length > 9 ? tName.substring(0, 8) + "." : tName;
+                // Pas de cible sélectionnée
+                btn.classList.remove('has-sprite');
             } else {
-                if (text) text.textContent = `${count} Cibles`;
+                // Au moins une cible sélectionnée - afficher le sprite
+                const firstTarget = this.captureTargets[0];
+                const spriteUrl = getPokemonSpriteUrl(firstTarget, false);
+
+                btn.style.setProperty('--sprite-url', `url(${spriteUrl})`);
+                btn.classList.add('has-sprite');
+
+                // Si 2 cibles exactement, afficher les deux sprites
+                if (count === 2) {
+                    const secondTarget = this.captureTargets[1];
+                    const spriteUrl2 = getPokemonSpriteUrl(secondTarget, false);
+                    btn.style.setProperty('--sprite-url-2', `url(${spriteUrl2})`);
+                    btn.setAttribute('data-count', '2');
+                } else if (count > 2) {
+                    // Plus de 2 cibles (ne devrait pas arriver avec limite à 2)
+                    btn.setAttribute('data-count', count);
+                } else {
+                    // 1 seule cible
+                    btn.removeAttribute('data-count');
+                    btn.style.removeProperty('--sprite-url-2');
+                }
             }
 
-            // Forçage affichage
+            // Forçage affichage du modal
             if (wrapper) {
-                wrapper.style.display = 'block';
+                wrapper.style.display = 'flex';
                 wrapper.classList.add('show');
             }
         }
@@ -2792,6 +4179,9 @@ class Game {
 
             if (marksWon > 0) {
                 this.marquesDuTriomphe += marksWon;
+                if (this.towerState.runStats) {
+                    this.towerState.runStats.marksGained = (this.towerState.runStats.marksGained || 0) + marksWon;
+                }
                 if (document.getElementById('enemySpriteContainer')) {
                     window.showFloatingText(`+${marksWon} Ⓜ️`, document.getElementById('enemySpriteContainer'), 'ft-damage-enemy');
                 }
@@ -2808,13 +4198,29 @@ class Game {
                     }
                 });
 
-                this.rollItemDrop();
+                const droppedItem = this.rollItemDrop();
+                if (droppedItem && this.towerState.runStats) {
+                    const stats = this.towerState.runStats;
+                    stats.items = stats.items || {};
+                    stats.items[droppedItem] = (stats.items[droppedItem] || 0) + 1;
+                }
+                const timeDustDrop = this.tryDropTimeDust('Boss Tour');
+                if (timeDustDrop && this.towerState.runStats) {
+                    const stats = this.towerState.runStats;
+                    stats.items = stats.items || {};
+                    stats.items[timeDustDrop] = (stats.items[timeDustDrop] || 0) + 1;
+                }
 
                 let bossEggRarity = RARITY.RARE;
                 const roll = Math.random();
                 if (roll < 0.10) bossEggRarity = RARITY.LEGENDARY;
                 else if (roll < 0.55) bossEggRarity = RARITY.EPIC;
                 this.addEgg(bossEggRarity);
+                if (this.towerState.runStats) {
+                    const stats = this.towerState.runStats;
+                    stats.eggs = stats.eggs || {};
+                    stats.eggs[bossEggRarity] = (stats.eggs[bossEggRarity] || 0) + 1;
+                }
 
                 logMessage(`✨ MAÎTRE D'ÉTAGE VAINCU ! +${marksWon} Marques, Œuf ${bossEggRarity} & Soin !`);
                 toast.success("Boss Tour Vaincu !", `+${marksWon} Ⓜ️, Œuf ${bossEggRarity} & Soin`);
@@ -2831,7 +4237,8 @@ class Game {
                 this.nextTowerFloor();
             }
 
-            this.updateDisplay();
+            this.updateTeamDisplay();
+            this.updateCombatDisplay();
             return; // STOP
         }
 
@@ -2881,17 +4288,24 @@ class Game {
         const collecteurBonus = this.getTalentStackBonus('collecteur');
         pokedollarsEarned = Math.floor(pokedollarsEarned * (1 + collecteurBonus));
 
-        const collGold = (this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {}).gold_mult || 0;
+        const collGold = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).gold_mult || 0;
         const fortuneBonus = 1 + this.getAccountTalentBonus('pokedollars_mult') + collGold;
         pokedollarsEarned = Math.floor(pokedollarsEarned * fortuneBonus);
 
-        this.pokedollars += pokedollarsEarned;
-        this.stats.totalPokedollarsEarned += pokedollarsEarned;
-        this.checkAchievements('totalPokedollarsEarned');
+        const combatGold = this.addCombatPokedollars(pokedollarsEarned, 'combat');
         if (pokedollarsEarned > 0) {
-            this.showUiFloatingText('headerStatMoney', `+${pokedollarsEarned}$`, 'ft-money');
+            this.showUiFloatingText('headerStatMoney', `+${formatNumber(combatGold.creditedToWallet || combatGold.net)}$`, 'ft-money');
+            if ((combatGold.injectedToBank || 0) > 0) {
+                setTimeout(() => {
+                    this.showUiFloatingText('headerStatMoney', `+${formatNumber(combatGold.injectedToBank)}$ banque`, 'ft-bank');
+                }, 80);
+            }
+            if (combatGold.withheld > 0) {
+                setTimeout(() => {
+                    this.showUiFloatingText('headerStatMoney', `-${formatNumber(combatGold.withheld)}$ dette`, 'ft-debt');
+                }, 120);
+            }
         }
-        this.checkSpecialQuests('pokedollars_gained');
 
         // 2. GAIN : XP
         let expMultiplier = isBoss ? 50 : (isEpic ? 25 : 10);
@@ -2945,6 +4359,7 @@ class Game {
         }
 
         this.rollItemDrop();
+        if (isBoss) this.tryDropTimeDust('Boss');
 
         // Drop Œufs
         let eggChance = 0;
@@ -3018,8 +4433,16 @@ class Game {
         this.combatState = 'waiting';
         this.lastCombatTime = Date.now();
         this.currentEnemy = null;
+        this.faintedThisCombat = new Set();
 
-        // 2. CIBLAGE : On récupère la carte qui pose problème
+        // 2. Synchronisation et soin (important après une arène ou pour éviter les blocages UI)
+        this.playerTeam.forEach(c => {
+            if (c.mainAccountCurrentHp > 0) {
+                c.currentHp = c.mainAccountCurrentHp;
+            }
+        });
+
+        // 3. CIBLAGE : On récupère la carte qui pose problème
         // (Adapte le sélecteur si ta carte est ailleurs, mais vu ton HTML, c'est une .creature-card)
         const enemyCard = document.querySelector('#enemySpriteContainer .creature-card')
             || document.querySelector('.creature-card');
@@ -3048,7 +4471,19 @@ class Game {
         this.rollRoamingEncounter();
         if (typeof updateZoneInfo === 'function') updateZoneInfo();
 
-        this.updateDisplay();
+        // 🛑 OPTIMISATION : On cible précisément les mises à jour UI 
+        // au lieu de tout redessiner (updateDisplay() = ~150ms de frame time).
+        // L'UI statique restante est gérée par secondaryInterval.
+        this.updateTeamDisplay();
+        this.updateCombatDisplay();
+        this.updateItemsDisplay();
+        this.updateEggsDisplay();
+
+        if (captured) {
+            this.updateStorageDisplay();
+            this.updatePokedexDisplay();
+            this.updateAchievementsDisplay(); // Pour shiny/perfect IVs
+        }
     }
 
 
@@ -3181,13 +4616,6 @@ class Game {
         // Taux de base
         let dropChance = 0.05 + (currentZone * 0.001);
 
-        // SI SIMULATION : On divise la chance par 2 (Équilibrage)
-        // ⚠️ NOTE : Si tu veux exactement les mêmes rates qu'en online pour le rattrapage,
-        // tu devrais peut-être retirer cette condition ou passer un autre paramètre.
-        if (isSimulation) {
-            dropChance = dropChance / 2;
-        }
-
         if (Math.random() < dropChance) {
             const rarityRoll = Math.random();
             let itemRarity;
@@ -3221,15 +4649,40 @@ class Game {
         return null; // ✅ On retourne null si rien n'est tombé
     }
 
+    // Drop ultra-rare de Time Dust (boss / contenus endgame)
+    tryDropTimeDust(sourceLabel = 'Boss') {
+        const dropTable = [
+            { key: 'time_dust_9h', chance: 0.00015 },
+            { key: 'time_dust_3h', chance: 0.0006 },
+            { key: 'time_dust_1h', chance: 0.0020 }
+        ];
+
+        for (const entry of dropTable) {
+            if (Math.random() < entry.chance) {
+                this.addItem(entry.key, 1);
+                const item = (typeof ALL_ITEMS !== 'undefined') ? ALL_ITEMS[entry.key] : null;
+                const itemName = item && item.name ? item.name : entry.key;
+                logMessage(`⌛ Drop ultra rare (${sourceLabel}) : ${itemName} !`);
+                if (typeof toast !== 'undefined' && toast.legendary) {
+                    toast.legendary("DROP ULTRA RARE", `${itemName} obtenu !`);
+                }
+                return entry.key;
+            }
+        }
+        return null;
+    }
+
     // Dans la classe Game
-    addItem(itemKey, quantity = 1, updateUI = true) { // Ajout du paramètre updateUI
+    addItem(itemKey, quantity = 1, updateUI = true) {
         const item = ALL_ITEMS[itemKey];
-        if (!item) return;
+        // Autoriser les CT (ct_*) même si pas dans ALL_ITEMS (robustesse)
+        if (!item && !(typeof itemKey === 'string' && itemKey.startsWith('ct_'))) return;
+        if (!this.items) this.items = {};
 
         this.items[itemKey] = (this.items[itemKey] || 0) + quantity;
 
-        // On loggue toujours (le log est désactivé globalement pendant la simulation de toute façon)
-        logMessage(`✨ ${item.icon} ${item.name} x${quantity} obtenu !`);
+        const displayName = item ? `${item.icon || '📿'} ${item.name}` : (itemKey.startsWith('ct_') ? `📿 CT ${itemKey.replace('ct_', '')}` : itemKey);
+        logMessage(`✨ ${displayName} x${quantity} obtenu !`);
 
         // On ne met à jour l'affichage que si demandé
         if (updateUI) {
@@ -3243,73 +4696,10 @@ class Game {
     }
     updateStatBoostsDisplay() {
         const container = document.getElementById('activeStatBoosts');
-        if (!container) {
-            console.warn('❌ activeStatBoosts introuvable dans le HTML !');
-            return;
-        }
-
-        if (!this.activeStatBoosts || this.activeStatBoosts.length === 0) {
+        if (container) {
             container.style.display = 'none';
-            return;
+            container.innerHTML = '';
         }
-
-        container.style.display = 'block';
-        container.innerHTML = '<h3>⚡ Boosts Actifs</h3>';
-
-        const boostsList = document.createElement('div');
-        boostsList.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-top: 10px;';
-
-        const statNames = {
-            hp: 'PV',
-            attack: 'Attaque',
-            defense: 'Défense',
-            spattack: 'Att. Spé.',
-            spdefense: 'Déf. Spé.',
-            speed: 'Vitesse',
-            all: 'TOUTES les stats'
-        };
-        const statEmojis = {
-            hp: '❤️',
-            attack: '⚔️',
-            defense: '🛡️',
-            spattack: '💥',
-            spdefense: '💠',
-            speed: '💨',
-            all: '🧪'
-        };
-
-        this.activeStatBoosts.forEach(boost => {
-            const timeLeft = boost.endTime - Date.now();
-            const minutes = Math.floor(timeLeft / 60000);
-            const seconds = Math.floor((timeLeft % 60000) / 1000);
-            const emoji = boost.itemId === 'potion_max' ? '⭐' : (statEmojis[boost.stat] || '⚡');
-            const label = statNames[boost.stat] || boost.stat;
-
-            const boostItem = document.createElement('div');
-            boostItem.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: linear-gradient(135deg, #e1f5fe 0%, #81d4fa 100%);
-            border: 2px solid #0277bd;
-            border-radius: 8px;
-            padding: 10px 15px;
-        `;
-
-            boostItem.innerHTML = `
-            <span style="font-weight: bold; color: #0277bd;">
-                ${emoji} +${(boost.value * 100)}% ${label}
-            </span>
-            <span style="font-size: 12px; color: #666; background: rgba(255, 255, 255, 1); padding: 4px 8px; border-radius: 12px;">
-                ${minutes}:${seconds.toString().padStart(2, '0')}
-            </span>
-        `;
-
-            boostsList.appendChild(boostItem);
-        });
-
-        container.appendChild(boostsList);
-
     }
 
     // SÉCURITÉ : Vérification déblocage Arène (Correction Data Model)
@@ -3362,15 +4752,33 @@ class Game {
     }
 
     /**
-     * Collection Synergies — Bonus passifs "Maillon Faible".
-     * Retourne les bonus agrégés : { crit_chance, life_steal, gold_mult, xp_mult, damage_mult, max_hp_mult }.
+     * Retourne toutes les créatures "possédées" pour les bonus de collection :
+     * équipe + stockage + pension + Pokémon actuellement en expédition (pour qu'ils comptent dans les synergies).
+     */
+    getAllCreaturesForSynergies() {
+        const list = [...(this.playerTeam || []), ...(this.storage || []), ...(this.pension || [])];
+        (this.activeExpeditions || []).forEach(exp => {
+            if (exp.squadData && Array.isArray(exp.squadData)) {
+                exp.squadData.forEach(data => {
+                    if (data && data.name != null) list.push({ name: data.name, prestige: data.prestige ?? 0 });
+                });
+            } else if (exp.creatureData && exp.creatureData.name != null) {
+                list.push({ name: exp.creatureData.name, prestige: exp.creatureData.prestige ?? 0 });
+            }
+        });
+        return list;
+    }
+
+    /**
+     * Bonus de collection — Bonus passifs "Maillon Faible".
+     * Retourne les bonus agrégés : { crit_chance, life_steal, gold_mult, xp_mult, damage_mult, defense_mult, max_hp_mult }.
      * Chaque valeur = somme des (niveau × effet) pour toutes les familles complètes.
      */
-    getCollectionSynergyBonuses() {
-        const out = { crit_chance: 0, life_steal: 0, gold_mult: 0, xp_mult: 0, damage_mult: 0, max_hp_mult: 0, hp_regen_per_turn: 0 };
-        if (typeof COLLECTION_SYNERGIES === 'undefined') return out;
+    getCollectionBonuses() {
+        const out = { crit_chance: 0, life_steal: 0, gold_mult: 0, xp_mult: 0, damage_mult: 0, defense_mult: 0, max_hp_mult: 0, hp_regen_per_turn: 0 };
+        if (typeof COLLECTION_BONUSES === 'undefined') return out;
 
-        const allCreatures = [...(this.playerTeam || []), ...(this.storage || []), ...(this.pension || [])];
+        const allCreatures = this.getAllCreaturesForSynergies();
         const prestigeBySpecies = {};
         allCreatures.forEach(c => {
             if (c && c.name != null) {
@@ -3379,7 +4787,7 @@ class Game {
             }
         });
 
-        Object.values(COLLECTION_SYNERGIES).forEach(synergy => {
+        Object.values(COLLECTION_BONUSES).forEach(synergy => {
             const minPrestige = Math.min(...synergy.pokemon.map(name => prestigeBySpecies[name] ?? 0));
             if (minPrestige <= 0) return;
             const level = minPrestige;
@@ -3394,9 +4802,9 @@ class Game {
     /**
      * Détails par famille pour l'affichage Pokédex : prestige par espèce, niveau actif, texte effet.
      */
-    getCollectionSynergyDetails() {
-        if (typeof COLLECTION_SYNERGIES === 'undefined') return [];
-        const allCreatures = [...(this.playerTeam || []), ...(this.storage || []), ...(this.pension || [])];
+    getCollectionBonusDetails() {
+        if (typeof COLLECTION_BONUSES === 'undefined') return [];
+        const allCreatures = this.getAllCreaturesForSynergies();
         const prestigeBySpecies = {};
         allCreatures.forEach(c => {
             if (c && c.name != null) {
@@ -3405,11 +4813,11 @@ class Game {
             }
         });
 
-        const effectLabels = { crit_chance: 'Critique', life_steal: 'Life Steal', gold_mult: 'Argent', xp_mult: 'XP', damage_mult: 'Dégâts', max_hp_mult: 'PV Max', hp_regen_per_turn: 'Regen PV/tour' };
-        const effectFormatters = { crit_chance: v => `+${(v * 100).toFixed(1)}%`, life_steal: v => `+${(v * 100).toFixed(1)}%`, gold_mult: v => `+${(v * 100).toFixed(1)}%`, xp_mult: v => `+${(v * 100).toFixed(1)}%`, damage_mult: v => `+${(v * 100).toFixed(1)}%`, max_hp_mult: v => `+${(v * 100).toFixed(1)}%`, hp_regen_per_turn: v => `+${(v * 100).toFixed(1)}% PV/tour` };
-        const effectPerPrestigeLabels = { crit_chance: v => `+${((v || 0) * 100).toFixed(1)}% Critique/prestige`, life_steal: v => `+${((v || 0) * 100).toFixed(1)}% Life Steal/prestige`, gold_mult: v => `+${((v || 0) * 100).toFixed(1)}% Argent/prestige`, xp_mult: v => `+${((v || 0) * 100).toFixed(1)}% XP/prestige`, damage_mult: v => `+${((v || 0) * 100).toFixed(1)}% Dégâts/prestige`, max_hp_mult: v => `+${((v || 0) * 100).toFixed(1)}% PV/prestige`, hp_regen_per_turn: v => `+${((v || 0) * 100).toFixed(1)}% Regen PV/tour` };
+        const effectLabels = { crit_chance: 'Critique', life_steal: 'Life Steal', gold_mult: 'Argent', xp_mult: 'XP', damage_mult: 'Dégâts', defense_mult: 'Défense', max_hp_mult: 'PV Max', hp_regen_per_turn: 'Regen PV/tour' };
+        const effectFormatters = { crit_chance: v => `+${(v * 100).toFixed(1)}%`, life_steal: v => `+${(v * 100).toFixed(1)}%`, gold_mult: v => `+${(v * 100).toFixed(1)}%`, xp_mult: v => `+${(v * 100).toFixed(1)}%`, damage_mult: v => `+${(v * 100).toFixed(1)}%`, defense_mult: v => `+${(v * 100).toFixed(1)}%`, max_hp_mult: v => `+${(v * 100).toFixed(1)}%`, hp_regen_per_turn: v => `+${(v * 100).toFixed(1)}% PV/tour` };
+        const effectPerPrestigeLabels = { crit_chance: v => `+${((v || 0) * 100).toFixed(1)}% Critique/prestige`, life_steal: v => `+${((v || 0) * 100).toFixed(1)}% Life Steal/prestige`, gold_mult: v => `+${((v || 0) * 100).toFixed(1)}% Argent/prestige`, xp_mult: v => `+${((v || 0) * 100).toFixed(1)}% XP/prestige`, damage_mult: v => `+${((v || 0) * 100).toFixed(1)}% Dégâts/prestige`, defense_mult: v => `+${((v || 0) * 100).toFixed(1)}% Défense/prestige`, max_hp_mult: v => `+${((v || 0) * 100).toFixed(1)}% PV/prestige`, hp_regen_per_turn: v => `+${((v || 0) * 100).toFixed(1)}% Regen PV/tour` };
 
-        return Object.entries(COLLECTION_SYNERGIES).map(([id, synergy]) => {
+        return Object.entries(COLLECTION_BONUSES).map(([id, synergy]) => {
             const members = synergy.pokemon.map(name => {
                 const prestige = prestigeBySpecies[name] ?? -1;
                 const status = prestige < 0 ? 'missing' : (prestige === 0 ? 'prestige_0' : 'ok');
@@ -3440,7 +4848,7 @@ class Game {
         // Définir les bonus par niveau de stack
         const bonusTables = {
             'mentor': [0, 0.25, 0.40, 0.50, 0.55, 0.58, 0.60],        // XP
-            'collecteur': [0, 0.50, 15, 0.90, 1.00, 1.05, 1.10],    // Pokédollars
+            'collecteur': [0, 0.50, 0.75, 0.90, 1.00, 1.05, 1.10],    // Pokédollars
             'maitre': [0, 0.20, 0.35, 0.45, 0.50, 0.53, 0.55],        // Dégâts STAB
             'catalyseur': [0, 0.025, 0.045, 0.060, 0.070, 0.075, 0.08], // Chance statut
             'catalyseur_supreme': [0, 0.05, 0.08, 0.10, 0.11, 0.115, 0.12], // Chance statut
@@ -3784,6 +5192,7 @@ class Game {
         this.updatePlayerStatsDisplay();
         this.updateEggsDisplay();
         this.updateShopDisplay();
+        this.updateTabBadges();
     }
 
     /**
@@ -3874,7 +5283,7 @@ class Game {
             let rewardsHTML = '';
             if (ach.rewards) {
                 if (ach.rewards.pokedollars) rewardsHTML += `<span class="quest-reward-item">💰 ${formatNumber(ach.rewards.pokedollars)}</span>`;
-                if (ach.rewards.tokens) rewardsHTML += `<span class="quest-reward-item">🎫 ${ach.rewards.tokens}</span>`;
+                if (ach.rewards.tokens) rewardsHTML += `<span class="quest-reward-item"><img src="img/quest-token.png" class="quest-token-inline" alt=""> ${ach.rewards.tokens}</span>`;
                 if (ach.rewards.items) {
                     Object.entries(ach.rewards.items).forEach(([item, qty]) => {
                         rewardsHTML += `<span class="quest-reward-item">🎒 ${qty}x ${item}</span>`;
@@ -4064,8 +5473,8 @@ class Game {
         if (synergies.exp_mult > 1) {
             multiplier += (synergies.exp_mult - 1);
         }
-        // Collection Synergies
-        const collXp = (this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {}).xp_mult || 0;
+        // Bonus de collection
+        const collXp = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).xp_mult || 0;
         multiplier += collXp;
 
         return multiplier;
@@ -4109,6 +5518,292 @@ class Game {
         bonus += this.getActiveBoostMultiplier('eggDrop');
 
         return bonus;
+    }
+
+    // --- INCUBATEURS D'OEUFS ---
+    getMaxIncubatorSlots() {
+        const level = (this.upgrades.incubatorSlots && this.upgrades.incubatorSlots.level) || 0;
+        return Math.min(4, 1 + level);
+    }
+
+    getIncubationSpeedMultiplier() {
+        const level = (this.upgrades.incubationSpeed && this.upgrades.incubationSpeed.level) || 0;
+        return Math.max(0.5, 1 - level * 0.10);
+    }
+
+    getIncubationDurationMs(rarity, slotIndex = 0) {
+        if (typeof EGG_INCUBATION_BASE_MS === 'undefined' || !EGG_INCUBATION_BASE_MS[rarity]) return 5 * 60 * 1000;
+
+        let baseMs = EGG_INCUBATION_BASE_MS[rarity];
+
+        // --- NOUVEAU : Bonus spécifiques par slot d'incubateur ---
+        // slotIndex 0: Incubateur 1 (Temps normal)
+        // slotIndex 1: Incubateur 2 (-10% sur Commun/Rare)
+        // slotIndex 2: Incubateur 3 (-20% sur Commun/Rare/Epique)
+        // slotIndex 3: Incubateur 4 (-30% sur toutes les raretés)
+
+        let slotModifier = 1.0;
+        if (slotIndex === 1 && (rarity === RARITY.COMMON || rarity === RARITY.RARE)) {
+            slotModifier = 0.90; // -10%
+        } else if (slotIndex === 2 && (rarity === RARITY.COMMON || rarity === RARITY.RARE || rarity === RARITY.EPIC)) {
+            slotModifier = 0.80; // -20%
+        } else if (slotIndex === 3) {
+            slotModifier = 0.70; // -30%
+        }
+
+        // On applique le modificateur de slot au temps de base
+        let timeWithSlotBonus = baseMs * slotModifier;
+
+        // Puis on applique le bonus global de l'amélioration (incubationSpeed)
+        return Math.floor(timeWithSlotBonus * this.getIncubationSpeedMultiplier());
+    }
+
+    getIncubatorRemainingMs(slotIndex) {
+        const slot = this.incubators[slotIndex];
+        if (!slot || !slot.startTime || !slot.durationMs) return 0;
+        const elapsed = Date.now() - slot.startTime;
+        return Math.max(0, slot.durationMs - elapsed);
+    }
+
+    isIncubatorReady(slotIndex) {
+        return this.getIncubatorRemainingMs(slotIndex) === 0 && this.incubators[slotIndex] != null;
+    }
+
+    placeEggInIncubator(slotIndex, rarity, options = {}) {
+        if (slotIndex < 0 || slotIndex >= this.getMaxIncubatorSlots()) return false;
+        if (this.eggs[rarity] <= 0) return false;
+        if (this.incubators[slotIndex] != null) return false;
+        this.eggs[rarity]--;
+        const durationMs = this.getIncubationDurationMs(rarity, slotIndex);
+        this.incubators[slotIndex] = { rarity, startTime: Date.now(), durationMs };
+        if (!options.silent) {
+            logMessage(`Œuf ${rarity} placé dans l'incubateur ${slotIndex + 1}. Incubation : ${Math.ceil(durationMs / 60000)} min.`);
+        }
+        this.updateEggsDisplay();
+        this.updateIncubatorsDisplay();
+        return true;
+    }
+
+    openIncubatorEgg(slotIndex, options = {}) {
+        if (slotIndex < 0 || slotIndex >= this.getMaxIncubatorSlots()) return;
+        const forceReady = !!options.forceReady;
+        if (!forceReady && !this.isIncubatorReady(slotIndex)) return;
+        const slot = this.incubators[slotIndex];
+        if (!slot) return;
+        const rarity = slot.rarity;
+        this.incubators[slotIndex] = null;
+        this.updateIncubatorsDisplay();
+        return this.openEgg(rarity, true, {
+            silent: !!options.silent,
+            source: 'incubator',
+            slotIndex,
+            offline: !!options.offline
+        }); // true = œuf déjà retiré de l'inventaire (placé dans l'incubateur)
+    }
+
+    openChooseEggModal(slotIndex) {
+        this._chooseEggSlotIndex = slotIndex;
+        const modal = document.getElementById('chooseEggModal');
+        const optionsEl = document.getElementById('chooseEggOptions');
+        if (!modal || !optionsEl) return;
+        optionsEl.innerHTML = '';
+        const rarities = [RARITY.COMMON, RARITY.RARE, RARITY.EPIC, RARITY.LEGENDARY];
+        rarities.forEach(rarity => {
+            const count = this.eggs[rarity] || 0;
+            if (count <= 0) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `choose-egg-btn rarity-${rarity}`;
+            const filterClass = rarity === 'common' ? '' : ` egg-filter-${rarity}`;
+            const label = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+            const eggSpriteUrl = `img/${rarity}-egg.png`;
+            btn.innerHTML = `<img src="${eggSpriteUrl}" alt="" class="choose-egg-btn-icon egg-sprite${filterClass}"> <span class="choose-egg-btn-label">${label}</span> <span class="choose-egg-btn-count">× ${count}</span>`;
+            btn.onclick = () => this.chooseEggForIncubator(rarity);
+            optionsEl.appendChild(btn);
+        });
+        if (optionsEl.children.length === 0) {
+            optionsEl.innerHTML = '<p class="choose-egg-empty-msg">Aucun œuf disponible.</p>';
+        }
+        modal.classList.add('show');
+    }
+
+    closeChooseEggModal() {
+        this._chooseEggSlotIndex = undefined;
+        const modal = document.getElementById('chooseEggModal');
+        if (modal) modal.classList.remove('show');
+    }
+
+    chooseEggForIncubator(rarity) {
+        if (this._chooseEggSlotIndex === undefined) return;
+        this.placeEggInIncubator(this._chooseEggSlotIndex, rarity);
+        this.closeChooseEggModal();
+    }
+
+    isAutoIncubationUnlockedForSlot(slotIndex) {
+        return slotIndex >= 0
+            && slotIndex < 4
+            && this.autoIncubation
+            && slotIndex < (this.autoIncubation.unlockedAutoSlots || 0);
+    }
+
+    getAutoIncubationSettings(slotIndex) {
+        const state = this.autoIncubation || this.createDefaultAutoIncubationState();
+        const slotSettings = Array.isArray(state.slotSettings) ? state.slotSettings[slotIndex] : null;
+        if (!slotSettings) return { enabled: false, priorityOrder: this.normalizePriorityOrder([]), autoCollectOnlyWhenReady: true };
+        return {
+            enabled: !!slotSettings.enabled,
+            priorityOrder: this.normalizePriorityOrder(slotSettings.priorityOrder),
+            autoCollectOnlyWhenReady: slotSettings.autoCollectOnlyWhenReady !== false
+        };
+    }
+
+    setAutoIncubationEnabled(slotIndex, enabled) {
+        if (!this.autoIncubation) this.autoIncubation = this.createDefaultAutoIncubationState();
+        if (!this.isAutoIncubationUnlockedForSlot(slotIndex)) return;
+        const settings = this.getAutoIncubationSettings(slotIndex);
+        this.autoIncubation.slotSettings[slotIndex] = {
+            ...settings,
+            enabled: !!enabled
+        };
+        this.updateIncubatorsDisplay();
+        this.saveGame();
+    }
+
+    cycleIncubatorPriority(slotIndex) {
+        if (!this.autoIncubation || !this.isAutoIncubationUnlockedForSlot(slotIndex)) return;
+        const settings = this.getAutoIncubationSettings(slotIndex);
+        const current = settings.priorityOrder[0] || RARITY.LEGENDARY;
+        const order = [RARITY.LEGENDARY, RARITY.EPIC, RARITY.RARE, RARITY.COMMON];
+        const idx = order.indexOf(current);
+        const nextFirst = order[(idx + 1) % order.length];
+        const nextOrder = [nextFirst, ...order.filter(r => r !== nextFirst)];
+        this.autoIncubation.slotSettings[slotIndex] = {
+            ...settings,
+            priorityOrder: nextOrder
+        };
+        this.updateIncubatorsDisplay();
+        this.saveGame();
+    }
+
+    getSlotPriorityLabel(slotIndex) {
+        const settings = this.getAutoIncubationSettings(slotIndex);
+        const first = settings.priorityOrder[0] || RARITY.LEGENDARY;
+        const labels = {
+            [RARITY.LEGENDARY]: 'Légendaire',
+            [RARITY.EPIC]: 'Epic',
+            [RARITY.RARE]: 'Rare',
+            [RARITY.COMMON]: 'Common'
+        };
+        return labels[first] || first;
+    }
+
+    pickNextEggByPriority(slotIndex) {
+        const settings = this.getAutoIncubationSettings(slotIndex);
+        const priorities = this.normalizePriorityOrder(settings.priorityOrder);
+        for (const rarity of priorities) {
+            if ((this.eggs[rarity] || 0) > 0) return rarity;
+        }
+        return null;
+    }
+
+    tryAutoRefillIncubator(slotIndex, options = {}) {
+        if (slotIndex < 0 || slotIndex >= this.getMaxIncubatorSlots()) return false;
+        if (this.incubators[slotIndex] != null) return false;
+        if (!this.isAutoIncubationUnlockedForSlot(slotIndex)) return false;
+        const settings = this.getAutoIncubationSettings(slotIndex);
+        if (!settings.enabled) return false;
+        const rarity = this.pickNextEggByPriority(slotIndex);
+        if (!rarity) return false;
+        const placed = this.placeEggInIncubator(slotIndex, rarity, { silent: options.silent !== false });
+        if (placed && options.stats && options.stats.incubation) {
+            options.stats.incubation.placedTotal++;
+            options.stats.incubation.byRarityPlaced[rarity] = (options.stats.incubation.byRarityPlaced[rarity] || 0) + 1;
+            options.stats.incubation.bySlotPlaced[slotIndex] = (options.stats.incubation.bySlotPlaced[slotIndex] || 0) + 1;
+        }
+        return placed;
+    }
+
+    processAutoIncubatorsOnline() {
+        if (!this.autoIncubation) return;
+        for (let i = 0; i < this.getMaxIncubatorSlots(); i++) {
+            if (!this.isAutoIncubationUnlockedForSlot(i)) continue;
+            const settings = this.getAutoIncubationSettings(i);
+            if (!settings.enabled) continue;
+
+            if (this.isIncubatorReady(i)) {
+                this.openIncubatorEgg(i, { silent: true });
+            }
+            if (!this.incubators[i]) {
+                this.tryAutoRefillIncubator(i, { silent: true });
+            }
+        }
+    }
+
+    createOfflineIncubationStats() {
+        return {
+            hatchedTotal: 0,
+            placedTotal: 0,
+            byRarity: {},
+            bySlot: {},
+            byRarityPlaced: {},
+            bySlotPlaced: {},
+            obtainedPokemonPreview: []
+        };
+    }
+
+    pushOfflineIncubationPreview(stats, hatchResult) {
+        const limit = typeof OFFLINE_INCUBATION_PREVIEW_LIMIT === 'number' ? OFFLINE_INCUBATION_PREVIEW_LIMIT : 12;
+        if (!hatchResult || !hatchResult.creatureName) return;
+        if (stats.obtainedPokemonPreview.length >= limit) return;
+        stats.obtainedPokemonPreview.push({
+            name: hatchResult.creatureName,
+            rarity: hatchResult.rarity,
+            isShiny: !!hatchResult.isShiny
+        });
+    }
+
+    simulateIncubatorsForElapsedOffline(elapsedMs, statsContainer) {
+        if (!elapsedMs || elapsedMs <= 0) return;
+        const incubationStats = statsContainer && statsContainer.incubation
+            ? statsContainer.incubation
+            : this.createOfflineIncubationStats();
+        if (statsContainer && !statsContainer.incubation) statsContainer.incubation = incubationStats;
+        const hiddenStartTs = Date.now() - elapsedMs;
+
+        for (let i = 0; i < this.getMaxIncubatorSlots(); i++) {
+            if (!this.isAutoIncubationUnlockedForSlot(i)) continue;
+            const settings = this.getAutoIncubationSettings(i);
+            if (!settings.enabled) continue;
+
+            let remainingMs = elapsedMs;
+            while (remainingMs > 0) {
+                if (!this.incubators[i]) {
+                    const placed = this.tryAutoRefillIncubator(i, { silent: true, stats: statsContainer });
+                    if (!placed) break;
+                }
+
+                const slot = this.incubators[i];
+                if (!slot) break;
+                let slotRemaining = Math.max(0, Number(slot.durationMs) || 0);
+                if (slot.startTime && slot.startTime < hiddenStartTs) {
+                    const elapsedBeforeHidden = hiddenStartTs - slot.startTime;
+                    slotRemaining = Math.max(0, slotRemaining - elapsedBeforeHidden);
+                }
+                if (slotRemaining <= remainingMs) {
+                    remainingMs -= slotRemaining;
+                    const result = this.openIncubatorEgg(i, { silent: true, offline: true, forceReady: true });
+                    if (!result || !result.ok) break;
+                    incubationStats.hatchedTotal++;
+                    incubationStats.byRarity[result.rarity] = (incubationStats.byRarity[result.rarity] || 0) + 1;
+                    incubationStats.bySlot[i] = (incubationStats.bySlot[i] || 0) + 1;
+                    this.pushOfflineIncubationPreview(incubationStats, result);
+                } else {
+                    slot.durationMs = slotRemaining - remainingMs;
+                    slot.startTime = Date.now();
+                    remainingMs = 0;
+                }
+            }
+        }
     }
 
     getStaminaRegenTime() {
@@ -4199,6 +5894,7 @@ class Game {
 
         this.checkSpecialQuests('money_spent');
         if (upgradeKey === 'pension') this.checkSpecialQuests('pensionUpgradeBought');
+        if (upgradeKey === 'incubationSpeed') this.checkSpecialQuests('incubation_speed_upgraded');
         upgrade.level++;
 
         logMessage("Amelioration achetee : " + upgrade.name + " niveau " + upgrade.level + " !");
@@ -4242,25 +5938,12 @@ class Game {
             }
         });
 
-        // 3. Mettre à jour le style du bouton
-
-        const iconHtml = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/key-stone.png" class="icon-img" style="width:20px; height:20px; margin-right:5px; vertical-align:text-bottom;">`;
-        if (hasActiveSynergy) {
-            if (typeof this.checkSpecialQuests === 'function') this.checkSpecialQuests('synergyActive');
-            // ACTIF
-            btn.style.background = "linear-gradient(135deg, #22c55e, #16a34a)";
-            btn.style.boxShadow = "0 0 10px rgba(34, 197, 94, 0.6)";
-            btn.style.borderColor = "#86efac";
-            btn.innerHTML = `${iconHtml} Synergies (ACTIF)`; // ✅ Avec l'image
-            btn.classList.add("pulse-animation");
-        } else {
-            // INACTIF
-            btn.style.background = "#8b5cf6";
-            btn.style.boxShadow = "none";
-            btn.style.borderColor = "transparent";
-            btn.innerHTML = `${iconHtml} Synergies`; // ✅ Avec l'image
-            btn.classList.remove("pulse-animation");
-        }
+        // 3. Mettre à jour le sprite uniquement (synergy-on / synergy-off)
+        const spriteName = hasActiveSynergy ? 'synergy-on' : 'synergy-off';
+        if (hasActiveSynergy && typeof this.checkSpecialQuests === 'function') this.checkSpecialQuests('synergyActive');
+        const img = btn.querySelector('.synergy-btn-sprite');
+        if (img) img.src = `img/${spriteName}.png`;
+        else btn.innerHTML = `<img src="img/${spriteName}.png" class="synergy-btn-sprite" alt="Synergies">`;
     }
 
     updateArenasDisplay() {
@@ -4300,13 +5983,8 @@ class Game {
 
             const arenaCard = document.createElement('div');
             arenaCard.className = 'upgrade-card';
-
-            if (completed) {
-                arenaCard.style.background = 'linear-gradient(135deg, #d4edda 0%, #a3d4a8 100%)';
-                arenaCard.style.border = '2px solid #22c55e';
-            } else if (!unlocked) {
-                arenaCard.style.opacity = '0.6';
-            }
+            if (completed) arenaCard.classList.add('arena-completed');
+            if (!unlocked) arenaCard.classList.add('arena-locked');
 
             const requiredZone = ZONES[arena.requiredZone];
             const requiredZoneName = requiredZone ? requiredZone.name : "Zone " + arena.requiredZone;
@@ -4320,11 +5998,11 @@ class Game {
                 <strong>Équipe:</strong> 6 Pokémon<br>
                 <strong>Temps limite:</strong> 90 secondes
             </div>
-            <div style="margin: 15px 0; padding: 10px; background: rgba(255, 215, 0, 0.2); border-radius: 8px; border-left: 4px solid #ffd700;">
-                <div style="font-weight: bold; color: #d97706; margin-bottom: 5px;">Récompense: ${talent.name}</div>
-                <div style="font-size: 12px; color: #666;">${talent.description}</div>
+            <div class="arena-reward-box">
+                <div class="arena-reward-title">Récompense: ${talent.name}</div>
+                <div class="arena-reward-desc">${talent.description}</div>
             </div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 15px;">
+            <div class="arena-unlock-status">
                 ${unlocked ? '✓ Débloquée' : '🔒 Requiert: ' + requiredZoneName + ' complète'}
             </div>
             <button class="upgrade-btn" 
@@ -4363,18 +6041,27 @@ class Game {
 
 
     // OPTIMISATION : Ouverture d'œuf nettoyée avec Fusion Centralisée
-    openEgg(rarity) {
-        if (this.eggs[rarity] <= 0) {
-            logMessage("Aucun oeuf de cette rareté disponible !");
-            return;
+    // fromIncubator = true : l'œuf vient d'un incubateur (déjà retiré de l'inventaire au placement)
+    openEgg(rarity, fromIncubator = false, options = {}) {
+        const silent = !!options.silent;
+        const source = options.source || (fromIncubator ? 'incubator' : 'manual');
+        const slotIndex = Number.isInteger(options.slotIndex) ? options.slotIndex : null;
+        const offline = !!options.offline;
+        if (!fromIncubator) {
+            if (this.eggs[rarity] <= 0) {
+                if (!silent) logMessage("Aucun oeuf de cette rareté disponible !");
+                return { ok: false, reason: 'no_egg', rarity, source, slotIndex };
+            }
+            this.eggs[rarity]--;
         }
 
         // 1. Mise à jour des stats et quêtes d'ouverture
-        this.eggs[rarity]--;
         this.stats.eggsOpened++;
         this.checkSpecialQuests('eggsOpened');
 
-        logMessage("Ouverture d'un oeuf " + rarity + "...");
+        if (!silent) {
+            logMessage("Ouverture d'un oeuf " + rarity + "...");
+        }
 
         // 2. Génération de la créature
         const egg = new Egg(rarity);
@@ -4406,13 +6093,13 @@ class Game {
         if (creature.isShiny) {
             this.stats.shiniesObtained++;
             this.checkSpecialQuests('shiniesObtained');
-            toast.shiny('✨ SHINY OBTENU !', `${creature.name} brille de mille feux !`);
+            if (!silent) toast.shiny('✨ SHINY OBTENU !', `${creature.name} brille de mille feux !`);
         }
 
         if (creature.rarity === RARITY.LEGENDARY) {
             this.checkSpecialQuests('legendary_obtained');
             if (!creature.isShiny) {
-                toast.legendary('👑 LÉGENDAIRE !', `${creature.name} rejoint votre collection !`);
+                if (!silent) toast.legendary('👑 LÉGENDAIRE !', `${creature.name} rejoint votre collection !`);
             }
         }
 
@@ -4427,11 +6114,11 @@ class Game {
             if (result.ivImproved) msg += " IVs Améliorés !";
             if (result.becameShiny) msg += " ✨ DEVIENT SHINY !"; // Cas rare fusion Normal->Shiny
 
-            logMessage(msg);
+            if (!silent) logMessage(msg);
 
             // Toast de feedback
             if (result.improved) {
-                toast.success("Fusion Réussie !", `${existingCreature.name} est plus fort ! (+${result.shards} Shards)` + (result.ivImproved ? " IVs améliorés" : ""));
+                if (!silent) toast.success("Fusion Réussie !", `${existingCreature.name} est plus fort ! (+${result.shards} Shards)` + (result.ivImproved ? " IVs améliorés" : ""));
             } else {
                 // Optionnel : Toast discret pour le farm
                 // toast.info("Doublon", `+${result.shards} Shards`); 
@@ -4458,8 +6145,36 @@ class Game {
             }
         }
 
+        if (source === 'incubator') {
+            this.checkSpecialQuests('incubator_hatched', { rarity: creature.rarity, slotIndex });
+            if (this.getRarityValue(creature.rarity) >= this.getRarityValue(RARITY.RARE)) {
+                this.checkSpecialQuests('incubator_hatched_rare_plus', { rarity: creature.rarity, slotIndex });
+            }
+            if (creature.rarity === RARITY.EPIC) {
+                this.checkSpecialQuests('incubator_hatched_epic', { rarity: creature.rarity, slotIndex });
+            }
+            if (creature.rarity === RARITY.LEGENDARY) {
+                this.checkSpecialQuests('incubator_hatched_legendary', { rarity: creature.rarity, slotIndex });
+            }
+        }
+
         // 6. Affichage final
-        this.showEggHatchModal(creature, rarity);
+        if (!silent) {
+            this.showEggHatchModal(creature, rarity);
+        } else {
+            if (!offline && source === 'incubator') {
+                this.showAutoEggHatchMiniModal(creature, rarity);
+            }
+            this.updateDisplay();
+        }
+        return {
+            ok: true,
+            source,
+            slotIndex,
+            rarity: creature.rarity,
+            creatureName: creature.name,
+            isShiny: !!creature.isShiny
+        };
     }
 
     // --- GESTION DU POKÉMART (ÉPICERIE) ---
@@ -4498,6 +6213,13 @@ class Game {
         const content = document.getElementById('eggHatchContent');
         if (!modal || !content) return;
 
+        const payload = this.buildEggHatchDisplayPayload(creature, rarity);
+        const data = payload.data;
+        const contentClass = payload.contentClass;
+        if (typeof showEggHatchModalUI === 'function') showEggHatchModalUI(modal, content, data, { contentClass, rarity });
+    }
+
+    buildEggHatchDisplayPayload(creature, rarity) {
         let title = "Un Œuf éclot !";
         if (creature.isShiny) title = "✨ SHINY OBTENU ! ✨";
         else if (creature.rarity === RARITY.LEGENDARY) title = "👑 LÉGENDAIRE OBTENU ! 👑";
@@ -4519,16 +6241,49 @@ class Game {
                 ${talentHTML}
                 ${ultimateHTML}`;
 
-        const data = {
-            title,
-            spriteUrl: getPokemonSpriteUrl(creature.name, creature.isShiny, false),
-            name: creature.name,
-            type: creature.type,
-            secondaryType: creature.secondaryType || '',
-            statsHTML
+        return {
+            data: {
+                title,
+                rarity,
+                spriteUrl: getPokemonSpriteUrl(creature.name, creature.isShiny, false),
+                name: creature.name,
+                type: creature.type,
+                secondaryType: creature.secondaryType || '',
+                statsHTML
+            },
+            contentClass: creature.isShiny ? 'shiny' : (creature.rarity === RARITY.LEGENDARY ? 'legendary' : '')
         };
-        const contentClass = creature.isShiny ? 'shiny' : (creature.rarity === RARITY.LEGENDARY ? 'legendary' : '');
-        if (typeof showEggHatchModalUI === 'function') showEggHatchModalUI(modal, content, data, { contentClass });
+    }
+
+    showAutoEggHatchMiniModal(creature, rarity) {
+        if (typeof renderEggHatchModalContent !== 'function') return;
+        const payload = this.buildEggHatchDisplayPayload(creature, rarity);
+        let container = document.getElementById('autoEggHatchMiniContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'autoEggHatchMiniContainer';
+            container.className = 'auto-egg-hatch-mini-container';
+            document.body.appendChild(container);
+        }
+
+        const card = document.createElement('div');
+        card.className = `auto-egg-hatch-mini quest-completion-content ${payload.contentClass || ''} rarity-${rarity}`;
+        card.innerHTML = renderEggHatchModalContent(payload.data);
+        const actionBtn = card.querySelector('.btn-super-confirm');
+        if (actionBtn) actionBtn.remove();
+        container.prepend(card);
+
+        while (container.children.length > 3) {
+            container.removeChild(container.lastElementChild);
+        }
+
+        requestAnimationFrame(() => card.classList.add('show'));
+        setTimeout(() => {
+            card.classList.remove('show');
+            setTimeout(() => {
+                if (card.parentNode) card.parentNode.removeChild(card);
+            }, 220);
+        }, 3200);
     }
 
     closeEggHatchModal() {
@@ -4616,6 +6371,82 @@ class Game {
         this.showCreatureModal(creatureIndex, location); // Rafraîchir le modal
     }
 
+    /** Affiche le modal pour choisir une CT à enseigner à la créature */
+    showTeachCTModal(creatureIndex, location) {
+        let creature;
+        if (location === 'team') creature = this.playerTeam[creatureIndex];
+        else if (location === 'storage') creature = this.storage[creatureIndex];
+        else if (location === 'pension') creature = this.pension[creatureIndex];
+        if (!creature) return;
+
+        const ctEntries = Object.entries(this.items || {}).filter(([k, v]) => k.startsWith('ct_') && v > 0);
+        if (ctEntries.length === 0) {
+            if (typeof toast !== 'undefined') toast.info("Aucune CT", "Vous n'avez aucune CT en possession.");
+            return;
+        }
+
+        const moveNameFromKey = (k) => k.replace(/^ct_/, '').replace(/_/g, ' ');
+        let html = `<div class="creature-modal-info-box" style="padding:16px; max-height:400px; overflow-y:auto;"><h5 style="margin:0 0 12px 0;">📿 Choisir une CT à enseigner à ${creature.name}</h5>`;
+        html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:12px;">Attaque actuelle : <strong>${creature.getMove ? creature.getMove() : 'Charge'}</strong></p>`;
+
+        const moveKeyMap = {};
+        Object.keys(MOVES_DB || {}).forEach(mn => { moveKeyMap[mn.replace(/ /g, '_').replace(/'/g, '')] = mn; });
+        ctEntries.forEach(([itemKey, qty]) => {
+            const rawMove = itemKey.replace(/^ct_/, '');
+            const moveName = MOVES_DB && Object.keys(MOVES_DB).find(m => 'ct_' + m === itemKey) || rawMove.replace(/_/g, ' ');
+            const compat = typeof canLearnCT === 'function' ? canLearnCT(creature.name, moveName) : false;
+            const moveDef = MOVES_DB && MOVES_DB[moveName];
+            const typeColor = moveDef && TYPE_COLORS && TYPE_COLORS[moveDef.type] ? TYPE_COLORS[moveDef.type].bg : '#64748b';
+            const compatText = compat ? '✓ Compatible' : '✗ Incompatible';
+            const compatStyle = compat ? 'color:#22c55e' : 'color:#ef4444';
+            html += `<button class="btn" style="width:100%; margin:6px 0; text-align:left; padding:10px; background:${compat ? typeColor + '22' : '#334155'}; border:2px solid ${typeColor}; color:${typeColor};" ${!compat ? 'disabled' : ''} onclick="game.teachCTToCreature(${creatureIndex}, '${location}', '${itemKey}'); document.getElementById('teachCTModal')?.remove();">
+                <strong>${moveName}</strong> <span style="font-size:11px;">(x${qty})</span> — <span style="${compatStyle}">${compatText}</span>
+            </button>`;
+        });
+        html += `<button class="btn" style="margin-top:12px; background:#64748b; color:white; width:100%;" onclick="document.getElementById('teachCTModal')?.remove();">Annuler</button></div>`;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'teachCTModal';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:10000;';
+        overlay.innerHTML = html;
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        document.body.appendChild(overlay);
+    }
+
+    /** Enseigne la CT à la créature (consomme la CT, remplace l'attaque) */
+    teachCTToCreature(creatureIndex, location, ctItemKey) {
+        let creature;
+        if (location === 'team') creature = this.playerTeam[creatureIndex];
+        else if (location === 'storage') creature = this.storage[creatureIndex];
+        else if (location === 'pension') creature = this.pension[creatureIndex];
+        if (!creature) return;
+
+        const moveName = Object.keys(MOVES_DB || {}).find(m => 'ct_' + m === ctItemKey) || ctItemKey.replace(/^ct_/, '').replace(/_/g, ' ');
+        if (!MOVES_DB || !MOVES_DB[moveName]) {
+            if (typeof toast !== 'undefined') toast.error("Erreur", "CT inconnue.");
+            return;
+        }
+        if (typeof canLearnCT !== 'function' || !canLearnCT(creature.name, moveName)) {
+            if (typeof toast !== 'undefined') toast.error("Incompatible", `${creature.name} ne peut pas apprendre ${moveName}.`);
+            return;
+        }
+        if (!this.items[ctItemKey] || this.items[ctItemKey] <= 0) {
+            if (typeof toast !== 'undefined') toast.error("Manquant", "Vous n'avez plus cette CT.");
+            return;
+        }
+
+        const oldMove = creature.getMove ? creature.getMove() : 'Charge';
+        creature.currentMove = moveName;
+        this.items[ctItemKey]--;
+        if (this.items[ctItemKey] <= 0) delete this.items[ctItemKey];
+
+        if (typeof toast !== 'undefined') toast.success("CT utilisée !", `${creature.name} a appris ${moveName} (remplace ${oldMove}).`);
+        if (typeof logMessage === 'function') logMessage(`📿 ${creature.name} a appris ${moveName} !`);
+        this.updateItemsDisplay();
+        this.saveGame();
+        this.showCreatureModal(creatureIndex, location);
+    }
+
     // UI : Affiche le détail d'une créature (Version Corrigée avec Prisme)
     showCreatureModal(index, location) {
         let creature;
@@ -4681,8 +6512,8 @@ class Game {
         let ivButton = '';
         if (this.items['prism_iv'] && this.items['prism_iv'] > 0) {
             ivButton = `<button onclick="game.optimizeCreatureIVs(${index}, '${location}')" 
-                style="font-size:10px; padding:2px 6px; background:linear-gradient(135deg, #a855f7, #ec4899); color:white; border:none; border-radius:4px; cursor:pointer; margin-left:5px;">
-                💎 Optimiser
+                style="font-size:10px; padding:2px 6px; background:linear-gradient(135deg, #a855f7, #ec4899); color:white; border:none; border-radius:4px; cursor:pointer; margin-left:5px; display:flex; align-items:center; gap:4px;">
+                <img src="img/Prism.png" class="shard-inline" alt=""> Optimiser
             </button>`;
         }
 
@@ -4715,15 +6546,18 @@ class Game {
         };
 
         // --- RÉCUPÉRATION DE L'ATTAQUE ---
-        const moveName = POKEMON_DEFAULT_MOVES[creature.name] || 'Charge';
+        const moveName = creature.getMove ? creature.getMove() : 'Charge';
         const move = MOVES_DB[moveName];
         const moveCategoryClass = move.category === 'special' ? 'special' : 'physical';
+        const moveTypeColors = (typeof TYPE_COLORS !== 'undefined' && TYPE_COLORS[move.type]) ? TYPE_COLORS[move.type] : { bg: '#868e96', text: '#fafafa' };
+        const moveTypeBg = moveTypeColors.bg;
+        const moveTypeText = moveTypeColors.text;
 
         const moveHTML = `
-            <div class="creature-modal-info-box" style="border-left-color: #f97316;">
-                <h5 style="color: #f97316;">Attaque</h5>
+            <div class="creature-modal-info-box creature-modal-move-box" style="border-left-color: ${moveTypeBg};">
+                <h5 class="creature-modal-move-title" style="color: ${moveTypeBg};">Attaque</h5>
                 <div class="modal-move-details">
-                    <span class="move-name">${move.name}</span>
+                    <span class="move-pill" style="background: ${moveTypeBg}; color: ${moveTypeText};">${move.name}</span>
                     <span class="move-category ${moveCategoryClass}">${move.category}</span>
                     <span class="move-power">Pui. ${move.power}</span>
                 </div>
@@ -4831,6 +6665,12 @@ class Game {
             if (this.talentChoices > 0) {
                 actionsHTML += `<button class="btn" style="background: #f59e0b; color: white;" onclick="game.useTalentChoice(${index}, '${location}'); game.closeCreatureModal();">🌟 Choisir (${this.talentChoices})</button>`;
             }
+        }
+
+        // Enseigner une CT
+        const ctCount = Object.keys(this.items || {}).filter(k => k.startsWith('ct_') && this.items[k] > 0).length;
+        if (ctCount > 0) {
+            actionsHTML += `<button class="btn" style="background: #06b6d4; color: white;" onclick="game.showTeachCTModal(${index}, '${location}');">📿 Enseigner CT (${ctCount})</button>`;
         }
 
         return actionsHTML;
@@ -5072,39 +6912,39 @@ class Game {
             pokedexList.appendChild(card);
         });
 
-        this.updateCollectionSynergiesDisplay();
+        this.updateCollectionBonusesDisplay();
     }
 
     switchPokedexSubTab(subTab) {
         this.pokedexSubTab = subTab || 'pokedex';
         const pokedexView = document.getElementById('pokedexSubView-pokedex');
-        const synergiesView = document.getElementById('pokedexSubView-synergies');
+        const synergiesView = document.getElementById('pokedexSubView-collectionbonuses');
         const btnPokedex = document.getElementById('pokedexSubTab-pokedex');
-        const btnSynergies = document.getElementById('pokedexSubTab-synergies');
+        const btnSynergies = document.getElementById('pokedexSubTab-collectionbonuses');
         if (pokedexView) pokedexView.style.display = this.pokedexSubTab === 'pokedex' ? '' : 'none';
-        if (synergiesView) synergiesView.style.display = this.pokedexSubTab === 'synergies' ? '' : 'none';
+        if (synergiesView) synergiesView.style.display = this.pokedexSubTab === 'collectionbonuses' ? '' : 'none';
         if (btnPokedex) btnPokedex.classList.toggle('active', this.pokedexSubTab === 'pokedex');
-        if (btnSynergies) btnSynergies.classList.toggle('active', this.pokedexSubTab === 'synergies');
-        if (this.pokedexSubTab === 'synergies') this.updateCollectionSynergiesDisplay();
+        if (btnSynergies) btnSynergies.classList.toggle('active', this.pokedexSubTab === 'collectionbonuses');
+        if (this.pokedexSubTab === 'collectionbonuses') this.updateCollectionBonusesDisplay();
     }
 
-    updateCollectionSynergiesDisplay() {
-        const container = document.getElementById('collectionSynergiesContainer');
-        const tabsContainer = document.getElementById('collectionSynergiesTabs');
+    updateCollectionBonusesDisplay() {
+        const container = document.getElementById('collectionBonusesContainer');
+        const tabsContainer = document.getElementById('collectionBonusesTabs');
         if (!container) return;
-        if (typeof COLLECTION_SYNERGIES === 'undefined') { container.innerHTML = ''; if (tabsContainer) tabsContainer.innerHTML = ''; return; }
+        if (typeof COLLECTION_BONUSES === 'undefined') { container.innerHTML = ''; if (tabsContainer) tabsContainer.innerHTML = ''; return; }
 
-        const details = this.getCollectionSynergyDetails();
+        const details = this.getCollectionBonusDetails();
         if (!details || details.length === 0) { container.innerHTML = ''; if (tabsContainer) tabsContainer.innerHTML = ''; return; }
 
-        const tab = this.collectionSynergyTab || 'all';
+        const tab = this.collectionBonusTab || 'all';
         const filteredDetails = tab === 'all' ? details : details.filter(f => f.id === tab);
 
         if (tabsContainer) {
-            tabsContainer.innerHTML = `<button class="sort-btn ${tab === 'all' ? 'active' : ''}" onclick="game.collectionSynergyTab='all'; game.updateCollectionSynergiesDisplay();" style="font-size:12px; padding:6px 10px;">Tous</button>`;
+            tabsContainer.innerHTML = `<button class="sort-btn ${tab === 'all' ? 'active' : ''}" onclick="game.collectionBonusTab='all'; game.updateCollectionBonusesDisplay();" style="font-size:12px; padding:6px 10px;">Tous</button>`;
             details.forEach(fam => {
                 const isActive = tab === fam.id;
-                tabsContainer.innerHTML += `<button class="sort-btn ${isActive ? 'active' : ''}" onclick="game.collectionSynergyTab='${fam.id}'; game.updateCollectionSynergiesDisplay();" style="font-size:12px; padding:6px 10px;">${fam.name}</button>`;
+                tabsContainer.innerHTML += `<button class="sort-btn ${isActive ? 'active' : ''}" onclick="game.collectionBonusTab='${fam.id}'; game.updateCollectionBonusesDisplay();" style="font-size:12px; padding:6px 10px;">${fam.name}</button>`;
             });
         }
 
@@ -5118,7 +6958,7 @@ class Game {
                 const zero = fam.members.filter(m => m.status === 'prestige_0').length;
                 inactiveReason = miss > 0 ? `${miss} manquant${miss > 1 ? 's' : ''}` : (zero > 0 ? `${zero} à prestige 0` : 'incomplet');
             }
-            html += `<div class="collection-synergy-card ${statusClass}" style="margin-bottom:20px; padding:15px; background:${fam.isActive ? 'rgba(34,197,94,0.06)' : 'rgba(0,0,0,0.03)'}; border-radius:12px; border:1px solid ${fam.isActive ? 'rgba(34,197,94,0.3)' : '#e2e8f0'};">
+            html += `<div class="collection-bonus-card ${statusClass}" style="margin-bottom:20px; padding:15px; background:${fam.isActive ? 'rgba(34,197,94,0.06)' : 'rgba(0,0,0,0.03)'}; border-radius:12px; border:1px solid ${fam.isActive ? 'rgba(34,197,94,0.3)' : '#e2e8f0'};">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
                 <h4 style="margin:0; font-size:16px; font-weight:900; color:#1a1a1a;">${fam.name}</h4>
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -5128,7 +6968,7 @@ class Game {
                     </span>
                 </div>
             </div>
-            <div class="collection-synergy-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(52px, 1fr)); gap:8px;">`;
+            <div class="collection-bonus-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(52px, 1fr)); gap:8px;">`;
             fam.members.forEach(m => {
                 const rarity = this.getNaturalRarity ? this.getNaturalRarity(m.name) : 'common';
                 const rClass = `rarity-${rarity || 'common'}`;
@@ -5630,15 +7470,24 @@ class Game {
     }
 
     acceptQuest(questId) {
+        const before = (this.quests || []).filter(q => q.accepted).length;
         if (typeof acceptQuestLogic === 'function') acceptQuestLogic(this, questId);
+        const after = (this.quests || []).filter(q => q.accepted).length;
+        if (after > before) this.trackBalanceEvent('quest_accepted', { questId });
     }
 
     refuseQuest(questId) {
+        const before = (this.quests || []).length;
         if (typeof refuseQuestLogic === 'function') refuseQuestLogic(this, questId);
+        const after = (this.quests || []).length;
+        if (after < before) this.trackBalanceEvent('quest_refused', { questId });
     }
 
     abandonQuest(questId) {
+        const before = (this.quests || []).length;
         if (typeof abandonQuestLogic === 'function') abandonQuestLogic(this, questId);
+        const after = (this.quests || []).length;
+        if (after < before) this.trackBalanceEvent('quest_abandoned', { questId });
     }
 
     showQuestCompletionModal(quest) {
@@ -5656,47 +7505,9 @@ class Game {
         this.updateCaptureButtonDisplay();
     }
 
-    updateCaptureButtonDisplay() {
-        const btn = document.getElementById('captureModeBtn');
-        const select = document.getElementById('captureTargetSelect');
-
-        // --- DEBUGGING ---
-        console.log("🔄 Mise à jour visuelle. Mode:", this.captureMode);
-
-        if (!btn) {
-            console.error("❌ ERREUR CRITIQUE : Le bouton avec l'ID 'captureModeBtn' est introuvable dans le HTML !");
-            return;
-        }
-        // -----------------
-
-        // Reset des styles pour éviter les conflits
-        btn.className = 'auto-select-btn'; // On garde la classe de base
-
-        if (this.captureMode === 0) {
-            // OFF (Gris)
-            btn.textContent = "🕸️ Capture : OFF";
-            btn.style.background = "#e0e0e0";
-            btn.style.color = "#666";
-            btn.style.borderColor = "#ccc";
-            if (select) select.style.display = 'none';
-        }
-        else if (this.captureMode === 1) {
-            // TOUS (Rouge)
-            btn.textContent = "🕸️ Capture : TOUS";
-            btn.style.background = "linear-gradient(135deg, #ff6b6b, #ee5253)";
-            btn.style.color = "white";
-            btn.style.borderColor = "#ff6b6b";
-            if (select) select.style.display = 'none';
-        }
-        else if (this.captureMode === 2) {
-            // CIBLE (Bleu)
-            btn.textContent = "🎯 Capture : CIBLE";
-            btn.style.background = "linear-gradient(135deg, #3b82f6, #2563eb)";
-            btn.style.color = "white";
-            btn.style.borderColor = "#3b82f6";
-            if (select) select.style.display = 'block';
-        }
-    }
+    // updateCaptureButtonDisplay() — version principale définie plus haut (ligne ~2688)
+    // Cette surcharge est supprimée car elle écrasait les classes CSS structurelles
+    // (cmd-btn, bouton-part, bouton-capture) nécessaires au quart de cercle.
 
     addBoost(boost) {
         const boostObj = {
@@ -5845,24 +7656,22 @@ class Game {
                 .replace(/"/g, "&quot;")
                 .replace(/\n/g, "<br>");
 
+            const typesBadgeHtml = synergy.types.map(t => `<span class="synergy-type-badge" title="${t}">${typeIcons[t] || ''}</span>`).join('');
+
             html += `
             <div class="synergy-list-card ${isActive ? 'active' : ''}"
                  onmouseenter="game.scheduleTooltip(event, '${safeTitle}', '${safeDesc}')"
                  onmouseleave="game.hideTooltip()">
-                 
+                <div class="synergy-list-types">${typesBadgeHtml}</div>
                 <div class="synergy-list-info">
                     <div class="synergy-list-title">
-                        ${synergy.name}
-                        ${isActive ? '✅' : ''}
+                        <span>${synergy.name}</span>
+                        ${isActive ? '<span class="synergy-list-active-badge">ACTIF</span>' : ''}
                     </div>
                     <div class="synergy-list-desc">${shortDesc}</div>
-                    
-                    <div class="synergy-progress" style="margin-top:5px; font-size:11px; line-height:1.5;">
-                        ${progressHTML}
-                    </div>
-                    
-                    <div style="width: 100%; height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 4px; overflow:hidden;">
-                        <div style="width: ${progressPercent}%; height: 100%; background: ${isActive ? '#22c55e' : '#9ca3af'}; transition: width 0.3s;"></div>
+                    <div class="synergy-progress">${progressHTML}</div>
+                    <div class="synergy-progress-bar">
+                        <div class="synergy-progress-fill" style="width: ${progressPercent}%;"></div>
                     </div>
                 </div>
             </div>
@@ -5967,6 +7776,10 @@ class Game {
             toast.legendary("SYSTÈME UPGRADE", "Module Porygon-Z installé ! Configurez-le dans le menu Extras.");
             logMessage("🤖 Module Auto-Catch activé !");
             this.updateAutoCatcherUI(); // On crée cette fonction juste après
+        } else if (item.type === 'item' && item.item) {
+            const qty = item.amount || 1;
+            this.addItem(item.item, qty);
+            logMessage(`🛒 Achat : ${item.name} x${qty}`);
         }
 
         this.updateRecyclerDisplay();
@@ -6034,26 +7847,26 @@ class Game {
             // 5. Création de la carte
             const card = document.createElement('div');
             card.style.cssText = `
-            background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 10px; 
-            padding: 15px; display: flex; align-items: center; gap: 15px; margin-bottom:10px;
+            background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 8px; 
+            padding: 10px 15px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
         `;
 
             card.innerHTML = `
-            <div style="font-size: 32px; background:white; width:50px; height:50px; display:flex; align-items:center; justify-content:center; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+            <div style="font-size: 24px; background:white; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.1); flex-shrink: 0;">
                 ${displayInfo.icon}
             </div>
             
             <div style="flex: 1;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <strong style="font-size:16px; color:#333;">${displayInfo.name}</strong>
-                    <span style="font-size:12px; font-weight:bold; color:#8b5cf6;">Niveau ${currentLevel}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong style="font-size:14px; color:#333;">${displayInfo.name}</strong>
+                    <span style="font-size:11px; font-weight:bold; color:#8b5cf6;">Niveau ${currentLevel}</span>
                 </div>
                 
-                <div style="width: 100%; height: 8px; background: #ddd; border-radius: 4px; overflow: hidden; margin-bottom: 5px;">
+                <div style="width: 100%; height: 6px; background: #ddd; border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
                     <div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #6d28d9); transition: width 0.3s;"></div>
                 </div>
                 
-                <div style="display:flex; justify-content:space-between; font-size:11px; color:#666;">
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#666;">
                     <span>XP: ${xp} / ${currentLevel < 5 ? nextLevelXP : 'MAX'}</span>
                     <span style="color:#16a34a; font-weight:bold;">${bonusDesc}</span>
                 </div>
@@ -6146,35 +7959,79 @@ class Game {
         // Vérifie si N'IMPORTE QUEL onglet a un badge
         const questBadge = document.getElementById('questsTabBadge')?.innerHTML !== '';
         const expBadge = document.getElementById('expeditionsTabBadge')?.innerHTML !== '';
+        const rocketBadge = document.getElementById('teamRocketTabBadge')?.innerHTML !== '';
 
         // Met à jour le badge principal sur "Extras"
-        this.showBadge('extrasBadge', questBadge || expBadge);
+        this.showBadge('extrasBadge', questBadge || expBadge || rocketBadge);
     }
 
-    // ✅ AJOUTER CETTE NOUVELLE FONCTION DANS LA CLASSE GAME
+    /**
+     * Met à jour les indicateurs des onglets Quêtes et Expéditions :
+     * - Quêtes : récompenses à récupérer, quêtes à accepter, quête scénario
+     * - Expéditions : récompenses à récupérer, slot disponible
+     */
+    updateTabBadges() {
+        const displayableQuests = (this.quests || []).filter(q => !q.claimed);
+        const toClaimQuests = displayableQuests.filter(q => q.completed && !q.claimed);
+        const toAcceptQuests = displayableQuests.filter(q => !q.accepted);
+        const hasStoryQuest = displayableQuests.some(q => q.questType === 'STORY');
+        const hasRocketQuest = displayableQuests.some(q => q.questType === 'TEAM_ROCKET');
+        const achievToClaim = (this.achievements && Object.values(this.achievements).filter(a => a.completed && !a.claimed).length) || 0;
+        const toClaimTotal = toClaimQuests.length + achievToClaim;
 
-    checkCompletedNotifications() {
-        // Vérifier les Quêtes et Succès
-        const completedQuest = this.quests.some(q => q.completed && !q.claimed);
-        const completedAchiev = Object.values(this.achievements).some(a => a.completed && !a.claimed);
-        const hasStoryQuest = this.quests.some(q => q.questType === 'STORY' && !q.claimed);
         const questBadge = document.getElementById('questsTabBadge');
         if (questBadge) {
-            if (completedQuest || completedAchiev) {
-                questBadge.innerHTML = '<div class="notification-badge"></div>';
-            } else if (hasStoryQuest) {
-                questBadge.innerHTML = '<span class="story-quest-tab-badge">📜</span>';
-            } else {
-                questBadge.innerHTML = '';
-            }
+            const parts = [];
+            if (toClaimTotal > 0) parts.push(`<span class="tab-badge tab-badge-claim" title="Récompense(s) à récupérer">${toClaimTotal}</span>`);
+            if (toAcceptQuests.length > 0) parts.push(`<span class="tab-badge tab-badge-accept" title="Quête(s) à accepter">${toAcceptQuests.length}</span>`);
+            if (hasStoryQuest && toClaimTotal === 0 && toAcceptQuests.length === 0) parts.push(`<span class="tab-badge tab-badge-story" title="Quête scénario">Scénario</span>`);
+            if (hasRocketQuest && toClaimTotal === 0 && toAcceptQuests.length === 0) parts.push(`<span class="tab-badge tab-badge-story" title="Mission Team Rocket">Rocket</span>`);
+            questBadge.innerHTML = parts.join('');
+            questBadge.style.display = parts.length ? '' : 'none';
         }
 
-        // Vérifier les Expéditions
-        const completedExp = this.activeExpeditions.some(e => Date.now() >= e.endTime);
-        this.showBadge('expeditionsTabBadge', completedExp);
+        const expToClaim = (this.activeExpeditions || []).filter(e => Date.now() >= e.endTime).length;
+        const expSlotsFree = this.activeExpeditions && this.maxExpeditionSlots != null && this.activeExpeditions.length < this.maxExpeditionSlots;
+        const expBadge = document.getElementById('expeditionsTabBadge');
+        if (expBadge) {
+            const parts = [];
+            if (expToClaim > 0) parts.push(`<span class="tab-badge tab-badge-claim" title="Récompense(s) d'expédition à récupérer">${expToClaim}</span>`);
+            
+            // Calcul du nombre de missions disponibles (non lancées) et slots libres
+            const availableMissionsCount = this.availableExpeditions ? this.availableExpeditions.length : 0;
+            const freeSlotsCount = this.maxExpeditionSlots - (this.activeExpeditions ? this.activeExpeditions.length : 0);
+            
+            // On affiche le nombre de missions qu'on peut REELLEMENT lancer (le minimum entre les slots libres et les missions disponibles)
+            const playableMissionsCount = Math.min(availableMissionsCount, freeSlotsCount);
+            
+            if (playableMissionsCount > 0) {
+                parts.push(`<span class="tab-badge tab-badge-accept" title="Mission(s) d'expédition disponible(s)">${playableMissionsCount}</span>`);
+            }
+            
+            expBadge.innerHTML = parts.join('');
+            expBadge.style.display = parts.length ? '' : 'none';
+        }
 
-        // Mettre à jour le badge "Extras" global
+        const tr = this.teamRocketState || {};
+        const staking = tr.staking || {};
+        const availableContracts = Array.isArray(staking.availableContracts) ? staking.availableContracts.filter(c => c && c.status === 'open') : [];
+        const activeContracts = Array.isArray(staking.activeContracts) ? staking.activeContracts : [];
+        const rocketToClaim = activeContracts.filter(c => c && c.status === 'active' && Date.now() >= (c.endAt || 0)).length;
+        const rocketToAccept = availableContracts.length;
+        const teamRocketBadge = document.getElementById('teamRocketTabBadge');
+        if (teamRocketBadge) {
+            const parts = [];
+            if (rocketToClaim > 0) parts.push(`<span class="tab-badge tab-badge-claim" title="Contrat(s) Team Rocket à réclamer">${rocketToClaim}</span>`);
+            if (rocketToAccept > 0) parts.push(`<span class="tab-badge tab-badge-accept" title="Contrat(s) Team Rocket disponible(s)">${rocketToAccept}</span>`);
+            teamRocketBadge.innerHTML = parts.join('');
+            teamRocketBadge.style.display = parts.length ? '' : 'none';
+        }
+
         this.updateExtrasBadge();
+    }
+
+    checkCompletedNotifications() {
+        this.updateTabBadges();
     }
 
     /**
@@ -6215,6 +8072,87 @@ class Game {
     calculateExpeditionRewards(expeditionDef, creature, successRate) {
         if (typeof calculateExpeditionRewardsLogic === 'function') return calculateExpeditionRewardsLogic(this, expeditionDef, creature, successRate);
         return { pokedollars: 0, tokens: 0, shards: 0, eggs: {}, items: {}, performance: 'NORMAL' };
+    }
+
+    /**
+     * Supprime une expédition disponible (par exemple si elle est impossible pour le joueur).
+     */
+    deleteAvailableExpedition(expeditionUid) {
+        const idx = this.availableExpeditions ? this.availableExpeditions.findIndex(e => e.uid == expeditionUid) : -1;
+        if (idx === -1) return;
+        this.availableExpeditions.splice(idx, 1);
+        if (typeof this.updateExpeditionsDisplay === 'function') this.updateExpeditionsDisplay();
+    }
+
+    /**
+     * Ouvre un petit modal de confirmation avant de supprimer une expédition.
+     */
+    confirmDeleteAvailableExpedition(expeditionUid, expeditionName) {
+        const existing = document.getElementById('confirmDeleteExpeditionModal');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'confirmDeleteExpeditionModal';
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(
+                ellipse 80% 70% at 50% 45%,
+                rgba(255, 248, 240, 0.15) 0%,
+                rgba(72, 62, 52, 0.5) 50%,
+                rgba(58, 50, 42, 0.92) 100%
+            );
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 11000;
+        `;
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: linear-gradient(165deg, #5c5042 0%, #4a4035 45%, #3d352b 100%);
+            color: #f1f5f9;
+            padding: 18px 20px 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(180, 155, 100, 0.35);
+            max-width: 360px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            font-size: 13px;
+        `;
+
+        // Si aucun nom n'est passé, on essaie de le déduire à partir des définitions d'expédition
+        let resolvedName = expeditionName;
+        if (!resolvedName && this.availableExpeditions) {
+            const inst = this.availableExpeditions.find(e => e.uid == expeditionUid);
+            if (inst && typeof EXPEDITION_DEFINITIONS !== 'undefined') {
+                const def = EXPEDITION_DEFINITIONS[inst.defId];
+                if (def && def.name) resolvedName = def.name;
+            }
+        }
+        const safeName = resolvedName || 'cette expédition';
+        box.innerHTML = `
+            <div style="font-weight:800; margin-bottom:6px; color:#fef3c7;">Supprimer l'expédition ?</div>
+            <p style="margin:0 0 14px 0; color:#e5e7eb;">
+                Voulez-vous vraiment supprimer <strong>${safeName}</strong> de la liste des missions disponibles ?
+            </p>
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button"
+                        style="padding:6px 10px; background:#e5e7eb; color:#111827; border:none; border-radius:999px; font-weight:600; cursor:pointer;"
+                        onclick="document.getElementById('confirmDeleteExpeditionModal')?.remove()">
+                    Annuler
+                </button>
+                <button type="button"
+                        style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:999px; font-weight:700; cursor:pointer;"
+                        onclick="(function(){ game.deleteAvailableExpedition('${expeditionUid}'); document.getElementById('confirmDeleteExpeditionModal')?.remove(); })()">
+                    Supprimer
+                </button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
     }
 
     getActiveBoostMultiplier(type) {
@@ -6293,11 +8231,26 @@ class Game {
         return typeof saveGameLogic === 'function' ? saveGameLogic(this) : false;
     }
 
+    handleSaveClick(btnElement) {
+        // Lancer la vraie sauvegarde
+        this.saveGame();
+
+        // Ajouter le feedback visuel au bouton
+        const originalText = btnElement.innerText;
+        btnElement.classList.add('btn-save-success');
+        btnElement.innerText = '✅ Sauvegardé !';
+
+        // Retirer le feedback après un court instant et fermer proprement le menu
+        setTimeout(() => {
+            btnElement.classList.remove('btn-save-success');
+            btnElement.innerText = "Sauvegarder";
+            this.closeSaveManager();
+        }, 600);
+    }
+
     loadGame() {
         return typeof loadGameLogic === 'function' ? loadGameLogic(this) : false;
     }
-
-
     // UI : Menu des Données (Mise à jour avec Option Pause Rare)
     openSaveManager() {
         const modal = document.getElementById('saveManagerModal');
@@ -6389,7 +8342,7 @@ class Game {
 
         // --- 2. TON HTML EXACT (Injecté) ---
         display.innerHTML = `
-            <h3 style="color: #667eea; margin-bottom: 15px;">Combat</h3>
+            <h3 style="color: #cbd5e1; margin-bottom: 15px;">Combat</h3>
             <div class="stats-grid">
                 <div class="stat-box highlight">
                     <div class="stat-title">Combats Gagnes</div>
@@ -6418,7 +8371,7 @@ class Game {
                 </div>
             </div>
 
-            <h3 style="color: #667eea; margin: 25px 0 15px 0;">Creatures</h3>
+            <h3 style="color: #cbd5e1; margin: 25px 0 15px 0;">Creatures</h3>
             <div class="stats-grid">
                 <div class="stat-box highlight">
                     <div class="stat-title">Creatures Possedees</div>
@@ -6448,7 +8401,7 @@ class Game {
                 </div>
             </div>
 
-            <h3 style="color: #667eea; margin: 25px 0 15px 0;">Arènes</h3>
+            <h3 style="color: #cbd5e1; margin: 25px 0 15px 0;">Arènes</h3>
             <div class="stats-grid">
                 <div class="stat-box highlight">
                     <div class="stat-title">Arènes Complétées</div>
@@ -6460,7 +8413,7 @@ class Game {
                 </div>
             </div>
 
-            <h3 style="color: #667eea; margin: 25px 0 15px 0;">Progression</h3>
+            <h3 style="color: #cbd5e1; margin: 25px 0 15px 0;">Progression</h3>
             <div class="stats-grid">
                 <div class="stat-box highlight">
                     <div class="stat-title">Temps de Jeu</div>
@@ -6469,6 +8422,10 @@ class Game {
                 <div class="stat-box">
                     <div class="stat-title">Pokedollars Total</div>
                     <div class="stat-number">${formatNumber(this.pokedollars)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Total intérêts banque Team Rocket</div>
+                    <div class="stat-number">${formatNumber(this.stats.totalRocketBankInterestGained || 0)}</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-title">Zone Actuelle</div>
@@ -6608,12 +8565,13 @@ class Game {
         html += '<h3 style="color: #667eea; margin: 25px 0 15px 0;">📊 Résumé des Bonus Totaux</h3>';
         html += '<div class="stats-grid">';
 
-        // Sécurisation des méthodes + Collection Synergies
-        const collBonuses = this.getCollectionSynergyBonuses ? this.getCollectionSynergyBonuses() : {};
+        // Sécurisation des méthodes + Bonus de collection
+        const collBonuses = this.getCollectionBonuses ? this.getCollectionBonuses() : {};
         const hpBonus = (this.getAccountTalentBonus ? this.getAccountTalentBonus('hp_mult') : 0) * 100;
         const damageBonus = ((this.getAccountTalentBonus ? this.getAccountTalentBonus('damage_mult') : 0) + (collBonuses.damage_mult || 0)) * 100;
         const moneyBonus = ((this.getAccountTalentBonus ? this.getAccountTalentBonus('pokedollars_mult') : 0) + (collBonuses.gold_mult || 0)) * 100;
         const maxHpBonus = (collBonuses.max_hp_mult || 0) * 100;
+        const defenseBonus = (collBonuses.defense_mult || 0) * 100;
         const critBonus = (collBonuses.crit_chance || 0) * 100;
         const lifestealBonus = (collBonuses.life_steal || 0) * 100;
         const regenBonus = (collBonuses.hp_regen_per_turn || 0) * 100;
@@ -6626,6 +8584,9 @@ class Game {
         }
         if (damageBonus > 0) {
             html += `<div class="stat-box highlight"><div class="stat-title">⚔️ Dégâts</div><div class="stat-number">+${damageBonus.toFixed(0)}%</div></div>`;
+        }
+        if (defenseBonus > 0) {
+            html += `<div class="stat-box highlight"><div class="stat-title">🛡️ Défense</div><div class="stat-number">+${defenseBonus.toFixed(1)}%</div></div>`;
         }
         if (moneyBonus > 0) {
             html += `<div class="stat-box highlight"><div class="stat-title">💰 Argent</div><div class="stat-number">+${moneyBonus.toFixed(0)}%</div></div>`;
@@ -6723,6 +8684,11 @@ class Game {
 
             case 'item':
                 this.addItem(item.item, item.amount);
+                break;
+
+            case 'ct':
+                this.addItem(item.item || ('ct_' + (item.moveName || '').replace(/ /g, '_')), item.amount || 1);
+                logMessage(`✅ Vous avez reçu la CT ${item.name} !`);
                 break;
 
             case 'permanent':
@@ -6850,11 +8816,18 @@ class Game {
         if (typeof updateTowerBuffsDisplayLogic === 'function') updateTowerBuffsDisplayLogic(this);
     }
 
+    updateTeamRocketDisplay() {
+        this.refreshRocketContractsIfNeeded();
+        if (typeof updateTeamRocketDisplayUI === 'function') updateTeamRocketDisplayUI(this);
+    }
+
     updateDisplay() {
+        if (typeof updateZoneInfo === 'function') updateZoneInfo();
         this.updateTeamDisplay();
         this.updateStorageDisplay();
         this.updatePensionDisplay();
         this.updateEggsDisplay();
+        this.updateIncubatorsDisplay();
         this.updateUpgradesDisplay();
         this.updateCombatDisplay();
         this.updateTowerBuffsDisplay();
@@ -6871,7 +8844,7 @@ class Game {
         this.updatePensionVisibility();
         this.updateBoostsDisplay();
         this.updateExpeditionsDisplay();
-
+        this.updateTeamRocketDisplay();
     }
 
     getTypeEffectiveness(attackerType, defenderType) {
@@ -6941,6 +8914,87 @@ class Game {
         logMessage(message);
     }
 
+    /**
+     * Auto-check : si le Pokémon actif a un DÉSAVANTAGE de type,
+     * on cherche un remplaçant avec avantage ou neutre.
+     */
+    autoCheckDisadvantage() {
+        if (!this.autoSwitchDisadvantage) return; // Vérifier le flag individuel
+        if (!this.autoSelectEnabled || !this.currentEnemy || !this.currentPlayerCreature) return;
+        // Cooldown pour éviter les switchs en boucle (2s)
+        const now = Date.now();
+        if (this._lastAutoSwitchTime && now - this._lastAutoSwitchTime < 2000) return;
+
+        const currentEff = this.getTypeEffectiveness(this.currentPlayerCreature.type, this.currentEnemy.type);
+        if (currentEff >= 1) return; // Pas de désavantage → on reste
+
+        // Chercher un meilleur candidat (avantage ou neutre)
+        let bestIndex = -1;
+        let bestEff = currentEff;
+        let bestStats = 0;
+
+        for (let i = 0; i < this.playerTeam.length; i++) {
+            if (i === this.activeCreatureIndex) continue;
+            const c = this.playerTeam[i];
+            if (!c.isAlive()) continue;
+
+            const eff = this.getTypeEffectiveness(c.type, this.currentEnemy.type);
+            const stats = c.attack + c.defense + c.speed;
+
+            if (eff > bestEff || (eff === bestEff && stats > bestStats)) {
+                bestIndex = i;
+                bestEff = eff;
+                bestStats = stats;
+            }
+        }
+
+        if (bestIndex !== -1 && bestEff > currentEff) {
+            const newCreature = this.playerTeam[bestIndex];
+            this._lastAutoSwitchTime = now;
+            this.setActiveCreature(bestIndex);
+            logMessage(`🔄 Switch auto : ${newCreature.name} remplace (désavantage de type !)`);
+        }
+    }
+
+    /**
+     * Auto-check : si le Pokémon actif a PLUS D'ENDURANCE,
+     * on cherche un coéquipier qui en a encore.
+     */
+    autoCheckStamina() {
+        if (!this.autoSwitchStamina) return; // Vérifier le flag individuel
+        if (!this.autoSelectEnabled || !this.currentPlayerCreature) return;
+        if (this.currentPlayerCreature.currentStamina > 0) return; // Encore de l'endurance
+        // Talent robustesse = pas de malus, on reste
+        if (this.currentPlayerCreature.passiveTalent === 'robustesse') return;
+
+        const now = Date.now();
+        if (this._lastAutoSwitchTime && now - this._lastAutoSwitchTime < 2000) return;
+
+        let bestIndex = -1;
+        let bestEff = 0;
+        let bestStamina = 0;
+
+        for (let i = 0; i < this.playerTeam.length; i++) {
+            if (i === this.activeCreatureIndex) continue;
+            const c = this.playerTeam[i];
+            if (!c.isAlive() || c.currentStamina <= 0) continue;
+
+            const eff = this.currentEnemy ? this.getTypeEffectiveness(c.type, this.currentEnemy.type) : 1;
+            if (eff > bestEff || (eff === bestEff && c.currentStamina > bestStamina)) {
+                bestIndex = i;
+                bestEff = eff;
+                bestStamina = c.currentStamina;
+            }
+        }
+
+        if (bestIndex !== -1) {
+            const newCreature = this.playerTeam[bestIndex];
+            this._lastAutoSwitchTime = now;
+            this.setActiveCreature(bestIndex);
+            logMessage(`⚡ Switch auto : ${newCreature.name} prend le relais (endurance épuisée !)`);
+        }
+    }
+
     toggleAutoSelect() {
         this.autoSelectEnabled = !this.autoSelectEnabled;
 
@@ -6948,11 +9002,257 @@ class Game {
         if (btn) {
             if (this.autoSelectEnabled) {
                 btn.classList.add('auto-active');
-                logMessage("Auto-sélection activée !");
+                logMessage("🤖 Auto activé : sélection de type, switch désavantage/endurance, ultime auto.");
             } else {
                 btn.classList.remove('auto-active');
-                logMessage("Auto-sélection désactivée !");
+                logMessage("Auto désactivé.");
             }
+        }
+    }
+
+    openAutoSettings() {
+        const modal = document.getElementById('autoSettingsModal');
+        if (modal) {
+            // Synchroniser le toggle principal
+            const masterToggle = document.getElementById('autoMasterToggle');
+            const masterLabel = document.getElementById('autoMasterLabel');
+            if (masterToggle) masterToggle.checked = this.autoSelectEnabled;
+            if (masterLabel) masterLabel.textContent = `Mode Auto : ${this.autoSelectEnabled ? 'ON' : 'OFF'}`;
+
+            // Synchroniser les checkboxes avec l'état actuel
+            const disCheck = document.getElementById('autoSwitchDisadvantageCheck');
+            const stamCheck = document.getElementById('autoSwitchStaminaCheck');
+            const ultCheck = document.getElementById('autoUltimateCheck');
+            if (disCheck) disCheck.checked = this.autoSwitchDisadvantage;
+            if (stamCheck) stamCheck.checked = this.autoSwitchStamina;
+            if (ultCheck) ultCheck.checked = this.autoUltimate;
+
+            modal.classList.add('show');
+            // Pas de style.display = 'flex' car compact-popup utilise display: block
+
+            // Repositionnement dynamique par rapport au centre du bouton
+            this.positionCompactModal('autoSettingsModal', 'autoSelectBtn');
+        }
+    }
+
+    closeAutoSettings() {
+        const modal = document.getElementById('autoSettingsModal');
+        if (modal) {
+            modal.classList.remove('show');
+            // Le CSS compact-popup gère le display: none via la classe
+        }
+    }
+
+    toggleAutoSetting(setting) {
+        if (setting === 'disadvantage') {
+            this.autoSwitchDisadvantage = !this.autoSwitchDisadvantage;
+            logMessage(`Switch désavantage : ${this.autoSwitchDisadvantage ? 'ON' : 'OFF'}`);
+        } else if (setting === 'stamina') {
+            this.autoSwitchStamina = !this.autoSwitchStamina;
+            logMessage(`Switch endurance : ${this.autoSwitchStamina ? 'ON' : 'OFF'}`);
+        } else if (setting === 'ultimate') {
+            this.autoUltimate = !this.autoUltimate;
+            logMessage(`Ultime auto : ${this.autoUltimate ? 'ON' : 'OFF'}`);
+        }
+    }
+
+    toggleAutoMaster() {
+        this.autoSelectEnabled = !this.autoSelectEnabled;
+
+        // Mettre à jour le label
+        const masterLabel = document.getElementById('autoMasterLabel');
+        if (masterLabel) masterLabel.textContent = `Mode Auto : ${this.autoSelectEnabled ? 'ON' : 'OFF'}`;
+
+        // Mettre à jour le bouton visuel
+        const btn = document.getElementById('autoSelectBtn');
+        if (btn) {
+            if (this.autoSelectEnabled) {
+                btn.classList.add('auto-active');
+                logMessage("🤖 Auto activé : sélection de type, switch désavantage/endurance, ultime auto.");
+            } else {
+                btn.classList.remove('auto-active');
+                logMessage("Auto désactivé.");
+            }
+        }
+        this.updateAutoBadge(); // Mettre à jour le badge
+    }
+
+    // === UX ENHANCEMENTS ===
+
+    // Mettre à jour le badge du bouton Auto
+    updateAutoBadge() {
+        const badge = document.getElementById('autoBadge');
+        if (badge) {
+            if (this.autoSelectEnabled) {
+                badge.classList.add('active');
+            } else {
+                badge.classList.remove('active');
+            }
+        }
+    }
+
+    // Mettre à jour le badge du bouton Capture
+    updateCaptureBadge() {
+        const badge = document.getElementById('captureBadge');
+        if (badge && this.captureMode === 2 && this.captureTargets) {
+            const count = this.captureTargets.size || 0;
+            badge.textContent = count;
+            if (count > 0) {
+                badge.classList.add('show');
+            } else {
+                badge.classList.remove('show');
+            }
+        } else if (badge) {
+            badge.classList.remove('show');
+        }
+    }
+
+    // Positionner un modal compact par rapport au centre de son bouton déclencheur
+    positionCompactModal(modalId, btnId) {
+        const modal = document.getElementById(modalId);
+        const btn = document.getElementById(btnId);
+        if (!modal || !btn) return;
+
+        const rect = btn.getBoundingClientRect();
+        // Calcul du centre du bouton
+        const btnCenterX = rect.left + (rect.width / 2);
+        const btnCenterY = rect.top + (rect.height / 2);
+
+        // Décalage pour placer le coin bas-gauche du modal
+        // "je vois que pour rapprocher les modals... il m'a fallu augmenter les valeurs" -> On veut s'éloigner du coin écran, pour aller vers le bouton.
+        // Ici on part du BOUTON. Donc on ajoute un petit offset positif.
+        const offsetX = 10;
+        const offsetY = 10;
+
+        modal.style.left = `${btnCenterX + offsetX}px`;
+        modal.style.bottom = `${(window.innerHeight - btnCenterY) + offsetY}px`;
+
+        // Reset transform/margin
+        modal.style.transform = 'none';
+        modal.style.margin = '0';
+    }
+
+    // Afficher le tooltip enrichi au survol du bouton Auto
+    showAutoTooltip() {
+        const tooltip = document.getElementById('autoTooltip');
+        if (!tooltip) return;
+
+        // Mettre à jour le contenu
+        const statusSpan = document.getElementById('tooltipStatus');
+        const disSpan = document.getElementById('tooltipDisadvantage');
+        const stamSpan = document.getElementById('tooltipStamina');
+        const ultSpan = document.getElementById('tooltipUltimate');
+
+        if (statusSpan) statusSpan.textContent = this.autoSelectEnabled ? 'ON' : 'OFF';
+
+        if (disSpan) {
+            disSpan.textContent = this.autoSwitchDisadvantage ? 'ON' : 'OFF';
+            disSpan.className = this.autoSwitchDisadvantage ? 'tooltip-status' : 'tooltip-status off';
+        }
+        if (stamSpan) {
+            stamSpan.textContent = this.autoSwitchStamina ? 'ON' : 'OFF';
+            stamSpan.className = this.autoSwitchStamina ? 'tooltip-status' : 'tooltip-status off';
+        }
+        if (ultSpan) {
+            ultSpan.textContent = this.autoUltimate ? 'ON' : 'OFF';
+            ultSpan.className = this.autoUltimate ? 'tooltip-status' : 'tooltip-status off';
+        }
+
+        // Positionnement dynamique (comme les modals)
+        const btn = document.getElementById('autoSelectBtn');
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            const btnCenterX = rect.left + (rect.width / 2);
+            const btnCenterY = rect.top + (rect.height / 2);
+
+            // Offset légèrement différent pour le tooltip (plus haut ?)
+            const offsetX = 50;
+            const offsetY = 50;
+
+            tooltip.style.left = `${btnCenterX + offsetX}px`;
+            tooltip.style.bottom = `${(window.innerHeight - btnCenterY) + offsetY}px`;
+            tooltip.style.transform = 'none'; // Évite les conflits
+        }
+
+        tooltip.classList.add('show');
+    }
+
+    // Masquer le tooltip
+    hideAutoTooltip() {
+        const tooltip = document.getElementById('autoTooltip');
+        if (tooltip) {
+            tooltip.classList.remove('show');
+        }
+    }
+
+
+    // Afficher le tooltip Capture
+    showCaptureTooltip() {
+        const tooltip = document.getElementById('captureTooltip');
+        if (!tooltip) return;
+
+        // Mise à jour du statut
+        const statusSpan = document.getElementById('tooltipCaptureStatus');
+        if (statusSpan) {
+            statusSpan.textContent = (this.captureMode === 1 || this.captureMode === 2) ? 'ON' : 'OFF';
+            statusSpan.className = (this.captureMode === 1 || this.captureMode === 2) ? 'tooltip-status' : 'tooltip-status off';
+        }
+
+        // Positionnement dynamique
+        const btn = document.getElementById('captureModeBtn');
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            const btnCenterX = rect.left + (rect.width / 2);
+            const btnCenterY = rect.top + (rect.height / 2);
+
+            const offsetX = 50;
+            const offsetY = 50;
+
+            tooltip.style.left = `${btnCenterX + offsetX}px`;
+            tooltip.style.bottom = `${(window.innerHeight - btnCenterY) + offsetY}px`;
+            tooltip.style.transform = 'none';
+        }
+
+        tooltip.classList.add('show');
+    }
+
+    hideCaptureTooltip() {
+        const tooltip = document.getElementById('captureTooltip');
+        if (tooltip) {
+            tooltip.classList.remove('show');
+        }
+    }
+
+    // Afficher le tooltip Fuite
+    showForfeitTooltip() {
+        const tooltip = document.getElementById('forfeitTooltip');
+        if (!tooltip) return;
+
+        // Positionnement dynamique
+        const btn = document.getElementById('forfeitBtn');
+        if (btn) {
+            const rect = btn.getBoundingClientRect();
+            const btnCenterX = rect.left + (rect.width / 2);
+            const btnCenterY = rect.top + (rect.height / 2);
+
+            // Le bouton Fuite est à DROITE.
+            // Donc on veut le tooltip à GAUCHE du bouton.
+            // On décale de -200px (largeur approx du tooltip) - 20px
+            const offsetX = -220;
+            const offsetY = 50;
+
+            tooltip.style.left = `${btnCenterX + offsetX}px`;
+            tooltip.style.bottom = `${(window.innerHeight - btnCenterY) + offsetY}px`;
+            tooltip.style.transform = 'none';
+        }
+
+        tooltip.classList.add('show');
+    }
+
+    hideForfeitTooltip() {
+        const tooltip = document.getElementById('forfeitTooltip');
+        if (tooltip) {
+            tooltip.classList.remove('show');
         }
     }
 
@@ -7107,6 +9407,10 @@ class Game {
 
 
         if (creatureIndex < 0 || creatureIndex >= this.storage.length) return;
+        if (this.isCreatureRocketLocked(this.storage[creatureIndex])) {
+            logMessage("🔒 Ce Pokémon est immobilisé par un contrat Team Rocket.");
+            return;
+        }
 
         const creature = this.storage.splice(creatureIndex, 1)[0];
         this.playerTeam.push(creature);
@@ -7179,6 +9483,10 @@ class Game {
             creature = this.playerTeam.splice(creatureIndex, 1)[0];
         } else {
             if (creatureIndex < 0 || creatureIndex >= this.storage.length) return;
+            if (this.isCreatureRocketLocked(this.storage[creatureIndex])) {
+                logMessage("🔒 Ce Pokémon est immobilisé par un contrat Team Rocket.");
+                return;
+            }
             creature = this.storage.splice(creatureIndex, 1)[0];
         }
 
@@ -7234,6 +9542,33 @@ class Game {
 
         this.updatePensionDisplay();
         this.saveGame(); // Toujours utile de sauvegarder après un mouvement
+    }
+
+    /**
+     * Réordonne l'équipe : déplace la créature de fromIndex vers toIndex.
+     * Désactivé en combat / tour / arène.
+     */
+    reorderTeam(fromIndex, toIndex) {
+        if (this.towerState.isActive || this.arenaState.active) return;
+        if (this.combatState === 'fighting' || this.combatState === 'starting') return;
+        if (fromIndex < 0 || fromIndex >= this.playerTeam.length) return;
+        if (toIndex < 0 || toIndex >= this.playerTeam.length) return;
+        if (fromIndex === toIndex) return;
+
+        const creature = this.playerTeam.splice(fromIndex, 1)[0];
+        this.playerTeam.splice(toIndex, 0, creature);
+
+        if (this.activeCreatureIndex === fromIndex) {
+            this.activeCreatureIndex = toIndex;
+        } else if (fromIndex < this.activeCreatureIndex && toIndex >= this.activeCreatureIndex) {
+            this.activeCreatureIndex--;
+        } else if (fromIndex > this.activeCreatureIndex && toIndex <= this.activeCreatureIndex) {
+            this.activeCreatureIndex++;
+        }
+
+        this.updateTeamDisplay();
+        this.updateCombatDisplay();
+        this.saveGame();
     }
 
     setActiveCreature(index) {
@@ -7421,14 +9756,9 @@ class Game {
                 card.classList.add('prestige-ready');
             }
 
-            const contributedHP = Math.floor(creature.maxHp * this.getPensionTransferRate());
-            const contributedATK = Math.floor(creature.attack * this.getPensionTransferRate());
-            const contributedSpATK = Math.floor(creature.spattack * this.getPensionTransferRate());
-            const contributedDEF = Math.floor(creature.defense * this.getPensionTransferRate());
-            const contributedSpDEF = Math.floor(creature.spdefense * this.getPensionTransferRate());
-            const contributedSPD = Math.floor(creature.speed * this.getPensionTransferRate());
-
-            card.innerHTML = `
+            const shinyStars = creature.isShiny ? '<div class="shiny-stars" aria-hidden="true"><span>✦</span><span>✦</span><span>✦</span><span>✦</span></div>' : '';
+            const heldItemBadge = typeof getHeldItemBadgeHTML === 'function' ? getHeldItemBadgeHTML(creature) : '';
+            const pensionCardContent = `
                         <img src="${spriteUrl}" alt="${creature.name}" class="team-slot-sprite">
                         <div class="team-slot-name">${creature.name} ${creature.prestige > 0 ? `★${creature.prestige}` : ''}</div>
                         <div class="team-slot-level">Niv. ${creature.level}</div>
@@ -7442,6 +9772,14 @@ class Game {
                             <span class="pension-contribution-btn">Voir détails</span>
                         </div>
                     `;
+            card.innerHTML = shinyStars + heldItemBadge + pensionCardContent;
+
+            const contributedHP = Math.floor(creature.maxHp * this.getPensionTransferRate());
+            const contributedATK = Math.floor(creature.attack * this.getPensionTransferRate());
+            const contributedSpATK = Math.floor(creature.spattack * this.getPensionTransferRate());
+            const contributedDEF = Math.floor(creature.defense * this.getPensionTransferRate());
+            const contributedSpDEF = Math.floor(creature.spdefense * this.getPensionTransferRate());
+            const contributedSPD = Math.floor(creature.speed * this.getPensionTransferRate());
 
             pensionList.appendChild(card);
             const triggerEl = card.querySelector('.pension-contribution-trigger');
@@ -7453,62 +9791,393 @@ class Game {
     }
 
 
+    formatMsAsTime(ms) {
+        if (ms <= 0) return '0:00';
+        const s = Math.floor((ms / 1000) % 60);
+        const m = Math.floor(ms / 60000);
+        const h = Math.floor(m / 60);
+        const mm = m % 60;
+        if (h > 0) return `${h}:${String(mm).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        return `${mm}:${String(s).padStart(2, '0')}`;
+    }
+
+    initIncubatorsDOM(container) {
+        container.innerHTML = '';
+        container.setAttribute('data-initialized', 'true');
+
+        // Délégation d'événements pour les 4 slots
+        container.addEventListener('click', (e) => {
+            const autoBtn = e.target.closest('.incubator-auto-toggle');
+            if (autoBtn && !autoBtn.disabled) {
+                e.stopPropagation();
+                const slotIndex = parseInt(autoBtn.getAttribute('data-slot'), 10);
+                const currentState = this.getAutoIncubationSettings(slotIndex).enabled;
+                this.setAutoIncubationEnabled(slotIndex, !currentState);
+                return;
+            }
+
+            const prioBtn = e.target.closest('.incubator-priority-chip');
+            if (prioBtn && !prioBtn.disabled) {
+                e.stopPropagation();
+                const slotIndex = parseInt(prioBtn.getAttribute('data-slot'), 10);
+                this.cycleIncubatorPriority(slotIndex);
+                return;
+            }
+
+            const slotTarget = e.target.closest('.incubator-slot');
+            if (!slotTarget) return;
+
+            const slotIndex = parseInt(slotTarget.getAttribute('data-slot'), 10);
+            const isReady = slotTarget.classList.contains('incubator-ready');
+            const hasEgg = slotTarget.getAttribute('data-has-egg') === 'true';
+
+            if (isReady) {
+                e.stopPropagation();
+                this.openIncubatorEgg(slotIndex);
+            } else if (!hasEgg && slotIndex < this.getMaxIncubatorSlots()) {
+                e.stopPropagation();
+                this.openChooseEggModal(slotIndex);
+            }
+        });
+
+        // Génération du squelette des 4 slots
+        for (let i = 0; i < 4; i++) {
+            const slotEl = document.createElement('div');
+            slotEl.className = 'incubator-slot';
+            slotEl.setAttribute('data-slot', i);
+
+            slotEl.innerHTML = `
+                <div class="incubator-slot-inner" style="display:none;">
+                    <span class="incubator-lock-label">Débloquer (Boutique)</span>
+                </div>
+                <div class="incubator-content" style="display:none;">
+                    <div class="incubator-capsule">
+                        <div class="incubator-body">
+                            <div class="incubator-progress-wrap" style="--progress: 0;">
+                                <div class="incubator-ring"></div>
+                                <div class="incubator-egg-center">
+                                    <img src="" class="egg-sprite incubator-egg-breath" alt="Oeuf" style="display:none;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="incubator-footer">
+                            <span class="incubator-timer">--:--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="incubator-auto-controls" style="display:none;">
+                    <button type="button" class="incubator-auto-toggle" data-slot="${i}">OFF</button>
+                    <button type="button" class="incubator-priority-chip" data-slot="${i}">Commun</button>
+                    <div class="incubator-locked-by-quest">Quête Génétique étape ${i + 1} requise</div>
+                </div>
+            `;
+            container.appendChild(slotEl);
+        }
+    }
+
+    updateIncubatorsDisplay() {
+        const container = document.getElementById('incubatorsContainer');
+        if (!container) return;
+
+        if (container.getAttribute('data-initialized') !== 'true') {
+            this.initIncubatorsDOM(container);
+        }
+
+        const maxSlots = this.getMaxIncubatorSlots();
+
+        // Data-Binding: mise à jour des éléments sans reflow
+        for (let i = 0; i < 4; i++) {
+            const slotEl = container.children[i];
+            const slot = this.incubators[i];
+            const isAutoUnlocked = this.isAutoIncubationUnlockedForSlot(i);
+            const autoSettings = this.getAutoIncubationSettings(i);
+
+            const innerLock = slotEl.querySelector('.incubator-slot-inner');
+            const contentWrap = slotEl.querySelector('.incubator-content');
+            const autoControlsWrap = slotEl.querySelector('.incubator-auto-controls');
+
+            if (i >= maxSlots) {
+                // Incubateur verrouillé
+                if (slotEl.className !== 'incubator-slot incubator-locked') slotEl.className = 'incubator-slot incubator-locked';
+                if (innerLock.style.display !== 'block') innerLock.style.display = 'block';
+                if (contentWrap.style.display !== 'none') contentWrap.style.display = 'none';
+                if (autoControlsWrap.style.display !== 'none') autoControlsWrap.style.display = 'none';
+                slotEl.removeAttribute('data-has-egg');
+            } else {
+                // Incubateur Débloqué
+                if (innerLock.style.display !== 'none') innerLock.style.display = 'none';
+                if (contentWrap.style.display !== 'block') contentWrap.style.display = 'block';
+
+                const hasEgg = !!slot;
+                slotEl.setAttribute('data-has-egg', hasEgg ? 'true' : 'false');
+
+                const remaining = hasEgg ? this.getIncubatorRemainingMs(i) : 0;
+                const ready = hasEgg && remaining === 0;
+                const durationMs = hasEgg ? (slot.durationMs || 1) : 1;
+                const progress = hasEgg ? Math.min(1, 1 - remaining / durationMs) : 0;
+                const rarity = hasEgg ? slot.rarity : 'common';
+
+                let filterClass = '';
+                if (rarity === 'rare') filterClass = 'egg-filter-rare';
+                else if (rarity === 'epic') filterClass = 'egg-filter-epic';
+                else if (rarity === 'legendary') filterClass = 'egg-filter-legendary';
+
+                const expectedClass = 'incubator-slot rarity-' + rarity + (ready ? ' incubator-ready' : '');
+                if (slotEl.className !== expectedClass) slotEl.className = expectedClass;
+
+                // Tooltip
+                let tooltipText = "Incubateur Classique";
+                if (i === 1) tooltipText = "Incubateur Avancé : -10% temps sur œufs Communs et Rares";
+                if (i === 2) tooltipText = "Incubateur Expert : -20% temps sur œufs Communs, Rares et Épiques";
+                if (i === 3) tooltipText = "Incubateur Maître : -30% temps sur toutes les raretés";
+                if (slotEl.title !== tooltipText) slotEl.title = tooltipText;
+
+                // Capsule & Progress
+                const capsule = slotEl.querySelector('.incubator-capsule');
+                const expectedCapsuleClass = `incubator-capsule rarity-${rarity}`;
+                if (capsule.className !== expectedCapsuleClass) capsule.className = expectedCapsuleClass;
+
+                const progressWrap = slotEl.querySelector('.incubator-progress-wrap');
+                progressWrap.style.setProperty('--progress', progress);
+
+                // Image Oeuf
+                const eggImg = slotEl.querySelector('.egg-sprite');
+                if (hasEgg) {
+                    const eggSpriteUrl = `img/${rarity}-egg.png`;
+                    if (eggImg.getAttribute('src') !== eggSpriteUrl) eggImg.src = eggSpriteUrl;
+                    const expectedImgClass = `egg-sprite incubator-egg-breath ${filterClass}`;
+                    if (eggImg.className !== expectedImgClass) eggImg.className = expectedImgClass;
+                    if (eggImg.style.display !== 'block') eggImg.style.display = 'block';
+                } else {
+                    if (eggImg.style.display !== 'none') eggImg.style.display = 'none';
+                }
+
+                // Timer texte
+                const timerEl = slotEl.querySelector('.incubator-timer');
+                const timeStr = hasEgg ? (ready ? 'Prêt !' : this.formatMsAsTime(remaining)) : '--:--';
+                if (timerEl.textContent !== timeStr) timerEl.textContent = timeStr;
+
+                // Contrôles Auto
+                if (autoControlsWrap.style.display !== 'flex') {
+                    autoControlsWrap.style.display = 'flex';
+                }
+                const expectedAutoClass = `incubator-auto-controls ${isAutoUnlocked ? '' : 'incubator-auto-controls-locked'}`;
+                if (autoControlsWrap.className !== expectedAutoClass) autoControlsWrap.className = expectedAutoClass;
+
+                const autoBtn = autoControlsWrap.querySelector('.incubator-auto-toggle');
+                autoBtn.disabled = !isAutoUnlocked;
+                const expectedAutoBtnClass = `incubator-auto-toggle ${autoSettings.enabled ? 'incubator-auto-on' : 'incubator-auto-off'}`;
+                if (autoBtn.className !== expectedAutoBtnClass) autoBtn.className = expectedAutoBtnClass;
+                const expectedAutoBtnText = autoSettings.enabled ? 'ON' : 'OFF';
+                if (autoBtn.textContent !== expectedAutoBtnText) autoBtn.textContent = expectedAutoBtnText;
+
+                const prioBtn = autoControlsWrap.querySelector('.incubator-priority-chip');
+                prioBtn.disabled = !isAutoUnlocked;
+                const priorityLabel = this.getSlotPriorityLabel(i);
+                const priorityClass = `priority-${(priorityLabel || '').toLowerCase()}`;
+                const expectedPrioClass = `incubator-priority-chip ${priorityClass}`;
+                if (prioBtn.className !== expectedPrioClass) prioBtn.className = expectedPrioClass;
+                if (prioBtn.textContent !== priorityLabel) prioBtn.textContent = priorityLabel;
+
+                const questLock = autoControlsWrap.querySelector('.incubator-locked-by-quest');
+                if (isAutoUnlocked) {
+                    if (questLock.style.display !== 'none') questLock.style.display = 'none';
+                } else {
+                    if (questLock.style.display !== 'block') questLock.style.display = 'block';
+                }
+            }
+        }
+    }
+
+    initEggsDOM(container) {
+        container.innerHTML = '';
+        container.setAttribute('data-initialized', 'true');
+
+        const rarities = ['common', 'rare', 'epic', 'legendary'];
+        rarities.forEach(rarity => {
+            const eggElement = document.createElement('div');
+            eggElement.className = `ball-item rarity-${rarity} egg-item-${rarity}`;
+            eggElement.setAttribute('data-egg-rarity', rarity);
+            eggElement.style.display = 'none';
+
+            let filterClass = "";
+            if (rarity === 'rare') filterClass = "egg-filter-rare";
+            else if (rarity === 'epic') filterClass = "egg-filter-epic";
+            else if (rarity === 'legendary') filterClass = "egg-filter-legendary";
+
+            const eggSpriteUrl = `img/${rarity}-egg.png`;
+
+            eggElement.innerHTML = `
+                <div class="rarity-label ${rarity}" style="pointer-events: none; margin-bottom:2px; font-size:9px; padding:1px 4px;">
+                    ${rarity.toUpperCase()}
+                </div>
+                <img src="${eggSpriteUrl}" class="egg-sprite ${filterClass}" alt="Oeuf ${rarity}">
+                <div class="egg-count-label" style="font-size: 13px; font-weight: bold; color:#333; pointer-events: none; line-height:1;">
+                    x0
+                </div>
+                <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Placer dans un incubateur</div>
+            `;
+            container.appendChild(eggElement);
+        });
+
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'empty-eggs-message';
+        emptyMessage.style.textAlign = 'center';
+        emptyMessage.style.color = '#94a3b8';
+        emptyMessage.style.padding = '15px';
+        emptyMessage.style.gridColumn = '1 / -1';
+        emptyMessage.style.border = '2px dashed #e2e8f0';
+        emptyMessage.style.borderRadius = '10px';
+        emptyMessage.style.display = 'none';
+        emptyMessage.innerHTML = `
+            <img src="img/common-egg.png" style="width:24px; opacity:0.4; filter:grayscale(1);">
+            <div style="font-weight:bold; margin-top:5px; font-size:14px; opacity:0.8;">Aucun œuf en stock</div>
+            <div style="font-size:12px; margin-top:2px;">Gagnez des combats pour en trouver !</div>
+        `;
+        container.appendChild(emptyMessage);
+    }
+
     updateEggsDisplay() {
         const eggsContainer = document.getElementById('ballsContainer');
         const eggCount = document.getElementById('ballCount');
 
         if (!eggsContainer || !eggCount) return;
 
+        if (eggsContainer.getAttribute('data-initialized') !== 'true') {
+            this.initEggsDOM(eggsContainer);
+        }
+
         const totalEggs = Object.values(this.eggs).reduce((sum, count) => sum + count, 0);
-        eggCount.textContent = totalEggs;
+        if (eggCount.textContent != totalEggs) eggCount.textContent = totalEggs;
 
-        eggsContainer.innerHTML = '';
-
-        const baseEggUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-egg.png";
-
-        Object.entries(this.eggs).forEach(([rarity, count]) => {
-            if (count > 0) {
-                const eggElement = document.createElement('div');
-
-                eggElement.className = `ball-item rarity-${rarity} egg-clickable`;
-                eggElement.setAttribute('data-rarity', rarity);
-                eggElement.style.cursor = 'pointer';
-
-                let filterClass = "";
-                if (rarity === 'rare') filterClass = "egg-filter-rare";
-                else if (rarity === 'epic') filterClass = "egg-filter-epic";
-                else if (rarity === 'legendary') filterClass = "egg-filter-legendary";
-
-                eggElement.innerHTML = `
-                <div class="rarity-label ${rarity}" style="pointer-events: none; margin-bottom:2px; font-size:9px; padding:1px 4px;">
-                    ${rarity.toUpperCase()}
-                </div>
-                
-                <img src="${baseEggUrl}" class="egg-sprite ${filterClass}" alt="Oeuf ${rarity}">
-                
-                <div style="font-size: 13px; font-weight: bold; color:#333; pointer-events: none; line-height:1; margin-bottom: 4px;">
-                    x${count}
-                </div>
-                
-                <div style="font-size: 10px; color: #555; line-height: 1.2; opacity:0.9;">
-                    Clic : x1<br>
-                    Shift : x5<br>
-                    <strong>Ctrl : x100</strong>
-                </div>
-            `;
-
-                eggsContainer.appendChild(eggElement);
+        const rarities = ['common', 'rare', 'epic', 'legendary'];
+        rarities.forEach(rarity => {
+            const count = this.eggs[rarity] || 0;
+            const eggElement = eggsContainer.querySelector(`.egg-item-${rarity}`);
+            if (eggElement) {
+                if (count > 0) {
+                    if (eggElement.style.display !== 'block') eggElement.style.display = 'block';
+                    const label = eggElement.querySelector('.egg-count-label');
+                    const countTxt = `x${count}`;
+                    if (label.textContent.trim() !== countTxt) label.textContent = countTxt;
+                } else {
+                    if (eggElement.style.display !== 'none') eggElement.style.display = 'none';
+                }
             }
         });
 
-        if (totalEggs === 0) {
-            eggsContainer.innerHTML = `
-            <div style="text-align: center; color: #94a3b8; padding: 15px; grid-column: 1 / -1; border: 2px dashed #e2e8f0; border-radius: 10px;">
-                <img src="${baseEggUrl}" style="width:24px; opacity:0.4; filter:grayscale(1);">
-                <div style="margin-top:5px; font-size:11px;">Vide</div>
-            </div>`;
+        const emptyMessage = eggsContainer.querySelector('.empty-eggs-message');
+        if (emptyMessage) {
+            if (totalEggs === 0) {
+                if (emptyMessage.style.display !== 'block') emptyMessage.style.display = 'block';
+            } else {
+                if (emptyMessage.style.display !== 'none') emptyMessage.style.display = 'none';
+            }
         }
     }
 }
 
 window.Game = Game;
+// Initialisation des écouteurs globaux
+
+// Écouteurs pour les tooltips des stats (Délégation d'événements)
+document.addEventListener('mouseover', (e) => {
+    const statChip = e.target.closest('.header-stat-chip');
+    if (statChip && typeof game !== 'undefined' && game !== null && typeof game.showBoostTooltip === 'function') {
+        const statType = statChip.getAttribute('data-stat');
+        game.showBoostTooltip(e, statType);
+    }
+});
+
+document.addEventListener('mouseout', (e) => {
+    const statChip = e.target.closest('.header-stat-chip');
+    if (statChip && typeof game !== 'undefined' && game !== null && typeof game.hideTooltip === 'function') {
+        game.hideTooltip();
+    }
+});
+
+window.addEventListener('click', (e) => {
+    // 1. Fermeture générique des Modales (Croix ou bouton fermer)
+    const closeBtn = e.target.closest('.js-close-modal');
+    if (closeBtn) {
+        const modalToClose = closeBtn.closest('.js-modal-overlay') || closeBtn.closest('.modal') || closeBtn.closest('.compact-popup');
+        if (modalToClose) {
+            modalToClose.classList.remove('show');
+            if (modalToClose.style.display === 'block') modalToClose.style.display = 'none';
+        }
+        // Cas spécial ciblé par data-target
+        const targetId = closeBtn.getAttribute('data-target');
+        if (targetId) {
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                targetEl.classList.remove('show');
+                if (targetEl.style.display === 'block') targetEl.style.display = 'none';
+            }
+        }
+        return;
+    }
+
+    // 2. Fermeture générique au clic sur l'Overlay sombre (Extérieur de la modale)
+    if (e.target.classList.contains('js-modal-overlay')) {
+        e.target.classList.remove('show');
+        if (e.target.style.display === 'block') e.target.style.display = 'none';
+        return;
+    }
+
+    // 3. Fermeture des popups compacts au clic extérieur
+    if (!e.target.closest('.compact-popup') &&
+        !e.target.closest('#autoSelectBtn') &&
+        !e.target.closest('#captureModeBtn')) {
+
+        const autoModal = document.getElementById('autoSettingsModal');
+        if (autoModal && autoModal.classList.contains('show')) {
+            if (typeof game !== 'undefined') game.closeAutoSettings();
+        }
+
+        const captureModal = document.querySelector('#captureTargetWrapper.show');
+        if (captureModal) {
+            captureModal.classList.remove('show');
+        }
+    }
+});
+
+// Observer pour positionner le modal Capture quand il s'ouvre
+document.addEventListener('DOMContentLoaded', () => {
+    const captureModal = document.getElementById('captureTargetWrapper');
+    if (captureModal) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class' &&
+                    captureModal.classList.contains('show')) {
+                    // Utiliser game si disponible, sinon attendre
+                    if (window.game) {
+                        window.game.positionCompactModal('captureTargetWrapper', 'captureModeBtn');
+                    }
+                }
+            });
+        });
+        observer.observe(captureModal, { attributes: true });
+    }
+});
+
+// Écouteur pour le bouton capture (mise à jour du badge après changement de mode)
+const captureBtn = document.getElementById('captureModeBtn');
+if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+        setTimeout(() => {
+            if (typeof game !== 'undefined') {
+                game.updateCaptureBadge();
+            }
+        }, 50);
+    });
+}
+
+// Initialiser les badges au chargement
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (typeof game !== 'undefined') {
+            game.updateAutoBadge();
+            game.updateCaptureBadge();
+        }
+    }, 1000);
+});

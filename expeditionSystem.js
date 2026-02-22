@@ -15,6 +15,13 @@ const _staticEmptyActiveHTML = '<p style="color: #94a3b8; text-align: center; pa
 const _staticEmptyAvailableHTML = '<p style="text-align:center; color:#999;">Aucune mission disponible.</p>';
 const _staticFullTableHTML = `<div style="text-align:center; font-size:12px; color:#e74c3c; margin-bottom:10px;">Tableau des missions complet ! (6/6)</div>`;
 
+function normalizeExpeditionDurationMs(rawDuration) {
+    const duration = Number(rawDuration) || 0;
+    if (duration <= 0) return 0;
+    // Legacy expedition definitions use seconds; normalize to milliseconds at runtime.
+    return duration < 60000 ? duration * 1000 : duration;
+}
+
 function updateExpeditionsDisplayLogic(game) {
     const slotsUI = document.getElementById('expeditionSlots');
     if (slotsUI) slotsUI.textContent = `${game.activeExpeditions.length}/${game.maxExpeditionSlots}`;
@@ -64,7 +71,7 @@ function updateExpeditionsDisplayLogic(game) {
         if (timeLeft > 0) {
             statusClass = 'accepted';
             const { hours, minutes, seconds } = formatTime(timeLeft);
-            const totalDuration = expeditionDef.duration;
+            const totalDuration = Math.max(1, normalizeExpeditionDurationMs(expeditionDef.duration));
             const elapsed = totalDuration - timeLeft;
             const percent = Math.min(100, (elapsed / totalDuration) * 100);
             progressHTML = `<div class="quest-progress-container" style="margin: 10px 0;"><div class="quest-progress-bar"><div class="quest-progress-fill" style="width: ${percent}%"></div></div><div class="quest-progress-text" style="font-size:10px; color:#64748b;">Reste: ${hours}h ${minutes}m ${seconds}s</div></div>`;
@@ -146,7 +153,7 @@ function updateAvailableExpeditionsListLogic(game) {
                 ${exp.description}${reqText}
             </div>
             <div class="quest-rewards" style="justify-content: space-between; margin-top:5px;">
-                <span style="font-size:12px; color:#666;">🕒 ${formatTimeString(exp.duration)}</span>
+                <span style="font-size:12px; color:#666;">🕒 ${formatTimeString(normalizeExpeditionDurationMs(exp.duration))}</span>
                 <div class="expedition-rewards-strip">
                     ${lootIcons}
                 </div>
@@ -204,8 +211,19 @@ function calculateExpeditionSuccessRateLogic(game, creature, expeditionDef) {
 
 function generateRandomExpeditionLogic(game) {
     if (game.availableExpeditions.length >= game.maxAvailableExpeditions) return;
-    const keys = Object.keys(EXPEDITION_DEFINITIONS);
-    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    const allKeys = Object.keys(EXPEDITION_DEFINITIONS);
+    const allCreatures = [
+        ...(game.playerTeam || []),
+        ...(game.storage || []),
+        ...(game.pension || [])
+    ];
+    const highestLevel = allCreatures.reduce((max, c) => Math.max(max, Number(c && c.level) || 1), 1);
+    const eligibleKeys = allKeys.filter(key => {
+        const def = EXPEDITION_DEFINITIONS[key];
+        return def && (def.requiredLevel || 1) <= (highestLevel + 10);
+    });
+    const pool = eligibleKeys.length > 0 ? eligibleKeys : allKeys;
+    const randomKey = pool[Math.floor(Math.random() * pool.length)];
     game.availableExpeditions.push({
         uid: Date.now() + Math.random(),
         defId: randomKey,
@@ -257,7 +275,7 @@ function startExpeditionLogic(game, storageIndices, expeditionUid, expeditionId)
         game.storage.splice(idx, 1);
     }
 
-    let duration = expeditionDef.duration;
+    let duration = normalizeExpeditionDurationMs(expeditionDef.duration);
     if (typeof EXPEDITION_BIOMES !== 'undefined') {
         const biome = EXPEDITION_BIOMES[expeditionId];
         if (biome && game.expeditionMastery) {
@@ -284,6 +302,7 @@ function startExpeditionLogic(game, storageIndices, expeditionUid, expeditionId)
     };
     if (missionIndex >= 0) game.availableExpeditions.splice(missionIndex, 1);
     game.activeExpeditions.push(expedition);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('expedition_launched', { expeditionId });
     if (typeof game.checkSpecialQuests === 'function') game.checkSpecialQuests('expeditionLaunched');
 
     const names = squad.map(c => c.name).join(', ');
@@ -384,6 +403,7 @@ function claimExpeditionLogic(game, index) {
     }
 
     game.activeExpeditions.splice(index, 1);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('expedition_claimed', { expeditionId: expedition.expeditionId, performance: rewards.performance });
     const names = squad.map(c => c.name).join(', ');
     logMessage(`✅ ${names} de retour. ${rewardMessages.join(', ')}`);
     if (typeof toast !== 'undefined') toast.show({ title, message: rewardMessages.join(', '), type: toastType, duration: 6000 });
@@ -443,7 +463,8 @@ function showCreatureSelectForExpeditionLogic(game, expeditionUid, expeditionId)
 
     const candidates = game.storage.map((creature, index) => {
         const meetsReqs = game.meetsExpeditionRequirements(creature, expeditionDef);
-        return { creature, index, individualScore: game.calculateIndividualScore(creature, expeditionDef), compatible: creature.level >= expeditionDef.requiredLevel && creature.currentStamina > 0 && meetsReqs };
+        const rocketLocked = typeof game.isCreatureRocketLocked === 'function' ? game.isCreatureRocketLocked(creature) : false;
+        return { creature, index, individualScore: game.calculateIndividualScore(creature, expeditionDef), compatible: creature.level >= expeditionDef.requiredLevel && creature.currentStamina > 0 && meetsReqs && !rocketLocked };
     }).filter(c => c.compatible);
     candidates.sort((a, b) => b.individualScore - a.individualScore);
 
@@ -625,7 +646,7 @@ function showExpeditionSendModalLogic(game, storageIndex) {
             });
         }
         let lootIcons = exp.rewardPool.items ? Object.keys(exp.rewardPool.items).map(k => ALL_ITEMS[k] ? ALL_ITEMS[k].icon : '📦').join(' ') : '';
-        html += `<button onclick="game.startExpedition(${storageIndex}, null, '${exp.id}')" style="padding: 12px; background: ${canSend ? '#f8f9fa' : '#e9ecef'}; border: 2px solid ${canSend ? '#e2e8f0' : '#ccc'}; border-radius: 10px; cursor: ${canSend ? 'pointer' : 'not-allowed'}; text-align: left;" ${canSend ? '' : 'disabled'}><div style="display:flex; justify-content:space-between;"><strong>${exp.name}</strong><span style="font-size: 12px; background:#e2e8f0; padding:2px 6px; border-radius:4px;">🕒 ${formatTimeString(exp.duration)}</span></div><div style="font-size: 12px; color: #666; margin: 4px 0;">${exp.description}</div><div style="display:flex; align-items:center; gap:10px; margin-top:8px;"><div style="flex-grow:1; height:6px; background:#ddd; border-radius:3px; overflow:hidden;"><div style="width:${successPercent}%; height:100%; background:${barColor};"></div></div><span style="font-size:11px; font-weight:bold; color:${barColor}; width:40px; text-align:right;">${successPercent}%</span></div><div style="margin-top: 5px;">${bonusHTML}</div><div style="position:absolute; bottom:10px; right:10px; font-size:14px;">${lootIcons}</div></button>`;
+        html += `<button onclick="game.startExpedition(${storageIndex}, null, '${exp.id}')" style="padding: 12px; background: ${canSend ? '#f8f9fa' : '#e9ecef'}; border: 2px solid ${canSend ? '#e2e8f0' : '#ccc'}; border-radius: 10px; cursor: ${canSend ? 'pointer' : 'not-allowed'}; text-align: left;" ${canSend ? '' : 'disabled'}><div style="display:flex; justify-content:space-between;"><strong>${exp.name}</strong><span style="font-size: 12px; background:#e2e8f0; padding:2px 6px; border-radius:4px;">🕒 ${formatTimeString(normalizeExpeditionDurationMs(exp.duration))}</span></div><div style="font-size: 12px; color: #666; margin: 4px 0;">${exp.description}</div><div style="display:flex; align-items:center; gap:10px; margin-top:8px;"><div style="flex-grow:1; height:6px; background:#ddd; border-radius:3px; overflow:hidden;"><div style="width:${successPercent}%; height:100%; background:${barColor};"></div></div><span style="font-size:11px; font-weight:bold; color:${barColor}; width:40px; text-align:right;">${successPercent}%</span></div><div style="margin-top: 5px;">${bonusHTML}</div><div style="position:absolute; bottom:10px; right:10px; font-size:14px;">${lootIcons}</div></button>`;
     });
     html += `</div><button onclick="document.body.removeChild(document.getElementById('expeditionSendModal'))" style="margin-top: 20px; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight:bold;">Annuler</button>`;
     content.innerHTML = html;

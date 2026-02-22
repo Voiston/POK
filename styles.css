@@ -6,9 +6,14 @@
 
 body {
     font-family: 'Outfit', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--bg-primary);
+    height: 100vh;
     min-height: 100vh;
-    color: #333;
+    margin: 0;
+    padding: 0;
+    color: var(--text-on-brown);
+    overflow: hidden;
+    width: 100vw;
 }
 
 
@@ -29,18 +34,18 @@ body {
     min-width: 300px;
     max-width: 400px;
     padding: 16px 20px;
-    background: #3b3b3b !important;
-    border: 2px solid #1a1a1a !important;
+    background: var(--surface-dark) !important;
+    border: 2px solid var(--border-dark) !important;
     border-radius: 8px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-xl);
     display: flex;
     align-items: center;
     gap: 12px;
     pointer-events: auto;
     cursor: pointer;
     animation: slideIn 0.3s ease;
-    transition: all 0.3s ease;
-    color: white !important;
+    transition: var(--transition-normal);
+    color: var(--text-on-dark) !important;
 }
 
 .toast:hover {
@@ -48,7 +53,7 @@ body {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
 
-/* Animation d'entrÃ©e */
+/* Animation d'entrée */
 @keyframes slideIn {
     from {
         transform: translateX(400px);
@@ -78,7 +83,7 @@ body {
     animation: slideOut 0.3s ease;
 }
 
-/* IcÃ´ne du toast */
+/* Icône du toast */
 .toast-icon {
     font-size: 28px;
     flex-shrink: 0;
@@ -122,7 +127,7 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: all 0.2s;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s, filter 0.2s;
 }
 
 .toast-close:hover {
@@ -230,7 +235,8 @@ body {
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
-    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+    /* Ombre plus courte et nette pour ancrer le Pokémon au sol */
+    filter: drop-shadow(0px 4px 2px rgba(0, 0, 0, 0.4));
     animation: sprite-float 2s ease-in-out infinite;
 }
 
@@ -264,18 +270,35 @@ body {
     /* Ligne 1 : Header | Ligne 2 : Contenu Principal */
     grid-template-rows: auto 1fr;
 
-    /* Prend toute la hauteur de la fenÃªtre, sans scrollbar sur le body */
+    /* Prend toute la hauteur de la fenêtre, sans scrollbar sur le body */
     height: 100vh;
     width: 100vw;
     overflow: hidden;
+    position: relative;
 
-    gap: 20px;
-    padding: 20px;
+    gap: 18px;
+    padding: 10px;
     background: #2c3e50;
     /* Fond global plus sombre pour faire ressortir les panneaux */
 }
 
-/* --- HEADER FINAL : DASHBOARD BLANC UNIFIÃ‰ --- */
+/* Vignette : assombrit les bords pour mettre le combat au centre en valeur */
+.game-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 12px;
+    background: radial-gradient(ellipse 100% 100% at 50% 55%,
+            transparent 0%,
+            transparent 42%,
+            rgba(0, 0, 0, 0.12) 60%,
+            rgba(0, 0, 0, 0.28) 85%,
+            rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* --- HEADER FINAL : DASHBOARD BLANC UNIFIÉ --- */
 
 /* --- HEADER FINAL : REDESIGN POKEMON --- */
 
@@ -283,16 +306,16 @@ body {
     background: #947864;
     border: 4px solid #5d4a3e;
     border-radius: 12px;
-    padding: 30px 15px 15px 15px;
-    /* Padding top pour la barre de titre */
+    /* Padding plus compact tout en gardant la barre de titre respirable */
+    padding: 20px 12px 10px 12px;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 6px 0 #5d4a3e, 0 10px 30px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 0 #5d4a3e, 0 8px 24px rgba(0, 0, 0, 0.25);
     grid-column: 1 / -1;
 }
 
-/* Les 3 boutons de fenÃªtre (rouge, jaune, vert) */
+/* Les 3 boutons de fenêtre (rouge, jaune, vert) */
 .header::before {
     content: '';
     position: absolute;
@@ -427,6 +450,7 @@ body {
     gap: 10px;
     padding: 6px 12px;
     height: 48px;
+    min-width: 0;
     color: white;
     transition: transform 0.1s;
 }
@@ -440,11 +464,61 @@ body {
     filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
 }
 
+.resource-icon.resource-icon-img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    display: block;
+}
+
+/* Sprite jetons de quêtes en inline (récompenses, coûts, etc.) */
+.quest-token-inline {
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    display: inline-block;
+    object-fit: contain;
+}
+
+/* Sprite Marques du Triomphe en inline */
+.marque-triomphe-inline {
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    display: inline-block;
+    object-fit: contain;
+}
+
+.essence-dust-inline {
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    display: inline-block;
+    object-fit: contain;
+}
+
+.pokedollars-inline {
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    display: inline-block;
+    object-fit: contain;
+}
+
 .resource-val {
     font-size: 14px;
     font-weight: 800;
     color: #fff;
     font-family: 'Outfit', sans-serif;
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.resource-chip>div {
+    min-width: 0;
 }
 
 .resource-name {
@@ -467,7 +541,7 @@ body {
     font-size: 11px;
     font-weight: 800;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.1s ease, opacity 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -481,34 +555,35 @@ body {
 .zone-details-btn:hover,
 .sort-btn:hover,
 .cmd-btn:hover {
-    background: #7a614e !important;
+    background: var(--bg-secondary) !important;
     transform: translateY(2px);
-    box-shadow: 0 2px 0 #3b3b3b;
+    box-shadow: 0 2px 0 var(--bg-tertiary);
 }
 
 .cmd-btn.forfeit {
-    background: #6b7280 !important;
-    /* Neutral gray-brown */
-    box-shadow: 0 4px 0 #4b5563;
+    background: var(--accent-red) !important;
+    color: var(--text-on-dark);
+    box-shadow: 0 4px 0 var(--accent-red-dark);
 }
 
 .cmd-btn.forfeit:hover {
-    background: #4b5563 !important;
-    box-shadow: 0 2px 0 #374151;
+    background: var(--accent-red-dark) !important;
+    box-shadow: 0 2px 0 var(--accent-red-darker);
 }
 
-/* --- 2. COLONNE GAUCHE : GESTION (Ã‰quipe, Pension, Stockage) --- */
+/* --- 2. COLONNE GAUCHE : GESTION (Équipe, Pension, Stockage) --- */
 .team-area {
     grid-column: 1;
     grid-row: 2;
     background: #947864;
     border: 4px solid #5d4a3e;
     border-radius: 12px;
-    padding: 30px 15px 15px 15px;
+    padding: 15px 15px 15px 15px;
     box-shadow: 0 6px 0 #5d4a3e;
     position: relative;
     overflow-y: auto;
     height: 100%;
+    min-height: 0;
     scrollbar-width: thin;
     scrollbar-color: #5d4a3e transparent;
 }
@@ -545,19 +620,16 @@ body {
     margin-bottom: 20px;
     font-size: 18px;
     font-weight: 800;
-    color: #3b3b3b !important;
-    background: #bec3c6;
+    color: var(--text-on-light) !important;
+    background: var(--surface-light);
     padding: 10px;
     border-radius: 8px;
-    border: 2px solid #3b3b3b;
+    border: 2px solid var(--border-light);
 }
 
-.shop-wallet.tokens {
-    color: #854d0e !important;
-}
 
 .shop-intro {
-    color: #3b3b3b !important;
+    color: var(--text-on-brown) !important;
     font-weight: 800;
     margin-bottom: 15px;
     font-size: 13px;
@@ -595,20 +667,27 @@ body {
     grid-column: 2;
     grid-row: 2;
     background: #947864;
-    border: 4px solid #5d4a3e;
     border-radius: 12px;
-    padding: 30px 15px 15px 15px;
-    box-shadow: 0 6px 0 #5d4a3e;
+    padding: 15px 15px 15px 15px;
     position: relative;
     overflow-y: auto;
     height: 100%;
+    min-height: 0;
     scrollbar-width: thin;
     scrollbar-color: #5d4a3e transparent;
+    z-index: 3;
+
+    /* Cadre type Game Boy : double bordure + léger spotlight */
+    border: 6px solid #3d3d38;
+    box-shadow:
+        0 6px 0 #2d2d28,
+        inset 0 0 0 3px #5a5548,
+        inset 0 2px 24px rgba(255, 255, 255, 0.06),
+        0 0 50px rgba(251, 191, 36, 0.12);
 }
 
 
 .combat-area .zone-selector,
-.combat-area .battle-hud,
 .combat-area .combat-controls-wrapper {
     background: #bec3c6;
     border: 3px solid #3b3b3b;
@@ -619,7 +698,47 @@ body {
     font-weight: 800;
 }
 
-/* --- 4. COLONNE DROITE : EXTRAS (Boutique, QuÃªtes, etc.) --- */
+/* Écran de combat unifié : scène + HUD dans un seul cadre (style Pokémon) */
+.battle-screen {
+    margin-bottom: 20px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 5px solid #2d2d28;
+    box-shadow:
+        inset 0 0 0 4px #4a4a42,
+        0 0 0 2px #1a1a17,
+        0 8px 0 #1f1f1a,
+        0 0 40px rgba(120, 200, 80, 0.18),
+        0 0 80px rgba(251, 191, 36, 0.08);
+}
+
+/* Scène : plus de marge ni bordure propre, elle fusionne avec le cadre */
+.battle-screen .battle-display {
+    margin-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    border: none;
+    box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.25), inset 0 -2px 20px rgba(0, 0, 0, 0.15);
+}
+
+
+/* HUD : barre d’infos collée sous la scène, même cadre */
+.battle-screen .battle-hud {
+    margin-top: 0;
+    margin-bottom: 0;
+    border-radius: 0 0 10px 10px;
+    background: linear-gradient(180deg, #4a4a42 0%, #3b3b35 100%) !important;
+    border: none;
+    border-top: 3px solid #2d2d28;
+    padding: 8px 15px;
+    gap: 20px;
+    /* Increased gap */
+
+    /* Layout Grille (Fusionné depuis le bloc supprimé) */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* --- 4. COLONNE DROITE : EXTRAS (Boutique, Quêtes, etc.) --- */
 .secondary-content {
     grid-column: 3;
     grid-row: 2;
@@ -633,13 +752,14 @@ body {
     flex-direction: column;
     overflow-y: auto;
     height: 100%;
+    min-height: 0;
     scrollbar-width: thin;
     scrollbar-color: #5d4a3e transparent;
 }
 
 /* --- NETTOYAGE --- */
 
-/* On cache dÃ©finitivement le bouton flottant "Extras" car tout est visible */
+/* On cache définitivement le bouton flottant "Extras" car tout est visible */
 button[onclick="toggleSecondaryContent()"],
 #toggleIcon {
     display: none !important;
@@ -661,7 +781,7 @@ button[onclick="toggleSecondaryContent()"],
     font-size: 11px;
     font-weight: 800;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.1s ease, opacity 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -704,7 +824,6 @@ button[onclick="toggleSecondaryContent()"],
 .tab-content h3,
 .tab-content h4 {
     color: #3b3b3b !important;
-    text-shadow: none !important;
     font-weight: 800;
     text-transform: uppercase;
     border-bottom: 2px solid #3b3b3b;
@@ -755,7 +874,7 @@ button[onclick="toggleSecondaryContent()"],
     cursor: pointer;
     font-weight: bold;
     color: #666;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .sub-tab-btn:hover {
@@ -769,12 +888,12 @@ button[onclick="toggleSecondaryContent()"],
 
 .sub-tab-content {
     display: none;
-    /* CachÃ© par dÃ©faut */
+    /* Caché par défaut */
 }
 
 .sub-tab-content.active {
     display: block;
-    /* AffichÃ© si actif */
+    /* Affiché si actif */
 }
 
 .tab-content.active {
@@ -790,20 +909,20 @@ button[onclick="toggleSecondaryContent()"],
 
     /* --- AJOUTS --- */
     display: flex;
-    /* Permet d'aligner le nom et l'icÃ´ne */
+    /* Permet d'aligner le nom et l'icône */
     align-items: center;
     justify-content: center;
-    /* Centre le nom et l'icÃ´ne ensemble */
+    /* Centre le nom et l'icône ensemble */
     gap: 8px;
-    /* Espace entre le nom et l'icÃ´ne */
+    /* Espace entre le nom et l'icône */
 }
 
-/* Style pour la nouvelle icÃ´ne de statut (dans le nom) */
+/* Style pour la nouvelle icône de statut (dans le nom) */
 .status-icon {
     font-size: 16px;
-    /* LÃ©gÃ¨rement plus petit que le texte */
+    /* Légèrement plus petit que le texte */
     line-height: 1;
-    /* EmpÃªche de dÃ©former la hauteur de ligne */
+    /* Empêche de déformer la hauteur de ligne */
 }
 
 .creature-level {
@@ -836,6 +955,8 @@ button[onclick="toggleSecondaryContent()"],
     color: white !important;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
     font-family: 'Outfit', sans-serif !important;
+    position: relative;
+    /* Ajouté pour alignement */
 }
 
 .hud-header-row {
@@ -845,13 +966,16 @@ button[onclick="toggleSecondaryContent()"],
     gap: 15px;
     margin-bottom: 10px;
     width: 100%;
+
+    /* FIX ALIGNEMENT HUD : Force la même hauteur que hud-name-row */
+    height: 24px;
+    position: relative;
 }
 
 .hud-player .creature-name,
 .hud-enemy .creature-name {
     color: #fff !important;
     font-weight: 800 !important;
-    text-shadow: none !important;
 }
 
 .hud-player .creature-level,
@@ -869,10 +993,10 @@ button[onclick="toggleSecondaryContent()"],
     transform: scaleX(1);
     transition: transform 0.3s ease-out, background-color 0.3s;
 
-    /* â¬‡ï¸ AJOUT CRITIQUE â¬‡ï¸ */
+    /* ⬇️ AJOUT CRITIQUE ⬇️ */
     will-change: transform;
-    /* Force le navigateur Ã  crÃ©er un calque Composite (GPU) pour cet Ã©lÃ©ment. 
-       RÃ©sultat : ZÃ©ro recalcul de layout quand la barre bouge. */
+    /* Force le navigateur à créer un calque Composite (GPU) pour cet élément. 
+       Résultat : Zéro recalcul de layout quand la barre bouge. */
 }
 
 .health-text {
@@ -881,7 +1005,6 @@ button[onclick="toggleSecondaryContent()"],
     left: 50%;
     transform: translate(-50%, -50%);
     color: white;
-    text-shadow: 1px 1px 2px black;
     font-size: 12px;
 }
 
@@ -901,31 +1024,63 @@ button[onclick="toggleSecondaryContent()"],
 }
 
 .creature-card {
-    background: #3b3b3b;
-    border: 2px solid #1a1a1a;
-    border-bottom: 5px solid #111;
+    background: var(--surface-dark);
+    border: 2px solid var(--border-dark);
+    border-bottom: 5px solid var(--surface-dark);
     padding: 15px;
     border-radius: 8px;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-fast);
     position: relative;
-    color: white;
+    color: var(--text-on-dark);
 }
 
 .creature-card:hover {
     transform: translateY(-2px);
-    background: #444;
+    background: var(--surface-dark-hover);
+}
+
+/* Badge objet tenu en haut à droite de la carte */
+.creature-card-held-item {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.creature-card-held-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+/* Hover plus clair dans la zone équipe (évite le marron trop foncé) */
+.team-area .creature-card:hover {
+    background: var(--bg-secondary, #7a614e) !important;
 }
 
 .creature-card h4 {
     margin-bottom: 10px;
-    color: #fff;
+    color: var(--text-on-dark);
     font-weight: 800;
 }
 
 .creature-stats {
     font-size: 11px;
-    color: #ccc !important;
+    color: var(--text-on-dark-secondary) !important;
     line-height: 1.5;
     font-family: 'Outfit', sans-serif;
 }
@@ -945,7 +1100,7 @@ button[onclick="toggleSecondaryContent()"],
     margin-bottom: 5px;
 }
 
-/* ... (Ajoutez ceci n'importe oÃ¹ dans votre balise <style>) ... */
+/* ... (Ajoutez ceci n'importe où dans votre balise <style>) ... */
 .ultimate-btn {
     position: absolute;
     bottom: 5px;
@@ -959,10 +1114,9 @@ button[onclick="toggleSecondaryContent()"],
     font-weight: bold;
     cursor: not-allowed;
     opacity: 1;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     z-index: 10;
     font-size: 12px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .ultimate-btn:not(:disabled) {
@@ -1060,6 +1214,11 @@ button[onclick="toggleSecondaryContent()"],
     color: #333;
 }
 
+.type-fairy {
+    background: #ee99ac;
+    color: #1a1a1a;
+}
+
 .rarity-common {
     border: 1px solid #b0bec5;
     /* Gris */
@@ -1075,7 +1234,7 @@ button[onclick="toggleSecondaryContent()"],
 
 .rarity-epic {
     border: 1px solid #9b59b6;
-    /* Violet (cohÃ©rent avec le recycleur) */
+    /* Violet (cohérent avec le recycleur) */
     background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
 
 }
@@ -1088,40 +1247,114 @@ button[onclick="toggleSecondaryContent()"],
     animation: legendary-glow 2s ease-in-out infinite alternate;
 }
 
+/* Shiny : carte normale + reflet holographique + étoiles (style Pokémon) */
 .creature-card.shiny {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 25%, #ffd700 50%, #ffed4e 75%, #ffd700 100%);
-    background-size: 200% 200%;
-    animation: shiny-sparkle 2s ease-in-out infinite, gradient-shift 3s ease infinite;
-    border: 1px solid #ffd700;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4) !important;
 }
 
+/* Reflet holographique (balayage de lumière) */
+.creature-card.shiny::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            rgba(255, 255, 255, 0) 100%);
+    transform: skewX(-25deg);
+    animation: shiny-sweep 3s ease-in-out infinite;
+    pointer-events: none;
+}
 
-
-@keyframes shiny-sparkle {
-
-    0%,
-    100% {
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
-            0 0 40px rgba(255, 215, 0, 0.4),
-            inset 0 0 20px rgba(255, 255, 255, 0.3);
+@keyframes shiny-sweep {
+    0% {
+        left: -150%;
     }
 
     50% {
-        box-shadow: 0 0 30px rgba(255, 215, 0, 1),
-            0 0 60px rgba(255, 215, 0, 0.6),
-            inset 0 0 30px rgba(255, 255, 255, 0.5);
+        left: 200%;
+    }
+
+    100% {
+        left: 200%;
     }
 }
 
-
-
-.creature-card.shiny::before {
-    content: 'âœ¨';
+/* Particules étoilées (✦) — clignotent et tournent dans les coins */
+.shiny-stars {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    font-size: 24px;
-    animation: sparkle-rotate 4s linear infinite;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.shiny-stars span {
+    position: absolute;
+    font-size: 14px;
+    color: rgba(255, 215, 0, 0.9);
+    text-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
+    animation: shiny-star-twinkle 2.5s ease-in-out infinite;
+}
+
+.shiny-stars span:nth-child(1) {
+    top: 6px;
+    left: 6px;
+    animation-delay: 0s;
+}
+
+.shiny-stars span:nth-child(2) {
+    top: 6px;
+    right: 6px;
+    left: auto;
+    animation-delay: 0.4s;
+}
+
+.shiny-stars span:nth-child(3) {
+    bottom: 6px;
+    left: 6px;
+    top: auto;
+    animation-delay: 0.8s;
+}
+
+.shiny-stars span:nth-child(4) {
+    bottom: 6px;
+    right: 6px;
+    top: auto;
+    left: auto;
+    animation-delay: 1.2s;
+}
+
+@keyframes shiny-star-twinkle {
+
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: scale(0.9) rotate(0deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.15) rotate(180deg);
+    }
+}
+
+@keyframes fill-up-bar-dopamine {
+    0% {
+        width: 0%;
+    }
+
+    100% {
+        width: 100%;
+    }
 }
 
 @keyframes gradient-shift {
@@ -1221,17 +1454,551 @@ button[onclick="toggleSecondaryContent()"],
 }
 
 .ball-item {
-    background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+    background: transparent;
     padding: 15px;
     border-radius: 10px;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
     cursor: pointer;
     transition: transform 0.2s ease;
 }
 
 .ball-item:hover {
     transform: translateY(-2px);
+}
+
+/* --- Incubateurs (Sac à dos) — Rétro/Clean, même charte que Inventaire d'œufs --- */
+.incubators-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* Même fond et bordure que .ball-item (cartes d'œufs en dessous) */
+.incubator-slot {
+    min-height: 156px;
+    border-radius: 12px;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.incubator-slot.rarity-common {
+    --incubator-rarity: #6c757d;
+}
+
+.incubator-slot.rarity-rare {
+    --incubator-rarity: #28a745;
+}
+
+.incubator-slot.rarity-epic {
+    --incubator-rarity: #007bff;
+}
+
+.incubator-slot.rarity-legendary {
+    --incubator-rarity: #ffc107;
+}
+
+.incubator-slot.incubator-locked {
+    opacity: 0.55;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    border-bottom: 1px dashed #cbd5e1;
+}
+
+.incubator-slot-inner {
+    padding: 14px;
+    height: 100%;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+}
+
+/* Slot vide = zone de dépôt (dropzone) évidente */
+.incubator-slot.incubator-slot-empty {
+    background: #f8f9fa !important;
+    border: 2px dashed #b0bec5 !important;
+    box-shadow: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.incubator-slot-inner.incubator-empty {
+    cursor: pointer;
+    background: transparent;
+    color: #78909c;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+/* Gros "+" au centre pour inciter au clic */
+.incubator-slot-inner.incubator-empty::before {
+    content: "+";
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #b0bec5;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.incubator-slot.incubator-slot-empty:hover {
+    background: #eceff1 !important;
+    border-color: #90a4ae !important;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.incubator-slot-inner.incubator-empty:hover .incubator-empty-label,
+.incubator-slot-inner.incubator-empty:hover .incubator-click-hint {
+    color: #607d8b;
+}
+
+.incubator-empty-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #78909c;
+}
+
+.incubator-click-hint {
+    font-size: 10px;
+    color: #90a4ae;
+}
+
+/* Capsule occupée : fond neutre unique (pas de socle noir) */
+.incubator-capsule {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 108px;
+    flex: 1;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+/* Zone principale : même blanc que les cartes d'œufs */
+.incubator-body {
+    flex: 1;
+    padding: 8px 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    position: relative;
+    z-index: 1;
+    border: none;
+    box-shadow: none;
+}
+
+.incubator-body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    image-rendering: pixelated;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Sprites d'incubateur spécifiques par slot (1 à 4) */
+.incubator-slot:nth-child(1) .incubator-body::before {
+    background-image: url('img/incubator1.png');
+}
+
+.incubator-slot:nth-child(2) .incubator-body::before {
+    background-image: url('img/incubator2.png');
+}
+
+.incubator-slot:nth-child(3) .incubator-body::before {
+    background-image: url('img/incubator3.png');
+}
+
+.incubator-slot:nth-child(4) .incubator-body::before {
+    background-image: url('img/incubator4.png');
+}
+
+/* Footer : timer sur fond clair (pas de bande noire) */
+.incubator-footer {
+    padding: 4px 6px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Timer en cours : gris anthracite pour ne pas concurrencer le badge (jauge = couleur de rareté) */
+.incubator-footer .incubator-timer {
+    font-size: 12px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #333333;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Badge = même .rarity-label que l'inventaire d'œufs (pill tags) */
+.incubator-body .rarity-label {
+    font-size: 10px;
+    padding: 2px 6px;
+    margin: 0;
+}
+
+
+.incubator-egg-center {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+}
+
+.incubator-egg-center img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    display: block;
+}
+
+/* Respiration de l'œuf (vie à l'intérieur) */
+.incubator-egg-center .egg-sprite.incubator-egg-breath {
+    animation: incubator-egg-breathe 2.5s ease-in-out infinite;
+}
+
+@keyframes incubator-egg-breathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.incubator-slot.incubator-ready {
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* "Prêt !" toujours en vert vif (même pour common) = récompense à cliquer */
+.incubator-slot.incubator-ready .incubator-footer .incubator-timer {
+    color: var(--accent-green, #22c55e) !important;
+    text-shadow: 0 0 10px rgba(34, 197, 94, 0.35), 0 1px 2px rgba(0, 0, 0, 0.1);
+    animation: incubator-ready-text 0.8s ease-in-out infinite;
+}
+
+
+@keyframes incubator-ready-text {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.9;
+        transform: scale(1.05);
+    }
+}
+
+.incubator-lock-label {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.incubator-auto-controls {
+    display: flex;
+    gap: 4px;
+    padding: 4px 6px 6px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.incubator-auto-controls-locked {
+    opacity: 0.75;
+}
+
+.incubator-auto-toggle,
+.incubator-priority-chip {
+    border: 1px solid #475569;
+    border-radius: 999px;
+    padding: 3px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.incubator-auto-toggle.incubator-auto-on {
+    background: #16a34a;
+    color: #f8fafc;
+    border-color: #15803d;
+}
+
+.incubator-auto-toggle.incubator-auto-off {
+    background: #475569;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+.incubator-priority-chip {
+    background: #f8fafc;
+    color: #334155;
+}
+
+/* Couleurs de texte selon la priorité d'incubation */
+.incubator-priority-chip.priority-common {
+    color: #6b7280;
+}
+
+.incubator-priority-chip.priority-rare {
+    color: #3b82f6;
+}
+
+.incubator-priority-chip.priority-epic {
+    color: #8b5cf6;
+}
+
+.incubator-priority-chip.priority-légendaire {
+    color: #f59e0b;
+}
+
+.incubator-auto-toggle:disabled,
+.incubator-priority-chip:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.35);
+    opacity: 0.55;
+}
+
+.incubator-locked-by-quest {
+    margin: 6px 8px 10px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    text-align: center;
+    color: #7f1d1d;
+    background: #fee2e2;
+    border: 1px dashed #fca5a5;
+}
+
+/* ========== Modal « Choisir un œuf » — même palette que capture (marron clair) ========== */
+#chooseEggModal.show {
+    background: radial-gradient(ellipse 80% 70% at 50% 45%,
+            rgba(255, 248, 240, 0.15) 0%,
+            rgba(72, 62, 52, 0.5) 50%,
+            rgba(58, 50, 42, 0.92) 100%) !important;
+    backdrop-filter: blur(4px);
+}
+
+#chooseEggModal .quest-completion-content {
+    background: linear-gradient(165deg, #5c5042 0%, #4a4035 45%, #3d352b 100%) !important;
+    border: 1px solid rgba(180, 155, 100, 0.35) !important;
+    border-radius: 20px !important;
+    padding: 28px 24px 24px !important;
+    max-width: 440px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+#chooseEggModal .choose-egg-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+#chooseEggModal .choose-egg-modal-title .egg-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+
+#chooseEggModal .choose-egg-modal-title span {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fef3c7 !important;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+#chooseEggModal .choose-egg-modal-subtitle {
+    font-size: 13px;
+    color: #c4b5a0;
+    margin-bottom: 20px;
+    line-height: 1.45;
+    padding-left: 52px;
+}
+
+.choose-egg-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 16px 0 20px;
+}
+
+.choose-egg-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 12px;
+    border-radius: 14px;
+    font-weight: 700;
+    border: 2px solid transparent;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.choose-egg-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 50%);
+    pointer-events: none;
+    border-radius: 12px;
+}
+
+.choose-egg-btn .choose-egg-btn-icon {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+}
+
+.choose-egg-btn .choose-egg-btn-label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    position: relative;
+    z-index: 1;
+}
+
+.choose-egg-btn .choose-egg-btn-count {
+    font-size: 11px;
+    opacity: 0.9;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
+}
+
+/* Couleurs de rareté = mêmes que .rarity-label (common gris, rare vert, epic bleu, legendary or) */
+.choose-egg-btn.rarity-common {
+    background: linear-gradient(145deg, #7c858e 0%, #6c757d 100%);
+    color: #fff;
+    border-color: rgba(108, 117, 125, 0.5);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.choose-egg-btn.rarity-common .choose-egg-btn-count {
+    color: #e2e8f0;
+}
+
+.choose-egg-btn.rarity-rare {
+    background: linear-gradient(145deg, #34c759 0%, #28a745 100%);
+    color: #fff;
+    border-color: rgba(40, 167, 69, 0.5);
+    box-shadow: 0 4px 14px rgba(40, 167, 69, 0.35);
+}
+
+.choose-egg-btn.rarity-rare .choose-egg-btn-count {
+    color: #d4edda;
+}
+
+.choose-egg-btn.rarity-epic {
+    background: linear-gradient(145deg, #1a8cff 0%, #007bff 100%);
+    color: #fff;
+    border-color: rgba(0, 123, 255, 0.5);
+    box-shadow: 0 4px 14px rgba(0, 123, 255, 0.35);
+}
+
+.choose-egg-btn.rarity-epic .choose-egg-btn-count {
+    color: #cce5ff;
+}
+
+.choose-egg-btn.rarity-legendary {
+    background: linear-gradient(145deg, #ffce2b 0%, #ffc107 80%, #e0a800 100%);
+    color: #333;
+    border-color: rgba(255, 193, 7, 0.5);
+    box-shadow: 0 4px 14px rgba(255, 193, 7, 0.35);
+}
+
+.choose-egg-btn.rarity-legendary .choose-egg-btn-count {
+    color: #1a1a1a;
+}
+
+.choose-egg-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.choose-egg-btn.rarity-common:hover {
+    box-shadow: 0 8px 24px rgba(108, 117, 125, 0.5);
+}
+
+.choose-egg-btn.rarity-rare:hover {
+    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.5);
+}
+
+.choose-egg-btn.rarity-epic:hover {
+    box-shadow: 0 8px 24px rgba(0, 123, 255, 0.5);
+}
+
+.choose-egg-btn.rarity-legendary:hover {
+    box-shadow: 0 8px 24px rgba(255, 193, 7, 0.5);
+}
+
+.choose-egg-btn:active {
+    transform: translateY(-1px) scale(1);
+}
+
+#chooseEggModal .choose-egg-cancel {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    background: rgba(92, 80, 66, 0.5);
+    color: #e2e8f0;
+    border: 1px solid rgba(180, 155, 100, 0.3);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+#chooseEggModal .choose-egg-cancel:hover {
+    background: rgba(92, 80, 66, 0.75);
+    color: #f1f5f9;
+    border-color: rgba(180, 155, 100, 0.45);
+}
+
+#chooseEggModal .choose-egg-empty-msg {
+    color: #a89984;
+    font-size: 14px;
+    text-align: center;
+    padding: 24px 16px;
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 12px;
+    margin: 16px 0 20px;
 }
 
 
@@ -1319,8 +2086,8 @@ button[onclick="toggleSecondaryContent()"],
 .quest-completion-content,
 .modal-content,
 .log-modal-content {
-    background: #947864 !important;
-    border: 4px solid #5d4a3e !important;
+    background: var(--bg-primary) !important;
+    border: 4px solid var(--bg-tertiary) !important;
     padding: 30px 15px 15px 15px !important;
     border-radius: 12px !important;
     max-width: 800px;
@@ -1328,7 +2095,7 @@ button[onclick="toggleSecondaryContent()"],
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 6px 0 #5d4a3e !important;
+    box-shadow: var(--shadow-lg), 0 6px 0 var(--bg-tertiary) !important;
     font-family: 'Outfit', sans-serif !important;
 }
 
@@ -1376,48 +2143,42 @@ button[onclick="toggleSecondaryContent()"],
     letter-spacing: 1px !important;
 }
 
+/* Old close button styles removed */
+
 .stats-close,
 .quest-guide-close,
 .close-modal,
 .close-btn {
-    background: #5d4a3e !important;
-    color: white !important;
-    border: 2px solid #3b3b3b !important;
-    padding: 4px 12px !important;
-    border-radius: 6px !important;
-    cursor: pointer;
-    font-weight: 800 !important;
-    font-size: 12px !important;
-    box-shadow: 0 3px 0 #3b3b3b !important;
-    transition: all 0.1s !important;
-}
-
-.stats-close {
     position: absolute;
     top: 15px;
     right: 15px;
     width: 32px;
     height: 32px;
     padding: 0 !important;
-    background: #ef4444 !important;
-    color: white !important;
-    border: 2px solid #dc2626 !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    border: 2px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 50% !important;
-    font-size: 18px !important;
+    font-size: 16px !important;
     font-weight: 800 !important;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-    transition: all 0.2s !important;
+    box-shadow: none !important;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
     z-index: 100;
 }
 
-.stats-close:hover {
-    background: #dc2626 !important;
-    transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+.stats-close:hover,
+.quest-guide-close:hover,
+.close-modal:hover,
+.close-btn:hover {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #ef4444 !important;
+    transform: rotate(90deg);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
 }
 
 .quest-guide-close:hover,
@@ -1494,40 +2255,42 @@ button[onclick="toggleSecondaryContent()"],
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
     margin-bottom: 20px;
 }
 
 .stat-box {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #667eea;
+    background: #3b3b3b;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid #1a1a1a;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .stat-box.highlight {
-    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-    border-left-color: #ffc107;
+    background: #4a4a4a;
+    border-left-color: #fbbf24;
 }
 
 .stat-title {
-    font-size: 12px;
-    color: #666;
+    font-size: 10px;
+    color: #cbd5e1;
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 5px;
 }
 
 .stat-number {
-    font-size: 28px;
+    font-size: 20px;
     font-weight: bold;
-    color: #333;
+    color: #fff;
 }
 
 .stat-subtitle {
-    font-size: 11px;
-    color: #999;
+    font-size: 10px;
+    color: #94a3b8;
     margin-top: 3px;
 }
 
@@ -1547,26 +2310,31 @@ h3 {
 .damage-fire {
     color: #ff6b35;
     font-weight: bold;
+    font-size: 1.2em;
 }
 
 .damage-water {
     color: #4dabf7;
     font-weight: bold;
+    font-size: 1.2em;
 }
 
 .damage-grass {
     color: #51cf66;
     font-weight: bold;
+    font-size: 1.2em;
 }
 
 .damage-electric {
     color: #ffd43b;
     font-weight: bold;
+    font-size: 1.2em;
 }
 
 .damage-normal {
     color: #868e96;
     font-weight: bold;
+    font-size: 1.2em;
 }
 
 .damage-rock {
@@ -1638,7 +2406,7 @@ h3 {
     cursor: pointer;
     font-size: 10px;
     font-weight: 800;
-    transition: all 0.1s ease;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.1s ease, opacity 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
     box-shadow: 0 4px 0 #3b3b3b;
     text-transform: uppercase;
 }
@@ -1658,42 +2426,37 @@ h3 {
 }
 
 .sort-btn.active::after {
-    content: " â†“";
+    content: " ↓";
 }
 
 .sort-btn.active.asc::after {
-    content: " â†‘";
+    content: " ↑";
 }
 
 /* --- Conteneur Nom + Badge (Fixe le nom au centre) --- */
 .hud-name-row {
     position: relative;
-    /* Important : sert de repÃ¨re au badge */
+    /* Important : sert de repère au badge */
     display: flex;
     justify-content: center;
     /* Centre le nom horizontalement */
     align-items: center;
     /* Centre verticalement */
-    margin-bottom: 5px;
+    margin-bottom: 10px;
+    /* S'aligne avec le HUD player */
     height: 24px;
-    /* Hauteur fixe pour Ã©viter les sauts */
+    /* Hauteur fixe pour éviter les sauts */
 }
 
-/* Le Nom de l'ennemi */
-.hud-enemy .creature-name {
-    margin: 0 !important;
-    text-align: center;
-    z-index: 1;
-}
 
-/* --- Indicateur d'efficacitÃ© (Badge flottant Ã  droite) --- */
+/* --- Indicateur d'efficacité (Badge flottant à droite) --- */
 .effectiveness-indicator {
     position: absolute;
     /* Sort du flux pour ne pas pousser le nom */
     right: 0;
-    /* CollÃ© Ã  droite */
+    /* Collé à droite */
     top: 50%;
-    /* CentrÃ© verticalement */
+    /* Centré verticalement */
     transform: translateY(-50%);
 
     font-size: 9px;
@@ -1704,9 +2467,9 @@ h3 {
     line-height: 1;
     white-space: nowrap;
     display: none;
-    /* CachÃ© par dÃ©faut */
+    /* Caché par défaut */
     opacity: 0.9;
-    transition: all 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
 
 /* Animation d'apparition */
@@ -1753,7 +2516,7 @@ h3 {
     border-radius: 8px;
     font-weight: 800;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.1s ease, opacity 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
     font-size: 13px;
     height: 44px;
     flex-shrink: 0;
@@ -1788,7 +2551,7 @@ h3 {
     display: none !important;
 }
 
-/* âœ… NOUVEAU : Conteneur pour aligner les boutons horizontalement */
+/* ✅ NOUVEAU : Conteneur pour aligner les boutons horizontalement */
 .combat-buttons-container {
     display: flex;
     gap: 10px;
@@ -1856,7 +2619,7 @@ h3 {
 .upgrade-effect {
     font-size: 11px;
     color: #166534 !important;
-    /* Vert foncÃ© */
+    /* Vert foncé */
     font-weight: 800;
 }
 
@@ -1871,31 +2634,31 @@ h3 {
 .upgrade-btn {
     width: 100%;
     padding: 12px !important;
-    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-    color: white !important;
-    border: 2px solid #1e40af !important;
+    background: var(--accent-green) !important;
+    color: var(--text-on-dark) !important;
+    border: 2px solid var(--accent-green-dark) !important;
     border-radius: 6px !important;
     font-weight: 900 !important;
     cursor: pointer;
-    box-shadow: 0 4px 0 #1e3a8a !important;
+    box-shadow: 0 4px 0 var(--accent-green-darker) !important;
     font-size: 12px !important;
     text-transform: uppercase !important;
-    transition: all 0.15s ease !important;
+    transition: var(--transition-fast) !important;
 }
 
 .upgrade-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    background: var(--accent-green-dark) !important;
     transform: translateY(2px) !important;
-    box-shadow: 0 2px 0 #1e3a8a !important;
+    box-shadow: 0 2px 0 var(--accent-green-darker) !important;
 }
 
 .upgrade-btn:disabled {
-    background: #6b7280 !important;
-    border-color: #4b5563 !important;
+    background: var(--surface-dark-alt) !important;
+    border-color: var(--border-dark) !important;
     cursor: not-allowed;
-    box-shadow: 0 4px 0 #374151 !important;
+    box-shadow: 0 4px 0 var(--surface-dark) !important;
     transform: none !important;
-    color: #e5e7eb !important;
+    color: var(--text-on-dark-tertiary) !important;
     font-size: 11px !important;
     text-align: center !important;
     font-weight: 800 !important;
@@ -1904,16 +2667,300 @@ h3 {
 .upgrade-card.not-affordable,
 .shop-item.not-affordable {
     filter: grayscale(0.6) opacity(0.85);
-    background: #2d2d2d !important;
+    background: var(--surface-dark) !important;
+}
+
+/* Améliorations maxées : même rendu que "pas assez de fonds", affichées en fin de liste */
+.upgrade-card.maxed,
+.shop-item.maxed {
+    filter: grayscale(0.6) opacity(0.85);
+    background: var(--surface-dark) !important;
 }
 
 .upgrade-btn:disabled:hover {
     background: #ccc;
 }
 
+/* =========================================
+   ONGLET ARÈNES — Logique visuelle type Quêtes
+   Cartes claires (gris très clair / blanc cassé), textes en sombre
+   ========================================= */
+
+#arenasTab .account-talents-box {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#arenasTab .account-talents-box h4 {
+    color: var(--text-on-light, #1a1a1a) !important;
+    border-bottom-color: var(--border-light, #e7e5e4);
+}
+
+#arenasTab #badgesList>div {
+    background: rgba(34, 197, 94, 0.12) !important;
+    border: 2px solid var(--accent-green, #22c55e) !important;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+#arenasTab #badgesList>div [style*="color: #22c55e"] {
+    color: var(--accent-green-dark, #16a34a) !important;
+}
+
+#arenasTab #badgesList>div [style*="color: #666"] {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+/* Cartes arènes : fond clair, texte sombre (comme quêtes acceptées) */
+#arenasContainer .upgrade-card {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    border-left: 5px solid var(--accent-gold-dark, #f59e0b) !important;
+    border-bottom: 4px solid var(--border-light, #e7e5e4) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#arenasContainer .upgrade-card .upgrade-title {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#arenasContainer .upgrade-card .upgrade-description {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+/* Arène complétée : léger vert, texte sombre */
+#arenasContainer .upgrade-card.arena-completed {
+    background: var(--surface-light-alt, #f5f5f4) !important;
+    border-left-color: var(--accent-green, #22c55e) !important;
+    border-color: var(--accent-green-light, #86efac) !important;
+}
+
+#arenasContainer .upgrade-card.arena-completed .upgrade-title,
+#arenasContainer .upgrade-card.arena-completed .upgrade-description {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+/* Arène verrouillée : discret */
+#arenasContainer .upgrade-card.arena-locked {
+    opacity: 0.75;
+}
+
+/* Bloc récompense et statut déblocage : texte lisible sur fond clair */
+#arenasContainer .arena-reward-box {
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(251, 191, 36, 0.15);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-gold-dark, #f59e0b);
+}
+
+#arenasContainer .arena-reward-title {
+    font-weight: bold;
+    color: var(--accent-gold-darker, #d97706);
+    margin-bottom: 5px;
+}
+
+#arenasContainer .arena-reward-desc {
+    font-size: 12px;
+    color: var(--text-on-light-secondary, #404040);
+}
+
+#arenasContainer .arena-unlock-status {
+    font-size: 12px;
+    color: var(--text-on-light-secondary, #404040);
+    margin-bottom: 15px;
+}
+
+#arenasContainer .upgrade-btn:disabled {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    border-color: var(--border-light, #e7e5e4) !important;
+    color: var(--text-on-light-muted, #737373) !important;
+    box-shadow: none !important;
+}
 
 /* =========================================
-   SYSTÃˆME DE QUÃŠTES (Design Dashboard)
+   ONGLET TOUR DE COMBAT — Même style que Arènes / Boutique
+   Cartes claires, texte sombre, bordure ambre
+   ========================================= */
+
+#towerTab h3 {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#towerTab p {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#towerTab .tower-stats {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    color: var(--text-on-light, #1a1a1a) !important;
+    text-align: center;
+}
+
+#towerTab .tower-stats strong {
+    color: var(--accent-gold-darker, #d97706);
+}
+
+#towerTab .btn-save,
+#towerTab .btn {
+    background: var(--accent-green, #22c55e) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border: 2px solid var(--accent-green-dark, #16a34a) !important;
+    box-shadow: 0 3px 0 var(--accent-green-darker, #15803d) !important;
+}
+
+#towerTab .btn-save:hover:not(:disabled),
+#towerTab .btn:hover:not(:disabled) {
+    background: var(--accent-green-dark, #16a34a) !important;
+    box-shadow: 0 2px 0 var(--accent-green-darker, #15803d) !important;
+}
+
+/* Urgence UX : bouton désactivé quand 0 ticket (ne pas mentir au joueur) */
+#towerTab #towerStartBtn:disabled {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    color: var(--text-on-light-muted, #737373) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+}
+
+#towerTab #towerStartBtn:disabled:hover {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    transform: none;
+    box-shadow: none !important;
+}
+
+/* =========================================
+   ONGLET EXPÉDITIONS — Même style que Quêtes / Arènes
+   Cartes claires, texte sombre, bordure ambre
+   ========================================= */
+
+#expeditionsTab h3,
+#expeditionsTab h4 {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#expeditionsTab .zone-details-btn {
+    background: var(--accent-gold-dark, #f59e0b) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border: 2px solid var(--accent-gold-darker, #d97706) !important;
+    border-radius: 8px;
+}
+
+#expeditionsTab .zone-details-btn:hover {
+    background: var(--accent-gold-darker, #d97706) !important;
+}
+
+#expeditionsTab [style*="background: #e2e8f0"],
+#expeditionsTab .expedition-slots {
+    background: var(--surface-light-alt, #f5f5f4) !important;
+    border: 2px solid var(--border-light, #e7e5e4);
+    color: var(--text-on-light, #1a1a1a) !important;
+    border-radius: 15px;
+}
+
+#expeditionsTab hr {
+    border: 0;
+    border-top: 1px solid var(--border-light, #e7e5e4);
+    margin: 20px 0;
+}
+
+/* Cartes expéditions : fond clair, bordure gauche ambre (comme quêtes) */
+#expeditionsTab .quest-container .quest-card {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    border-left: 5px solid var(--accent-gold-dark, #f59e0b) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#expeditionsTab .quest-container .quest-card .quest-title {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#expeditionsTab .quest-container .quest-card .quest-description {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#expeditionsTab .quest-container .quest-card.accepted {
+    border-left-color: var(--accent-gold-dark, #f59e0b) !important;
+    background: var(--surface-light-alt, #f5f5f4) !important;
+}
+
+#expeditionsTab .quest-container .quest-card.completed {
+    border-left-color: var(--accent-green, #22c55e) !important;
+    border-color: var(--accent-green-light, #86efac) !important;
+    background: var(--surface-light-alt, #f5f5f4) !important;
+}
+
+#expeditionsTab .quest-container .quest-card .quest-progress-text {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#expeditionsTab .quest-container .quest-card .quest-rewards {
+    background: rgba(0, 0, 0, 0.02) !important;
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+
+#expeditionsTab .quest-container .quest-card .quest-reward-item,
+#expeditionsTab .quest-container .quest-card [style*="color:#666"] {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+/* Zone de récompenses expéditions : icônes mises en avant */
+.expedition-rewards-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.expedition-rewards-strip span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px;
+    border-radius: 6px;
+    background: #f3f4f6;
+    font-size: 14px;
+}
+
+#expeditionsTab .quest-btn {
+    background: var(--accent-green, #22c55e) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border: 2px solid var(--accent-green-dark, #16a34a) !important;
+}
+
+#expeditionsTab .quest-btn:hover:not(:disabled) {
+    background: var(--accent-green-dark, #16a34a) !important;
+}
+
+#expeditionsTab .quest-btn:disabled {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    color: var(--text-on-light-muted, #737373) !important;
+    border-color: var(--border-light, #e7e5e4) !important;
+}
+
+/* Messages vides et timer (texte généré en JS) */
+#expeditionsTab .quest-container>p,
+#expeditionsTab .quest-container>div[style*="text-align:center"] {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#expeditionsTab #activeExpeditionsContainer p[style*="color: #94a3b8"],
+#expeditionsTab #activeExpeditionsContainer p[style*="italic"] {
+    color: var(--text-on-light-secondary, #404040) !important;
+    border-color: var(--border-light, #e7e5e4) !important;
+}
+
+/* =========================================
+   SYSTÈME DE QUÊTES (Design Dashboard)
    [TAILLE COMPACTE - AJUSTEMENT TYPO & BOUTON]
    ========================================= */
 
@@ -1922,17 +2969,18 @@ h3 {
     display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
+    /* Pas de color forcé : chaque carte définit son propre contraste (clair/foncé) */
 }
 
 .quest-stats {
     display: flex;
     justify-content: space-around;
     padding: 10px;
-    background: white;
+    background: var(--surface-light, #fafaf9);
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-light, #e7e5e4);
     margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
 .quest-stat {
@@ -1941,43 +2989,47 @@ h3 {
 
 .quest-stat-value {
     font-size: 19px;
-    /* AugmentÃ© de 18px */
     font-weight: 800;
-    color: #f59e0b;
+    color: var(--accent-gold-dark, #f59e0b);
 }
 
 .quest-stat-label {
     font-size: 10px;
-    /* AugmentÃ© de 9px */
-    color: #64748b;
+    color: var(--text-on-light-secondary, #404040);
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.4px;
 }
 
-/* --- 2. CARTES DE QUÃŠTES --- */
+/* --- 2. CARTES DE QUÊTES --- */
 .quest-card {
-    background: #3b3b3b !important;
-    border: 2px solid #1a1a1a !important;
-    border-left: 5px solid #5d4a3e !important;
+    background: var(--surface-dark-alt, #292524) !important;
+    border: 2px solid var(--surface-dark, #1c1917) !important;
+    border-left: 5px solid var(--bg-tertiary, #5d4a3e) !important;
     border-radius: 8px !important;
     padding: 12px !important;
-    color: white !important;
+    color: var(--text-on-dark, #fafafa) !important;
     margin-bottom: 10px !important;
 }
 
+/* Quête en attente d'acceptation : indication discrète "à traiter" (uniquement dans l'onglet Quêtes) */
+#questContainer .quest-card:not(.accepted):not(.completed) {
+    border-left-color: #c9a227 !important;
+    box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.12);
+}
+
 .quest-card.accepted {
-    border-left-color: #3b82f6 !important;
+    border-left-color: var(--accent-gold-dark, #f59e0b) !important;
 }
 
 .quest-card.completed {
-    border-left-color: #22c55e !important;
-    opacity: 0.8 !important;
+    border-left-color: var(--accent-green, #22c55e) !important;
+    opacity: 0.95 !important;
 }
 
 .quest-title {
     font-weight: 800 !important;
-    color: #fff !important;
+    color: var(--text-on-dark, #fafafa) !important;
     margin-bottom: 5px !important;
 }
 
@@ -2008,20 +3060,32 @@ h3 {
     font-weight: 800;
 }
 
-/* Ã‰tats des quÃªtes */
+/* États des quêtes */
 .quest-card.accepted {
-    border-left-color: #3b82f6;
-    background: #f8fafc;
+    border-left-color: var(--accent-gold-dark, #f59e0b);
+    background: var(--surface-light, #fafaf9) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
 }
 
 .quest-card.completed {
-    border-left-color: #22c55e;
-    background: #f0fdf4;
-    border-color: #bbf7d0;
+    border-left-color: var(--accent-green, #22c55e);
+    background: var(--surface-light-alt, #f5f5f4) !important;
+    border-color: var(--accent-green-light, #86efac);
     animation: none;
+    color: var(--text-on-light, #1a1a1a) !important;
 }
 
-/* En-tÃªte de la carte */
+.quest-card.accepted .quest-title,
+.quest-card.completed .quest-title {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+.quest-card.accepted .quest-description,
+.quest-card.completed .quest-description {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+/* En-tête de la carte */
 .quest-header {
     display: flex;
     justify-content: space-between;
@@ -2031,15 +3095,14 @@ h3 {
 
 .quest-title {
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text-on-dark, #fafafa);
     justify-content: space-between;
     font-size: 13px;
-    /* AugmentÃ© de 12px */
 }
 
 .quest-badge {
     font-size: 9px;
-    /* AugmentÃ© de 8px */
+    /* Augmenté de 8px */
     padding: 1px 6px;
     border-radius: 8px;
     font-weight: bold;
@@ -2068,16 +3131,21 @@ h3 {
 
 .quest-description {
     font-size: 11px;
-    color: #ccc !important;
+    color: var(--text-on-dark-secondary, #d4d4d4) !important;
     margin-bottom: 8px;
-    line-height: 1.3;
+    line-height: 1.4;
+}
+
+.quest-card.accepted .quest-description,
+.quest-card.completed .quest-description {
+    color: var(--text-on-light-secondary, #404040) !important;
 }
 
 
 /* Barre de progression */
 .quest-progress-container {
     display: flex;
-    /* â¬…ï¸ Essentiel */
+    /* ⬅️ Essentiel */
     align-items: center;
     /* Alignement vertical au centre */
     gap: 6px;
@@ -2087,7 +3155,7 @@ h3 {
 /* Barre de progression */
 .quest-progress-bar {
     flex-grow: 1;
-    /* Permet Ã  la barre de s'Ã©tendre et de se compresser si besoin */
+    /* Permet à la barre de s'étendre et de se compresser si besoin */
     height: 6px;
     background: #e2e8f0;
     border-radius: 3px;
@@ -2109,32 +3177,103 @@ h3 {
 .quest-progress-text {
     font-size: 10px;
     font-weight: bold;
-    color: #fff !important;
+    color: var(--text-on-dark, #fafafa) !important;
     min-width: 50px;
     text-align: right;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
-/* Zone de rÃ©compenses */
+.quest-card.accepted .quest-progress-text,
+.quest-card.completed .quest-progress-text {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+/* Zone de récompenses */
 .quest-rewards {
-    background: rgba(0, 0, 0, 0.03);
+    background: rgba(255, 255, 255, 0.08);
     padding: 5px 8px;
     border-radius: 5px;
     margin-bottom: 8px;
     font-size: 10px;
-    /* AugmentÃ© de 9px */
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
 }
 
+.quest-card.accepted .quest-rewards,
+.quest-card.completed .quest-rewards {
+    background: rgba(0, 0, 0, 0.04);
+}
+
 .quest-reward-item {
     font-weight: 600;
-    color: #334155;
+    color: var(--text-on-dark-secondary, #d4d4d4);
     display: flex;
     align-items: center;
     gap: 2px;
+}
+
+.quest-card.accepted .quest-reward-item,
+.quest-card.completed .quest-reward-item {
+    color: var(--text-on-light-secondary, #404040);
+}
+
+/* --- Achievements : logique inversée (complété = foncé, non complété = clair) --- */
+#achievementsContainer .quest-card {
+    background: var(--surface-light-alt, #f5f5f4) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    border-left: 5px solid var(--accent-gold-dark, #f59e0b) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#achievementsContainer .quest-card .quest-title {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#achievementsContainer .quest-card .quest-description {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#achievementsContainer .quest-card .quest-progress-text {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#achievementsContainer .quest-card .quest-rewards {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+#achievementsContainer .quest-card .quest-reward-item {
+    color: var(--text-on-light-secondary, #404040);
+}
+
+/* Achievement complété = carte foncée */
+#achievementsContainer .quest-card.completed {
+    background: var(--surface-dark-alt, #292524) !important;
+    border: 2px solid var(--surface-dark, #1c1917) !important;
+    border-left: 5px solid var(--accent-green, #22c55e) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    opacity: 1;
+}
+
+#achievementsContainer .quest-card.completed .quest-title {
+    color: var(--text-on-dark, #fafafa) !important;
+}
+
+#achievementsContainer .quest-card.completed .quest-description {
+    color: var(--text-on-dark-secondary, #d4d4d4) !important;
+}
+
+#achievementsContainer .quest-card.completed .quest-progress-text {
+    color: var(--text-on-dark, #fafafa) !important;
+}
+
+#achievementsContainer .quest-card.completed .quest-rewards {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#achievementsContainer .quest-card.completed .quest-reward-item {
+    color: var(--text-on-dark-secondary, #d4d4d4);
 }
 
 /* Actions (Boutons) */
@@ -2150,9 +3289,9 @@ h3 {
     border: none;
     font-weight: 600;
     font-size: 11px;
-    /* AugmentÃ© de 10px (sauf Refuse) */
+    /* Augmenté de 10px (sauf Refuse) */
     cursor: pointer;
-    transition: all 0.1s;
+    transition: background-color 0.1s, color 0.1s, border-color 0.1s, transform 0.1s, opacity 0.1s, box-shadow 0.1s, filter 0.1s;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2174,9 +3313,9 @@ h3 {
     color: #ef4444;
     border: 1px solid #fca5a5;
     padding: 5px;
-    /* RÃ©duit le padding de 6px */
+    /* Réduit le padding de 6px */
     font-size: 9px;
-    /* RÃ©duit Ã  9px (plus petit que le reste) */
+    /* Réduit à 9px (plus petit que le reste) */
 }
 
 .btn-refuse:hover {
@@ -2208,7 +3347,7 @@ h3 {
     }
 }
 
-/* Section Quêtes du Professeur Chen (en tête de l'onglet Quêtes) */
+/* Section Qu�tes du Professeur Chen (en t�te de l'onglet Qu�tes) */
 .story-quests-section {
     margin-bottom: 24px;
     padding-bottom: 20px;
@@ -2270,7 +3409,7 @@ h3 {
 .story-quests-section-desc {
     margin: 0;
     font-size: 12px;
-    color: #64748b;
+    color: var(--text-on-light-secondary, #404040);
 }
 
 .story-quests-list {
@@ -2287,7 +3426,57 @@ h3 {
     margin: 20px 0 12px 0;
     font-size: 16px;
     font-weight: 700;
-    color: #475569;
+    color: var(--text-on-light, #1a1a1a);
+}
+
+/* Conteneur des indicateurs d'onglet (Quêtes / Expéditions) */
+#questsTabBadge,
+#expeditionsTabBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.tab-badge-claim {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    box-shadow: 0 1px 3px rgba(34, 197, 94, 0.35);
+}
+
+.tab-badge-accept {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.35);
+}
+
+.tab-badge-story {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 0 6px;
+    box-shadow: 0 1px 3px rgba(245, 158, 11, 0.35);
+}
+
+.tab-badge-available {
+    background: rgba(59, 130, 246, 0.2);
+    color: #2563eb;
+    padding: 0 6px;
+    border: 1px solid rgba(37, 99, 235, 0.4);
 }
 
 .story-quest-tab-badge {
@@ -2297,7 +3486,7 @@ h3 {
     vertical-align: middle;
 }
 
-/* --- 3. MODALE DE COMPLÃ‰TION --- */
+/* --- 3. MODALE DE COMPLÉTION --- */
 .quest-completion-modal {
     display: none;
     position: fixed;
@@ -2306,7 +3495,7 @@ h3 {
     width: 100%;
     height: 100%;
     background: rgba(15, 23, 42, 0.8);
-    /* Fond sombre bleutÃ© */
+    /* Fond sombre bleuté */
     z-index: 2000;
     justify-content: center;
     align-items: center;
@@ -2317,7 +3506,7 @@ h3 {
     display: flex;
 }
 
-/* Guide de quête : positionné en bas à gauche pour ne pas masquer le module de capture (centre) */
+/* Guide de qu�te : positionn� en bas � gauche pour ne pas masquer le module de capture (centre) */
 .quest-guide-modal {
     display: none;
     position: fixed;
@@ -2419,7 +3608,7 @@ h3 {
 .quest-completion-title {
     font-size: 24px;
     color: #16a34a;
-    /* Vert succÃ¨s */
+    /* Vert succès */
     margin-bottom: 10px;
     font-weight: 800;
     text-transform: uppercase;
@@ -2427,26 +3616,26 @@ h3 {
 }
 
 .quest-completion-rewards {
-    background: #3b3b3b !important;
-    border: 2px solid #1a1a1a !important;
+    background: var(--surface-dark-alt, #292524) !important;
+    border: 2px solid var(--surface-dark, #1c1917) !important;
     padding: 20px;
     border-radius: 12px;
     margin: 20px 0;
-    color: #fff !important;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: var(--text-on-dark, #fafafa) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .quest-completion-reward {
     font-size: 16px;
     margin: 8px 0;
     font-weight: 700;
-    color: #334155;
+    color: var(--text-on-dark, #fafafa);
 }
 
 .narrative-quest-rewards-title {
     font-size: 14px;
     font-weight: 700;
-    color: #64748b;
+    color: var(--text-on-light-secondary, #404040);
     margin: 12px 0 6px 0;
 }
 
@@ -2461,14 +3650,14 @@ h3 {
 .narrative-quest-completion .quest-completion-reward {
     font-size: 14px;
     margin: 4px 0;
+    color: var(--text-on-light, #1a1a1a);
 }
 
-/* --- 4. TIMER DE QUÃŠTE --- */
+/* --- 4. TIMER DE QUÊTE --- */
 .quest-timer {
     text-align: center;
-    /* Le style est gÃ©rÃ© inline dans le HTML pour le flex, mais voici la base */
     font-weight: 600;
-    color: #64748b;
+    color: var(--text-on-light-secondary, #404040);
 }
 
 .shop-container {
@@ -2559,7 +3748,7 @@ h3 {
     color: #aaa !important;
 }
 
-/* --- INVENTAIRE STYLE "QUÃŠTES" --- */
+/* --- INVENTAIRE STYLE "QUÊTES" --- */
 
 .inventory-grid {
     display: grid;
@@ -2570,8 +3759,8 @@ h3 {
 
 /* La Carte (Slot) */
 .inventory-slot {
-    background: white;
-    border: 1px solid #e2e8f0;
+    background: transparent;
+    border: none;
     border-radius: 12px;
     padding: 10px 10px 14px 10px;
     display: flex;
@@ -2581,38 +3770,17 @@ h3 {
     aspect-ratio: 1 / 1.1;
     position: relative;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
-
-    /* Indicateur de RaretÃ© (Bordure basse) */
-    border-bottom-width: 4px;
-    border-bottom-style: solid;
+    transition: var(--transition-fast);
+    box-shadow: none;
 }
 
 .inventory-slot:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
     z-index: 5;
 }
 
-/* Couleurs */
-.inventory-slot.rarity-common {
-    border-bottom-color: #94a3b8;
-}
-
-.inventory-slot.rarity-rare {
-    border-bottom-color: #3b82f6;
-}
-
-.inventory-slot.rarity-epic {
-    border-bottom-color: #a855f7;
-}
-
-.inventory-slot.rarity-legendary {
-    border-bottom-color: #f59e0b;
-}
-
-/* IcÃ´ne */
+/* Icône */
 .item-icon {
     font-size: 36px;
     margin: 8px 0;
@@ -2651,7 +3819,7 @@ h3 {
     text-overflow: ellipsis;
 }
 
-/* Badge Ã‰quipement */
+/* Badge Équipement */
 .item-type-badge {
     position: absolute;
     top: 6px;
@@ -2666,7 +3834,7 @@ h3 {
 }
 
 .inventory-slot.is-held-item {
-    background-color: #f8fafc;
+    background-color: transparent;
 }
 
 .stat-boosts-list {
@@ -2703,26 +3871,196 @@ h3 {
     border-radius: 12px;
 }
 
-/* âœ… STYLES POUR LE MODAL D'Ã‰CLOSION */
-#eggHatchContent.shiny {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 25%, #ffd700 50%, #ffed4e 75%, #ffd700 100%);
-    background-size: 200% 200%;
-    animation: shiny-sparkle 2s ease-in-out infinite, gradient-shift 3s ease infinite;
-    border: 2px solid #ffd700;
+/* =========================================
+   MODAL D'ÉCLOSION — Mise en scène dramatique (Gacha juice)
+   Lumière, tension, magie + séquence d'ouverture orchestrée
+   ========================================= */
+
+/* --- Keyframes : séquence d'ouverture Gacha --- */
+@keyframes modalPopBounce {
+    0% {
+        opacity: 0;
+        transform: scale(0.7);
+    }
+
+    40% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+
+    70% {
+        transform: scale(0.98);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
-#eggHatchContent.legendary {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffd60a 100%);
-    box-shadow: 0 0 40px rgba(255, 193, 7, 0.8);
-    animation: legendary-glow 2s ease-in-out infinite alternate;
+@keyframes pokemonFlashAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(30px);
+        filter: brightness(3) contrast(2) drop-shadow(0 10px 20px rgba(255, 215, 0, 0.45));
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: brightness(1) contrast(1) drop-shadow(0 10px 20px rgba(255, 215, 0, 0.45)) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    }
 }
 
-.egg-hatch-title {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 15px;
+@keyframes fadeInUpShort {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
+@keyframes dropIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-40px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Étape 1 : Mise en scène — fond marron moka (charte boisée) + halo doré */
+#eggHatchModal.show {
+    background: radial-gradient(ellipse 80% 70% at 50% 45%,
+            rgba(255, 223, 128, 0.3) 0%,
+            rgba(255, 193, 7, 0.12) 35%,
+            rgba(45, 36, 30, 0.6) 60%,
+            rgba(45, 36, 30, 0.95) 100%) !important;
+    box-shadow: inset 0 0 120px rgba(45, 36, 30, 0.9) !important;
+    backdrop-filter: blur(4px);
+}
+
+/* Boîte de contenu : marron moka très sombre (même univers que l’interface) */
+#eggHatchModal #eggHatchContent {
+    position: relative;
+    opacity: 0;
+    animation: modalPopBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    background: linear-gradient(165deg, #3e3228 0%, #2d241e 40%, #1f1a16 100%) !important;
+    border: 4px solid var(--bg-tertiary, #5d4a3e) !important;
+    border-radius: 12px !important;
+    color: #f1f5f9 !important;
+    box-shadow:
+        var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.2)),
+        0 6px 0 var(--bg-tertiary, #5d4a3e),
+        0 0 0 1px rgba(212, 175, 55, 0.15),
+        0 0 60px rgba(255, 223, 128, 0.25),
+        0 0 120px rgba(255, 193, 7, 0.12),
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    overflow: visible;
+}
+
+#eggHatchModal #eggHatchContent h3 {
+    color: #f8fafc !important;
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
+
+#eggHatchModal #eggHatchContent .egg-hatch-stats {
+    background: rgba(0, 0, 0, 0.35) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e2e8f0 !important;
+}
+
+#eggHatchModal #eggHatchContent .egg-hatch-stats .creature-stats {
+    color: #e2e8f0 !important;
+}
+
+/* Nom du Pokémon : slide up (T=0.5s) avec le titre */
+#eggHatchModal #eggHatchContent .egg-hatch-name {
+    opacity: 0;
+    animation: fadeInUpShort 0.5s ease-out 0.5s forwards;
+}
+
+/* Types : slide up (T=0.6s) */
+.egg-hatch-types {
+    opacity: 0;
+    animation: fadeInUpShort 0.5s ease-out 0.6s forwards;
+}
+
+/* Stats : slide up (T=0.6s) */
+.egg-hatch-stats {
+    opacity: 0;
+    animation: fadeInUpShort 0.5s ease-out 0.6s forwards;
+}
+
+/* Bouton = même vert que Combattre / Acheter / Lancer l’ascension */
+#eggHatchModal #eggHatchContent .btn-save,
+#eggHatchModal #eggHatchContent .btn-super-confirm {
+    opacity: 0;
+    animation: fadeInUpShort 0.5s ease-out 0.8s forwards, egg-cta-pulse 2.2s ease-in-out 1.3s infinite;
+    background: var(--accent-green, #22c55e) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border: 2px solid var(--accent-green-dark, #16a34a) !important;
+    box-shadow: 0 3px 0 var(--accent-green-darker, #15803d) !important;
+    border-radius: 6px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
+#eggHatchModal #eggHatchContent .btn-save:hover,
+#eggHatchModal #eggHatchContent .btn-super-confirm:hover {
+    background: var(--accent-green-dark, #16a34a) !important;
+    box-shadow: 0 2px 0 var(--accent-green-darker, #15803d) !important;
+}
+
+/* Étape 2 : Tension — tremblement du sprite (révélation vivante) */
+@keyframes egg-reveal-shake {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    10% {
+        transform: translate(-3px, -1px) rotate(-2deg);
+    }
+
+    20% {
+        transform: translate(3px, 1px) rotate(2deg);
+    }
+
+    30% {
+        transform: translate(-4px, 2px) rotate(-3deg);
+    }
+
+    40% {
+        transform: translate(4px, -2px) rotate(3deg);
+    }
+
+    50% {
+        transform: translate(-2px, 1px) rotate(-1deg);
+    }
+
+    60% {
+        transform: translate(2px, -1px) rotate(1deg);
+    }
+
+    70% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+}
+
+/* Sprite : flash d'apparition (T=0.3s) puis tremblement en boucle */
 .egg-hatch-sprite {
     width: 128px;
     height: 128px;
@@ -2730,7 +4068,290 @@ h3 {
     image-rendering: crisp-edges;
     margin: 10px auto;
     display: block;
-    animation: sprite-float 2s ease-in-out infinite;
+    opacity: 0;
+    animation:
+        pokemonFlashAppear 0.5s ease-out 0.3s forwards,
+        egg-reveal-shake 2s ease-in-out 0.85s infinite;
+}
+
+/* Pulsation du titre et du bouton */
+@keyframes egg-cta-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.04);
+        opacity: 0.95;
+    }
+}
+
+/* Badge de rareté = même style que .rarity-label / badges du jeu (pill cohérent) */
+#eggHatchModal .egg-hatch-rarity {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: dropIn 0.4s ease-out 0.2s forwards;
+    font-family: 'Outfit', sans-serif;
+}
+
+#eggHatchModal .egg-hatch-rarity.rarity-common {
+    background: #6c757d;
+    color: white;
+}
+
+#eggHatchModal .egg-hatch-rarity.rarity-rare {
+    background: #28a745;
+    color: white;
+}
+
+#eggHatchModal .egg-hatch-rarity.rarity-epic {
+    background: #007bff;
+    color: white;
+}
+
+#eggHatchModal .egg-hatch-rarity.rarity-legendary {
+    background: #ffc107;
+    color: #333;
+}
+
+/* Mini-retour visuel d'éclosion auto (même style, compact, en haut à droite) */
+.auto-egg-hatch-mini-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: min(420px, calc(100vw - 24px));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10020;
+    pointer-events: none;
+}
+
+.auto-egg-hatch-mini {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    margin: 0 !important;
+    padding: 14px 14px 12px !important;
+    border-radius: 14px !important;
+    box-shadow:
+        var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.2)),
+        0 6px 0 var(--bg-tertiary, #5d4a3e),
+        0 0 0 1px rgba(212, 175, 55, 0.15),
+        0 0 60px rgba(255, 223, 128, 0.25),
+        0 0 120px rgba(255, 193, 7, 0.12),
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    overflow: visible;
+    background: linear-gradient(165deg, #3e3228 0%, #2d241e 40%, #1f1a16 100%) !important;
+    border: 4px solid var(--bg-tertiary, #5d4a3e) !important;
+}
+
+.auto-egg-hatch-mini.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.auto-egg-hatch-mini .egg-hatch-particles {
+    opacity: 0.55;
+}
+
+.auto-egg-hatch-mini .egg-hatch-rarity {
+    font-size: 10px;
+    padding: 3px 8px;
+    margin-bottom: 6px;
+    border-radius: 999px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 20px;
+}
+
+.auto-egg-hatch-mini .egg-hatch-rarity.rarity-common {
+    background: #6c757d !important;
+    color: white !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-rarity.rarity-rare {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-rarity.rarity-epic {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-rarity.rarity-legendary {
+    background: #ffc107 !important;
+    color: #333 !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-title {
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-sprite {
+    width: 68px !important;
+    height: 68px !important;
+    margin: 2px auto 4px !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-name {
+    font-size: 16px !important;
+    margin: 3px 0 6px !important;
+}
+
+.auto-egg-hatch-mini .egg-hatch-types {
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.auto-egg-hatch-mini .type-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+}
+
+.auto-egg-hatch-mini .egg-hatch-stats {
+    padding: 7px !important;
+    margin-top: 6px !important;
+    overflow-wrap: anywhere;
+}
+
+.auto-egg-hatch-mini .egg-hatch-stats .creature-stats {
+    font-size: 11px !important;
+    line-height: 1.3;
+}
+
+.auto-egg-hatch-mini .btn-super-confirm,
+.auto-egg-hatch-mini .btn-save {
+    display: none !important;
+}
+
+/* Titre : même police que le reste du jeu (Outfit) */
+.egg-hatch-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 18px;
+    letter-spacing: 0.02em;
+    color: #fef08a !important;
+    text-shadow:
+        0 0 20px rgba(255, 215, 0, 0.5),
+        0 0 40px rgba(255, 193, 7, 0.25),
+        0 2px 4px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    animation: fadeInUpShort 0.5s ease-out 0.5s forwards, egg-cta-pulse 2s ease-in-out 1s infinite;
+}
+
+#eggHatchContent .btn-save {
+    animation: egg-cta-pulse 2.2s ease-in-out infinite;
+}
+
+/* Étape 3 : Magie — particules qui s'élèvent */
+.egg-hatch-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+.egg-particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 235, 150, 0.95) 0%, rgba(255, 193, 7, 0.4) 100%);
+    box-shadow: 0 0 8px rgba(255, 223, 128, 0.8);
+    animation: egg-particle-rise 3s ease-in infinite;
+}
+
+.egg-particle:nth-child(1) {
+    left: 15%;
+    bottom: 10%;
+    animation-delay: 0s;
+    animation-duration: 2.8s;
+}
+
+.egg-particle:nth-child(2) {
+    left: 35%;
+    bottom: 5%;
+    animation-delay: 0.4s;
+    animation-duration: 3.2s;
+}
+
+.egg-particle:nth-child(3) {
+    left: 50%;
+    bottom: 15%;
+    animation-delay: 0.2s;
+    animation-duration: 2.6s;
+}
+
+.egg-particle:nth-child(4) {
+    left: 65%;
+    bottom: 8%;
+    animation-delay: 0.6s;
+    animation-duration: 3s;
+}
+
+.egg-particle:nth-child(5) {
+    left: 80%;
+    bottom: 12%;
+    animation-delay: 0.3s;
+    animation-duration: 2.9s;
+}
+
+.egg-particle:nth-child(6) {
+    left: 25%;
+    bottom: 20%;
+    animation-delay: 0.5s;
+    animation-duration: 3.1s;
+}
+
+.egg-particle:nth-child(7) {
+    left: 70%;
+    bottom: 18%;
+    animation-delay: 0.1s;
+    animation-duration: 2.7s;
+}
+
+.egg-particle:nth-child(8) {
+    left: 45%;
+    bottom: 3%;
+    animation-delay: 0.7s;
+    animation-duration: 3.3s;
+}
+
+@keyframes egg-particle-rise {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 0.9;
+    }
+
+    70% {
+        transform: translateY(-80px) scale(0.6);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: translateY(-120px) scale(0.3);
+        opacity: 0;
+    }
 }
 
 .egg-hatch-stats {
@@ -2747,9 +4368,58 @@ h3 {
     line-height: 1.6;
 }
 
-/* âœ… FIN DES STYLES D'Ã‰CLOSION */
+/* Variantes Shiny / Légendaire : fonds festifs, titre reste doré avec ombre */
+#eggHatchContent.shiny {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 25%, #ffd700 50%, #ffed4e 75%, #ffd700 100%) !important;
+    background-size: 200% 200%;
+    animation: shiny-sparkle 2s ease-in-out infinite, gradient-shift 3s ease infinite;
+    border: 2px solid #ffd700;
+    color: #1e293b !important;
+}
 
-/* âœ… STYLES POUR LE MODAL DE GESTION â€” Carte compacte, sans scroll */
+#eggHatchContent.shiny .egg-hatch-title {
+    color: #b45309 !important;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#eggHatchContent.shiny h3,
+#eggHatchContent.shiny .egg-hatch-stats .creature-stats {
+    color: #1e293b !important;
+}
+
+#eggHatchContent.shiny .egg-hatch-stats {
+    background: rgba(255, 255, 255, 0.4) !important;
+    color: #1e293b !important;
+}
+
+#eggHatchContent.legendary {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffd60a 100%) !important;
+    box-shadow:
+        0 0 0 1px rgba(255, 215, 0, 0.3),
+        0 0 60px rgba(255, 223, 128, 0.5),
+        0 0 40px rgba(255, 193, 7, 0.8) !important;
+    animation: legendary-glow 2s ease-in-out infinite alternate;
+    color: #1e293b !important;
+}
+
+#eggHatchContent.legendary .egg-hatch-title {
+    color: #b45309 !important;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#eggHatchContent.legendary h3,
+#eggHatchContent.legendary .egg-hatch-stats .creature-stats {
+    color: #1e293b !important;
+}
+
+#eggHatchContent.legendary .egg-hatch-stats {
+    background: rgba(255, 255, 255, 0.35) !important;
+    color: #1e293b !important;
+}
+
+/* ✅ FIN DES STYLES D'ÉCLOSION */
+
+/* ✅ STYLES POUR LE MODAL DE GESTION — Carte compacte, sans scroll */
 #creatureModal .stats-content {
     max-width: 720px;
     max-height: 88vh;
@@ -2818,6 +4488,7 @@ h3 {
     min-width: 0;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     max-height: calc(88vh - 60px);
 }
 
@@ -2867,7 +4538,7 @@ h3 {
 .creature-modal-stats-box .stat-iv-tooltip {
     cursor: help;
     border: none;
-    transition: all 0.2s;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s, filter 0.2s;
 }
 
 .creature-modal-stats-box .stat-iv-tooltip:hover {
@@ -2907,25 +4578,30 @@ h3 {
 }
 
 .creature-modal-info-box {
-    background: #f8fafc;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border-left: 3px solid #667eea;
+    background: var(--surface-light-alt, #f5f5f4);
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 4px solid var(--border-accent, #a3a3a3);
+    transition: var(--transition-fast, 0.15s ease);
 }
 
 .creature-modal-info-box h5 {
-    margin: 0 0 4px 0;
-    color: #667eea;
+    margin: 0 0 6px 0;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 800;
+}
+
+.creature-modal-move-box .creature-modal-move-title {
+    margin: 0 0 6px 0;
 }
 
 .creature-modal-info-box p,
 .creature-modal-info-box .modal-move-details {
     margin: 0;
     font-size: 12px;
-    line-height: 1.35;
+    line-height: 1.4;
 }
 
 .modal-move-details {
@@ -2933,37 +4609,43 @@ h3 {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    color: var(--text-on-light, #1a1a1a);
 }
 
-.move-name {
-    font-weight: bold;
-    font-size: 13px;
+/* Pillule du move : couleur = type, forme pill (chartre design) */
+.move-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    border: 2px solid transparent;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.08));
 }
 
 .move-category {
-    font-style: italic;
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .move-category.physical {
-    background-color: #dc2626;
-    color: white;
-    font-weight: 800;
-    font-style: normal;
+    background: var(--accent-red, #ef4444);
+    color: var(--text-on-dark, #fafafa);
 }
 
 .move-category.special {
-    background-color: #2563eb;
-    color: white;
-    font-weight: 800;
-    font-style: normal;
+    background: var(--accent-blue, #3b82f6);
+    color: var(--text-on-dark, #fafafa);
 }
 
 .move-power {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-on-light-tertiary, #525252);
 }
 
 .creature-modal-info {
@@ -2998,13 +4680,24 @@ h3 {
     border-top: 1px solid #e5e7eb;
     margin-top: 4px;
     flex-shrink: 0;
+    overflow-x: hidden;
 }
 
 .creature-modal-actions .btn {
-    flex: 1;
-    min-width: 90px;
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+    max-width: 100%;
     font-size: 12px;
     padding: 8px 10px;
+    box-sizing: border-box;
+    white-space: normal;
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .creature-modal-actions .btn {
+        flex-basis: 100%;
+    }
 }
 
 /* Objet tenu dans le modal */
@@ -3017,8 +4710,33 @@ h3 {
     font-size: 9px !important;
 }
 
-/* âœ… FIN DES STYLES DE GESTION */
-/* âœ… SÃ‰LECTEURS MODIFIÃ‰S pour inclure Stockage et Pension */
+/* Fix de contraste pour les infos du modal (Talent, Ultime) */
+.creature-modal-info {
+    background: rgba(30, 41, 59, 0.9) !important;
+    color: #f1f5f9 !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.creature-modal-info div {
+    color: #1c334b !important;
+    font-size: 13px !important;
+    line-height: 1.4;
+}
+
+.creature-modal-info strong {
+    color: #fbbf24 !important;
+    /* Amber-400 (Or) pour les labels */
+    font-weight: 800;
+}
+
+/* ✅ FIN DES STYLES DE GESTION */
+/* ✅ SÉLECTEURS MODIFIÉS pour inclure Stockage et Pension */
 #teamList,
 #storageList,
 #pensionList {
@@ -3028,7 +4746,7 @@ h3 {
     margin-bottom: 15px;
 }
 
-/* On force la grille de l'Ã©quipe Ã  3 colonnes fixes */
+/* On force la grille de l'équipe à 3 colonnes fixes */
 #teamList {
     grid-template-columns: repeat(3, 1fr);
 }
@@ -3045,7 +4763,9 @@ h3 {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    transition: all 0.2s ease;
+    overflow: hidden;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 #teamList .creature-card:hover,
@@ -3053,22 +4773,62 @@ h3 {
 #pensionList .creature-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    background: var(--bg-secondary, #7a614e) !important;
 }
 
-/* Styles spÃ©cifiques (actifs, KO) - s'appliquent surtout Ã  teamList */
+/* Styles spécifiques (actifs, KO) - s'appliquent surtout à teamList */
 #teamList .creature-card.active {
     border-color: #22c55e;
     background: #e0f8e9;
     box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
 }
 
-#teamList .creature-card.fainted {
-    filter: grayscale(100%);
-    opacity: 0.6;
-    background: #f0f0f0;
+#teamList .creature-card.fainted,
+#storageList .creature-card.fainted,
+#pensionList .creature-card.fainted {
+    filter: grayscale(100%) brightness(0.7) !important;
+    opacity: 0.5 !important;
+    background: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    cursor: not-allowed !important;
 }
 
-/* Le reste des styles de slot est inchangÃ© */
+#teamList .creature-card.fainted img,
+#storageList .creature-card.fainted img,
+#pensionList .creature-card.fainted img {
+    filter: grayscale(100%) opacity(0.7) !important;
+}
+
+/* Curseurs : indiquer que la carte est déplaçable */
+#teamList .creature-card {
+    cursor: grab;
+}
+
+#teamList .creature-card:active {
+    cursor: grabbing;
+}
+
+#teamList .creature-card.team-card-dragging {
+    cursor: grabbing;
+    opacity: 0.5;
+}
+
+/* Zone de dépôt : feedback clair */
+#teamList .creature-card.team-drag-over {
+    box-shadow: inset 0 0 0 3px var(--accent-gold-dark, #f59e0b);
+    background: #fffef7 !important;
+    transform: scale(1.02);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* Dépôt sur emplacement vide */
+#teamList .team-slot-empty.team-drag-over {
+    background: rgba(245, 158, 11, 0.2) !important;
+    border-color: var(--accent-gold-dark, #f59e0b);
+    border-style: solid;
+}
+
+/* Le reste des styles de slot est inchangé */
 .team-slot-sprite {
     width: 64px;
     height: 64px;
@@ -3119,9 +4879,9 @@ h3 {
     cursor: default;
 }
 
-/* âœ… FIN DES NOUVEAUX STYLES */
+/* ✅ FIN DES NOUVEAUX STYLES */
 
-/* âœ… NOUVEAUX STYLES POUR LE RÃ‰SUMÃ‰ DES TALENTS */
+/* ✅ NOUVEAUX STYLES POUR LE RÉSUMÉ DES TALENTS */
 
 /* Conteneur principal */
 #activeTalentsDisplay {
@@ -3156,7 +4916,7 @@ h3 {
     border: 2px solid #3b3b3b !important;
     background: #3b3b3b !important;
     color: #fff !important;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .talent-chip:hover {
@@ -3180,7 +4940,7 @@ h3 {
     margin-top: 5px;
 }
 
-/* Couleurs basÃ©es sur la raretÃ© du talent */
+/* Couleurs basées sur la rareté du talent */
 .talent-chip.epic {
     border-color: #9333ea;
     color: #9333ea;
@@ -3189,54 +4949,79 @@ h3 {
 .talent-chip.legendary {
     border-color: #ffd700;
     color: #b45309;
-    /* Couleur foncÃ©e pour le texte sur fond clair */
+    /* Couleur foncée pour le texte sur fond clair */
 }
 
-/* âœ… FIN DES NOUVEAUX STYLES */
+/* ✅ FIN DES NOUVEAUX STYLES */
 
 
 
 
-/* Le nouveau HUD */
-.battle-hud {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 10px;
-    margin-bottom: 10px;
-}
 
-.hud-player,
-.hud-enemy {
-    position: relative;
-    /* Pour le bouton ultime */
-}
-
-/* On rÃ©-applique le style du bouton ultime pour le HUD */
-.hud-player .ultimate-btn {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-}
 
 .hud-stats {
-    font-size: 14px;
-    font-weight: 800;
-    color: #fff !important;
-    margin-top: 10px;
+    margin-top: 8px;
     display: flex;
-    gap: 15px;
     justify-content: center;
+    gap: 8px;
 }
 
-.hud-stats span {
+.hud-stat {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 4px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    font-family: 'Outfit', sans-serif;
+    min-width: 56px;
+    /* même largeur pour toutes les stats */
+}
+
+.hud-stat-pill {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 3px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-align: center;
+    color: #0f172a;
+    background: linear-gradient(135deg, #e5f8ff, #bfdbfe);
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.35);
+}
+
+/* Couleurs de pills alignées sur le header (ATK / ATK SP / DEF / DEF SP / SPD) */
+.hud-stats .hud-stat:nth-child(1) .hud-stat-pill {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    /* ATK - orange comme headerStatAtk */
+}
+
+.hud-stats .hud-stat:nth-child(2) .hud-stat-pill {
+    background: linear-gradient(135deg, #f472b6, #ec4899);
+    /* ATK SP - rose comme headerStatSpAtk */
+}
+
+.hud-stats .hud-stat:nth-child(3) .hud-stat-pill {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    /* DEF - bleu comme headerStatDef */
+}
+
+.hud-stats .hud-stat:nth-child(4) .hud-stat-pill {
+    background: linear-gradient(135deg, #6ee7b7, #10b981);
+    /* DEF SP - vert comme headerStatSpDef */
+}
+
+.hud-stats .hud-stat:nth-child(5) .hud-stat-pill {
+    background: linear-gradient(135deg, #a855f7, #8b5cf6);
+    /* SPD - violet comme headerStatSpd */
+}
+
+.hud-stat-value {
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #f9fafb;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
 }
 
 
@@ -3246,7 +5031,7 @@ h3 {
     display: none;
 }
 
-/* âœ… FIN DES MODIFICATIONS DE SCÃˆNE */
+/* ✅ FIN DES MODIFICATIONS DE SCÈNE */
 
 /* --- COLONNE DROITE (EXTRAS) --- */
 
@@ -3256,7 +5041,7 @@ h3 {
     background: #947864 !important;
     border-left: 4px solid #5d4a3e !important;
     padding: 0 !important;
-    overflow: hidden;
+    overflow-y: auto;
     position: relative;
 }
 
@@ -3286,7 +5071,7 @@ h3 {
     border: 2px solid #3b3b3b !important;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.1s ease, opacity 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
     position: relative;
     box-shadow: 0 3px 0 #3b3b3b;
     text-transform: uppercase;
@@ -3310,7 +5095,7 @@ h3 {
     top: 2px;
     right: 2px;
     border: 2px solid white;
-    /* Petit contour blanc pour dÃ©tacher */
+    /* Petit contour blanc pour détacher */
 }
 
 /* Zone de contenu des onglets */
@@ -3340,7 +5125,7 @@ h3 {
     }
 }
 
-/* Sous-onglets de la boutique (Ã‰picerie, Jetons...) */
+/* Sous-onglets de la boutique (Épicerie, Jetons...) */
 .sub-tabs-container {
     display: flex;
     gap: 5px;
@@ -3364,17 +5149,195 @@ h3 {
     transform: translateY(2px) !important;
 }
 
+/* =========================================
+   ONGLET BOUTIQUE — Même modèle que Quêtes / Arènes / Sac
+   Cartes claires (blanc cassé), textes sombres, bordures discrètes
+   ========================================= */
+
+#boutiqueTab .sub-tabs-container {
+    border-bottom-color: var(--border-light, #e7e5e4) !important;
+}
+
+#boutiqueTab .sub-tab-btn {
+    background: var(--surface-light, #fafaf9) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05)) !important;
+}
+
+#boutiqueTab .sub-tab-btn:hover {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    border-color: var(--accent-gold-dark, #f59e0b) !important;
+}
+
+#boutiqueTab .sub-tab-btn.active {
+    background: var(--accent-gold-dark, #f59e0b) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border-color: var(--accent-gold-darker, #d97706) !important;
+    box-shadow: 0 2px 0 var(--accent-gold-darker, #d97706) !important;
+}
+
+#boutiqueTab .shop-wallet {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+
+#boutiqueTab .shop-intro {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#boutiqueTab h3,
+#boutiqueTab h4 {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+/* Cartes boutique : fond clair, bordure gauche accent */
+#boutiqueTab .shop-item,
+#boutiqueTab .upgrade-card {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    border-left: 5px solid var(--accent-gold-dark, #f59e0b) !important;
+    border-bottom-width: 2px !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06)) !important;
+}
+
+#boutiqueTab .shop-item:hover,
+#boutiqueTab .upgrade-card:hover {
+    background: var(--surface-light-alt, #f5f5f4) !important;
+    border-color: var(--border-light, #e7e5e4) !important;
+    border-left-color: var(--accent-gold-dark, #f59e0b) !important;
+    box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.08)) !important;
+}
+
+#boutiqueTab .shop-item-name,
+#boutiqueTab .upgrade-title {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#boutiqueTab .shop-item-description,
+#boutiqueTab .shop-item-desc,
+#boutiqueTab .upgrade-desc,
+#boutiqueTab .upgrade-description {
+    color: var(--text-on-light-secondary, #404040) !important;
+}
+
+#boutiqueTab .shop-item-cost,
+#boutiqueTab .upgrade-cost {
+    color: var(--accent-gold-darker, #d97706) !important;
+}
+
+#boutiqueTab .shop-buy-btn {
+    background: var(--accent-green, #22c55e) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border: 2px solid var(--accent-green-dark, #16a34a) !important;
+    box-shadow: 0 3px 0 var(--accent-green-darker, #15803d) !important;
+}
+
+#boutiqueTab .shop-buy-btn:hover:not(:disabled) {
+    background: var(--accent-green-dark, #16a34a) !important;
+    box-shadow: 0 2px 0 var(--accent-green-darker, #15803d) !important;
+}
+
+#boutiqueTab .shop-buy-btn:disabled {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    color: var(--text-on-light-muted, #737373) !important;
+    border-color: var(--border-light, #e7e5e4) !important;
+    box-shadow: none !important;
+}
+
+#boutiqueTab .upgrade-btn {
+    background: var(--accent-green, #22c55e) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+    border: 2px solid var(--accent-green-dark, #16a34a) !important;
+}
+
+#boutiqueTab .upgrade-btn:disabled {
+    background: var(--surface-light-hover, #e7e5e4) !important;
+    color: var(--text-on-light-muted, #737373) !important;
+    border-color: var(--border-light, #e7e5e4) !important;
+}
+
+/* Recycler : cartes claires */
+#boutiqueTab .recycler-header {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+#boutiqueTab .recycler-header .essence-count {
+    color: var(--accent-gold-darker, #d97706);
+}
+
+#boutiqueTab .recycler-item,
+#boutiqueTab .dust-shop-item {
+    background: var(--surface-light, #fafaf9) !important;
+    border: 2px solid var(--border-light, #e7e5e4) !important;
+    color: var(--text-on-light, #1a1a1a) !important;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05)) !important;
+}
+
+#boutiqueTab .recycler-item-name,
+#boutiqueTab .dust-shop-item .shop-item-name {
+    color: var(--text-on-light, #1a1a1a) !important;
+}
+
+#boutiqueTab .recycler-btn {
+    background: var(--accent-gold-dark, #f59e0b) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+}
+
+#boutiqueTab .recycler-btn:hover {
+    background: var(--accent-gold-darker, #d97706) !important;
+}
+
+#boutiqueTab .dust-shop-item .shop-buy-btn {
+    background: var(--accent-gold-dark, #f59e0b) !important;
+    border-color: var(--accent-gold-darker, #d97706) !important;
+}
+
+#boutiqueTab .dust-shop-item .shop-buy-btn:hover:not(:disabled) {
+    background: var(--accent-gold-darker, #d97706) !important;
+}
+
+#boutiqueTab .recycler-list,
+#boutiqueTab .recycler-shop {
+    background: var(--surface-light-alt, #f5f5f4) !important;
+    border: 1px solid var(--border-light, #e7e5e4);
+    border-radius: 8px;
+}
+
+/* Not affordable : discret */
+#boutiqueTab .shop-item.not-affordable,
+#boutiqueTab .upgrade-card.not-affordable {
+    opacity: 0.85;
+    border-left-color: var(--border-light, #e7e5e4) !important;
+}
+
+#boutiqueTab .upgrade-card.maxed,
+#boutiqueTab .shop-item.maxed {
+    filter: grayscale(0.6);
+    opacity: 0.85;
+    border-left-color: var(--border-light, #e7e5e4) !important;
+}
+
 /* Grille des Upgrades et Objets */
 .upgrades-container,
 .shop-container,
 .items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     /* Cartes plus petites et adaptatives */
-    gap: 12px;
+    gap: 10px;
+    justify-content: center;
 }
 
-/* Style de la Carte (GÃ©nÃ©rique) */
+/* Style de la Carte (Générique) */
 .upgrade-card,
 .shop-item,
 .item-card {
@@ -3385,6 +5348,91 @@ h3 {
     padding: 12px !important;
     color: white !important;
     transition: transform 0.1s !important;
+}
+
+#teamrocketTab .team-rocket-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+#teamrocketTab {
+    background:
+        linear-gradient(rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.82)),
+        url("img/rocket-menu.png") !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+#teamrocketTab .tr-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+#teamrocketTab .tr-input-row input {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#teamrocketTab .tr-bank-card {
+    position: relative;
+}
+
+#teamrocketTab .tr-bank-gear-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 1px solid #334155;
+    background: #111827;
+    color: #cbd5e1;
+    cursor: pointer;
+}
+
+#teamrocketTab .tr-bank-options {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #334155;
+}
+
+#teamrocketTab .tr-bank-options.open {
+    display: block;
+}
+
+#rocketContractSelectList .rocket-contract-select-card {
+    overflow: hidden;
+}
+
+#rocketContractSelectList .rocket-contract-select-row {
+    display: grid;
+    grid-template-columns: auto 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
+#rocketContractSelectList .rocket-contract-select-meta {
+    min-width: 0;
+}
+
+#rocketContractSelectList .rocket-contract-select-meta .shop-item-name,
+#rocketContractSelectList .rocket-contract-select-meta .shop-item-description {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+    #teamrocketTab .tr-input-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .upgrade-card:hover,
@@ -3437,24 +5485,24 @@ h3 {
 
 /* Classe pour les images d'objets */
 .item-sprite-img {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     image-rendering: pixelated;
-    /* Garde le look rÃ©tro net */
+    /* Garde le look rétro net */
     filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.2));
     vertical-align: middle;
 }
 
 /* Ajustement pour l'inventaire */
 .inventory-slot .item-icon img {
-    width: 48px;
+    width: 40px;
     /* Un peu plus grand dans l'inventaire */
-    height: 48px;
+    height: 40px;
 }
 
 
-/* âœ… STYLES POUR LE SÃ‰LECTEUR DE ZONE */
-/* âœ… SÃ‰LECTEUR DE ZONE (Une seule ligne forcÃ©e) */
+/* ✅ STYLES POUR LE SÉLECTEUR DE ZONE */
+/* ✅ SÉLECTEUR DE ZONE (Une seule ligne forcée) */
 .zone-selector {
     display: flex;
     flex-direction: row;
@@ -3498,11 +5546,11 @@ h3 {
     color: #64748b;
     font-weight: 500;
 
-    /* Style de sÃ©paration */
+    /* Style de séparation */
     border-left: 2px solid #e2e8f0;
     padding-left: 15px;
     flex-shrink: 0;
-    /* EmpÃªche les infos d'Ãªtre Ã©crasÃ©es */
+    /* Empêche les infos d'être écrasées */
 }
 
 .zone-progress-bar {
@@ -3527,9 +5575,9 @@ h3 {
     margin-top: 4px;
 }
 
-/* âœ… FIN DES STYLES DE ZONE */
+/* ✅ FIN DES STYLES DE ZONE */
 
-/* âœ… AJOUTER CE CSS POUR LE "JUICE" DE COMBAT */
+/* ✅ AJOUTER CE CSS POUR LE "JUICE" DE COMBAT */
 @keyframes attack-lunge {
     0% {
         transform: translateX(0);
@@ -3544,12 +5592,12 @@ h3 {
     }
 }
 
-/* Le sprite du joueur (Ã  gauche) "fonce" vers la droite */
+/* Le sprite du joueur (à gauche) "fonce" vers la droite */
 #playerSprite.attack-lunge {
     animation: attack-lunge 0.3s ease-out;
 }
 
-/* L'ennemi (Ã  droite) "fonce" vers la gauche */
+/* L'ennemi (à droite) "fonce" vers la gauche */
 #enemySprite.attack-lunge {
     /* On utilise 'reverse' pour qu'il aille dans l'autre sens */
     animation: attack-lunge 0.3s ease-out reverse;
@@ -3571,11 +5619,11 @@ h3 {
     animation: take-hit 0.2s ease-in-out;
 }
 
-/* âœ… AJOUTER CE STYLE */
+/* ✅ AJOUTER CE STYLE */
 .tab-btn,
 #toggleIcon {
     position: relative;
-    /* NÃ©cessaire pour positionner le badge */
+    /* Nécessaire pour positionner le badge */
 }
 
 .notification-badge {
@@ -3599,7 +5647,7 @@ h3 {
     border-radius: 10px;
 }
 
-/* On rÃ©duit la taille des sprites pour ce modal */
+/* On réduit la taille des sprites pour ce modal */
 #zoneTierModalGrid .team-slot-sprite {
     width: 64px;
     height: 64px;
@@ -3618,21 +5666,21 @@ h3 {
     gap: 6px !important;
 }
 
-/* 2. La Carte : On rÃ©duit les marges internes */
+/* 2. La Carte : On réduit les marges internes */
 #storageList .creature-card {
     padding: 4px !important;
     min-height: 80px !important;
-    /* Hauteur rÃ©duite */
+    /* Hauteur réduite */
 }
 
-/* 3. L'Image (Sprite) : On passe de 48px Ã  32px */
+/* 3. L'Image (Sprite) : On passe de 48px à 32px */
 #storageList .team-slot-sprite {
     width: 36px !important;
     height: 36px !important;
     margin-bottom: 2px !important;
 }
 
-/* 4. Les Textes : On rÃ©duit la police pour que Ã§a rentre */
+/* 4. Les Textes : On réduit la police pour que ça rentre */
 #storageList .team-slot-name {
     font-size: 10px !important;
     margin-bottom: 1px !important;
@@ -3648,7 +5696,7 @@ h3 {
 #storageList .team-slot-info {
     font-size: 9px !important;
     letter-spacing: -0.5px;
-    /* Resserre un peu les caractÃ¨res */
+    /* Resserre un peu les caractères */
 }
 
 /* Cacher la barre d'XP dans le stockage pour gagner de la place (Optionnel) */
@@ -3657,17 +5705,17 @@ h3 {
     margin-top: 2px !important;
 }
 
-/* --- AJUSTEMENT SPÃ‰CIFIQUE PENSION --- */
+/* --- AJUSTEMENT SPÉCIFIQUE PENSION --- */
 
-/* Force les sprites de la pension Ã  48px */
+/* Force les sprites de la pension à 48px */
 #pensionList .team-slot-sprite {
     width: 48px !important;
     height: 48px !important;
     margin-bottom: 3px !important;
 }
 
-/* Optionnel : Ajuste la grille de la pension pour qu'elle soit adaptÃ©e Ã  cette taille */
-/* (Un peu plus large que le stockage compact pour aÃ©rer) */
+/* Optionnel : Ajuste la grille de la pension pour qu'elle soit adaptée à cette taille */
+/* (Un peu plus large que le stockage compact pour aérer) */
 #pensionList {
     grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)) !important;
 }
@@ -3727,38 +5775,84 @@ h3 {
     background: #5a67d8;
 }
 
+/* Bouton Synergies : uniquement le sprite, sans texte ni cadre */
+.synergy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.synergy-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.9;
+}
+
+.synergy-btn:active {
+    transform: scale(0.95);
+}
+
+.synergy-btn-sprite {
+    display: block;
+    width: 60px;
+    height: 32px;
+    object-fit: contain;
+}
+
 /* ======================================== */
-/* == CSS POUR FEEDBACK DE COMBAT (AJOUTÃ‰) == */
+/* == CSS POUR FEEDBACK DE COMBAT (AJOUTÉ) == */
 /* ======================================== */
 
 
-/* --- SCÃˆNE DE COMBAT (UnifiÃ©) --- */
+/* --- SCÈNE DE COMBAT (Unifié) --- */
 
-/* Le conteneur global */
+/* Le conteneur global : cadre fort + profondeur + lueur pour le mettre en avant */
 .battle-display {
-    height: 180px;
-    background: linear-gradient(to bottom, #78C850 0%, #78C850 60%, #E0E0E0 60%, #E0E0E0 100%) !important;
-    margin-bottom: 20px;
+    height: 360px;
+    /* Nouveau fond : décor pixel-art complet */
+    background:
+        linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent 40%),
+        url('img/background.png') center bottom / cover no-repeat !important;
+    margin-bottom: 24px;
     padding: 0 40px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    border-radius: 8px;
-    border: 3px solid #3b3b3b;
+    border-radius: 14px;
     position: relative;
     overflow: hidden;
-    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
+
+    /* Cadre "écran" : bordure épaisse + effet encadré */
+    border: 5px solid #2d2d28;
+    box-shadow:
+        inset 0 0 0 4px #4a4a42,
+        inset 0 4px 30px rgba(0, 0, 0, 0.25),
+        /* Assombrit légèrement le bas de la forêt pour une transition plus douce avec les HUDs */
+        inset 0 -5px 10px rgba(0, 0, 0, 0.3),
+        inset 0 -2px 20px rgba(0, 0, 0, 0.15),
+        0 0 0 2px #1a1a17,
+        0 8px 0 #1f1f1a,
+        0 0 40px rgba(120, 200, 80, 0.2),
+        0 0 80px rgba(251, 191, 36, 0.08);
 }
 
-.battle-display::before {
-    content: '';
-    position: absolute;
-    top: 55%;
-    left: -10%;
-    width: 120%;
-    height: 10px;
-    background: rgba(0, 0, 0, 0.1);
-    z-index: 1;
+/* Variante Tour de combat : fond spécifique */
+.combat-area:has(.zone-selector.tower-mode) .battle-display {
+    background:
+        linear-gradient(to top, rgba(0, 0, 0, 0.35), transparent 40%),
+        url('img/background-tower.png') center bottom / cover no-repeat !important;
+}
+
+/* Variante Arène : fond spécifique (classe ajoutée par updateCombatDisplayUI quand arenaState.active) */
+.battle-display.arena-background {
+    background:
+        linear-gradient(to top, rgba(0, 0, 0, 0.25), transparent 40%),
+        url('img/background-arena.png') center / cover no-repeat !important;
 }
 
 .creature-display {
@@ -3769,59 +5863,63 @@ h3 {
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    padding-bottom: 10px;
+    padding-bottom: 20px;
+    /* Espace pour que le bas du sprite soit sur la plateforme */
 }
 
-.sprite-platform {
-    position: absolute;
-    bottom: 5px;
-    width: 140px;
-    height: 40px;
-    background: radial-gradient(ellipse at center, #A8C898 0%, #70A070 100%);
-    border-radius: 50%;
-    border: 2px solid #3b3b3b;
-    z-index: 1;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+/* Position spécifique : léger décalage pour renforcer la profondeur */
+#enemySpriteContainer {
+    transform: translateY(-19px);
+    /* 3px plus haut qu'avant */
 }
 
-.sprite-platform.player {
-    left: 50%;
-    transform: translateX(-50%) skew(-10deg);
+#playerSpriteContainer {
+    transform: translateY(18px);
+    /* 6px plus bas pour l'ancrer davantage */
 }
 
-.sprite-platform.enemy {
-    left: 50%;
-    transform: translateX(-50%) skew(10deg);
-}
-
-/* L'image du PokÃ©mon */
+/* L'image du Pokémon */
 .battle-sprite {
     width: 144px;
     height: 144px;
     image-rendering: pixelated;
     position: relative;
     z-index: 2;
-    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0px 4px 2px rgba(0, 0, 0, 0.4));
+    animation: sprite-float 2s ease-in-out infinite;
     transition: transform 0.1s;
 }
 
+/* === AJUSTEMENTS POSITION SPRITES === */
+#playerSprite,
+#enemySprite {
+    position: relative;
+    top: -35px;
+    /* Ajustement hauteur */
+    z-index: 5;
+}
 
-/* OPTIMISATION : Style de base plus lisible et centrÃ© */
+#enemySprite {
+    left: -40px;
+    /* Décalage gauche */
+}
+
+
+/* OPTIMISATION : Style de base plus lisible et centré */
 /* OPTIMISATION : Style "Clean RPG" (Lisible et Fluide) */
 .floating-text {
     position: absolute;
     left: 50%;
-    /* CentrÃ© horizontalement, pas de scale */
+    /* Centré horizontalement, pas de scale */
     transform: translateX(-50%);
 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 20px;
-    /* Taille raisonnable */
+    font-size: 24px;
+    /* Taille augment�e pour meilleure visibilit� */
     font-weight: 700;
     pointer-events: none;
 
-    /* Ombre portÃ©e simple pour le contraste */
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    /* Ombre portée simple pour le contraste */
 
     z-index: 100;
     will-change: transform, opacity;
@@ -3830,7 +5928,7 @@ h3 {
     animation: float-fade 1s ease-out forwards;
 }
 
-/* NOUVELLE ANIMATION : MontÃ©e simple et fondu */
+/* NOUVELLE ANIMATION : Montée simple et fondu */
 @keyframes float-fade {
     0% {
         opacity: 1;
@@ -3857,26 +5955,31 @@ h3 {
 
 .ft-damage-player {
     color: #ff8a80;
+    font-size: 1.2em;
 }
 
 /* Rouge clair (fallback) */
 .ft-damage-physical {
     color: #ea580c;
+    font-size: 1.2em;
 }
 
-/* Orange â€” dÃ©gÃ¢ts physiques */
+/* Orange — dégâts physiques */
 .ft-damage-special {
     color: #7c3aed;
+    font-size: 1.2em;
 }
 
-/* Violet â€” dÃ©gÃ¢ts spÃ©ciaux */
+/* Violet — dégâts spéciaux */
 .ft-heal {
     color: #69f0ae;
+    font-size: 1.2em;
 }
 
 /* Vert menthe */
 .ft-status {
     color: #e040fb;
+    font-size: 1.2em;
 }
 
 /* Violet */
@@ -3886,7 +5989,6 @@ h3 {
     font-size: 24px;
     color: #ffca28;
     /* Or */
-    text-shadow: 0 0 3px #e65100, 1px 1px 2px black;
     z-index: 101;
 }
 
@@ -3973,10 +6075,10 @@ h3 {
     background: #9333ea;
 }
 
-/* --- NOUVEAU : Animation pour Prestige PrÃªt --- */
+/* --- NOUVEAU : Animation pour Prestige Prêt --- */
 @keyframes prestige-glow {
     from {
-        /* Une lueur dorÃ©e/jaune pour correspondre Ã  l'Ã©toile de prestige */
+        /* Une lueur dorée/jaune pour correspondre à l'étoile de prestige */
         box-shadow: 0 0 5px rgba(128, 208, 208, 0.2);
         border-color: #c1e3e3;
     }
@@ -3994,11 +6096,11 @@ h3 {
     animation: prestige-glow 1s ease-in-out infinite alternate;
 }
 
-/* Nouveau style pour le conteneur de synergies dans l'en-tÃªte */
+/* Nouveau style pour le conteneur de synergies dans l'en-tête */
 .synergy-container-header {
     display: flex;
     gap: 8px;
-    /* On enlÃ¨ve le fond gris et les bordures de l'ancien style */
+    /* On enlève le fond gris et les bordures de l'ancien style */
     background: transparent;
     padding: 0;
     border: none;
@@ -4010,14 +6112,14 @@ h3 {
     /* Curseur main */
     transition: transform 0.2s, box-shadow 0.2s;
     user-select: none;
-    /* EmpÃªche la sÃ©lection de texte */
+    /* Empêche la sélection de texte */
 }
 
 .synergy-badge:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     background-color: #f0f9ff;
-    /* LÃ©gÃ¨re teinte au survol */
+    /* Légère teinte au survol */
 }
 
 .synergy-badge:active {
@@ -4033,7 +6135,7 @@ h3 {
     border-radius: 8px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s, filter 0.2s;
     color: #3b3b3b !important;
     font-weight: 800;
 }
@@ -4076,76 +6178,148 @@ h3 {
 /* Grille pour la liste des synergies */
 .synergy-list-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
     max-height: 60vh;
     overflow-y: auto;
-    padding-right: 5px;
+    padding-right: 6px;
 }
 
-/* Carte individuelle de synergie */
+/* Carte individuelle de synergie (compacte) */
 .synergy-list-card {
-    background: #f5f5f5;
-    border: 1px solid #ddd;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 15px;
+    padding: 0;
     display: flex;
-    align-items: center;
-    gap: 15px;
-    opacity: 1;
-    /* GrisÃ© par dÃ©faut */
-    transition: all 0.3s ease;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
-/* Style quand la synergie est active */
-.synergy-list-card.active {
-    opacity: 1;
-    background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
-    border: 2px solid #0ea5e9;
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
-    transform: translateY(-2px);
+.synergy-list-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
-.synergy-list-icon {
-    font-size: 32px;
-    width: 50px;
-    height: 50px;
+/* Bandeau des icônes de types en tête de carte */
+.synergy-list-types {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 50%;
+    gap: 4px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid #e2e8f0;
+    min-height: 32px;
+}
+
+.synergy-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.synergy-type-badge .type-icon-img {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.synergy-list-card.active .synergy-list-types {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(22, 163, 74, 0.08) 100%);
+    border-bottom-color: rgba(34, 197, 94, 0.25);
 }
 
 .synergy-list-info {
     flex: 1;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
 .synergy-list-title {
-    font-weight: bold;
-    font-size: 16px;
-    color: #333;
-    margin-bottom: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    color: #334155;
     display: flex;
+    align-items: center;
     justify-content: space-between;
+    gap: 6px;
+}
+
+.synergy-list-active-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #16a34a;
+    background: rgba(34, 197, 94, 0.15);
+    padding: 2px 5px;
+    border-radius: 4px;
 }
 
 .synergy-list-desc {
-    font-size: 12px;
-    color: #666;
-    line-height: 1.4;
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.35;
 }
 
 .synergy-progress {
-    font-size: 11px;
-    font-weight: bold;
-    color: #888;
-    margin-top: 6px;
-    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px 6px;
+}
+
+.synergy-progress .type-icon-img {
+    width: 12px !important;
+    height: 12px !important;
+    vertical-align: middle !important;
 }
 
 .synergy-list-card.active .synergy-progress {
-    color: #0284c7;
+    color: #15803d;
+}
+
+.synergy-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin-top: 2px;
+    overflow: hidden;
+}
+
+.synergy-progress-fill {
+    height: 100%;
+    background: #94a3b8;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.synergy-list-card.active .synergy-progress-fill {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+/* Style quand la synergie est active */
+.synergy-list-card.active {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.15);
+}
+
+.synergy-list-card.active:hover {
+    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.2);
 }
 
 /* Styles pour le choix du Starter */
@@ -4154,7 +6328,7 @@ h3 {
     border-radius: 15px;
     padding: 20px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
     position: relative;
     overflow: hidden;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -4235,35 +6409,67 @@ h3 {
     font-size: 12px !important;
 }
 
-/* Styles pour les Buffs de Tour */
+/* Styles pour les Buffs de Tour — contraste fort (lisible) */
 .tower-buffs-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin-bottom: 15px;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.5);
+    gap: 6px;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 6px 8px;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     border-radius: 10px;
-    border: 1px dashed #667eea;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     animation: slideIn 0.3s ease;
+    color: #f8fafc;
+    max-width: 100%;
+}
+
+.tower-buffs-title {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #e2e8f0 !important;
+    margin-right: 6px;
+}
+
+.tower-buffs-empty {
+    font-size: 11px;
+    color: rgba(248, 250, 252, 0.7) !important;
+    font-style: italic;
 }
 
 .tower-buff-chip {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 15px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 999px;
     font-weight: bold;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+.tower-buff-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .buff-atk {
     background: #ffebee;
     color: #c62828;
     border: 1px solid #ffcdd2;
+}
+
+.buff-speed {
+    background: #e0f2f1;
+    color: #00695c;
+    border: 1px solid #b2dfdb;
 }
 
 .buff-def {
@@ -4290,41 +6496,44 @@ h3 {
     border: 1px solid #c8e6c9;
 }
 
-/* RaretÃ© des Reliques */
+/* Rareté des Reliques */
 .relic-card {
-    padding: 15px;
-    border-radius: 10px;
-    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    background: #3b3b3b !important;
     text-align: center;
     cursor: pointer;
     position: relative;
-    border: 3px solid transparent;
-    transition: transform 0.2s;
+    border: 2px solid #1a1a1a !important;
+    border-bottom: 4px solid #111 !important;
+    color: white !important;
+    transition: transform 0.1s !important;
+    font-size: 12px;
+    width: 140px;
+    box-sizing: border-box;
 }
 
 .relic-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border-color: #cbd5e1 !important;
 }
 
 .relic-common {
-    border-color: #bdc3c7;
-    background: linear-gradient(to bottom right, #ffffff, #f0f0f0);
+    border-left: 4px solid #9ca3af !important;
 }
 
 .relic-rare {
-    border-color: #3498db;
-    background: linear-gradient(to bottom right, #ffffff, #e1f5fe);
+    border-left: 4px solid #3b82f6 !important;
 }
 
 .relic-epic {
-    border-color: #9b59b6;
-    background: linear-gradient(to bottom right, #ffffff, #f3e5f5);
+    border-left: 4px solid #a855f7 !important;
 }
 
 .relic-legendary {
-    border-color: #f1c40f;
-    background: linear-gradient(to bottom right, #fffde7, #fff9c4);
-    box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+    border-left: 4px solid #f59e0b !important;
+    box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.1);
 }
 
 .relic-badge {
@@ -4355,19 +6564,96 @@ h3 {
     background: #f39c12;
 }
 
-/* --- STYLE DU MODE TOUR (AMÃ‰LIORÃ‰) --- */
+/* --- STYLE DU MODE TOUR (AMÉLIORÉ) --- */
 
-/* --- STYLE DU MODE TOUR (SOBRE & Ã‰PURÃ‰) --- */
+/* --- STYLE DU MODE TOUR (SOBRE & ÉPURÉ) --- */
+
+/* --- MENU PRINCIPAL (SAVE MANAGER) --- */
+.menu-btn {
+    background: #3b3b3b !important;
+    color: #fff !important;
+    border: 2px solid #1a1a1a !important;
+    border-bottom: 4px solid #111 !important;
+    border-radius: 8px !important;
+    padding: 12px 5px !important;
+    font-size: 12px;
+    font-weight: bold;
+    font-family: 'Outfit', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.menu-btn:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.menu-section-dark {
+    text-align: left;
+    background: #3b3b3b !important;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #1a1a1a !important;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.menu-section-dark span {
+    color: #fff !important;
+}
+
+.menu-danger-zone {
+    background: #451a1a !important;
+    border: 2px solid #7f1d1d !important;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+/* --- BOUTON DE SAUVEGARDE (JUICY) --- */
+.btn-save {
+    transition: background-color 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+    font-weight: bold;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-save:hover {
+    filter: brightness(1.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+}
+
+.btn-save:active {
+    filter: brightness(0.9);
+    transform: translateY(2px) scale(0.98);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+.btn-save-success {
+    background: #10b981 !important;
+    /* Vert vif type émeraude */
+    border-color: #059669 !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.6) !important;
+    transform: scale(1.05);
+    color: white !important;
+}
 
 .zone-selector.tower-mode {
     /* Fond : Un gris-bleu nuit profond et mat (Style "Slate") */
     background: #1e293b !important;
 
-    /* Bordure : TrÃ¨s fine et subtile, juste pour dÃ©finir la forme */
+    /* Bordure : Très fine et subtile, juste pour définir la forme */
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 10px !important;
 
-    /* Ombre : Douce et diffuse pour dÃ©tacher l'Ã©lÃ©ment du fond */
+    /* Ombre : Douce et diffuse pour détacher l'élément du fond */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
         0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 
@@ -4375,14 +6661,14 @@ h3 {
     display: flex !important;
     justify-content: center;
     align-items: center;
-    padding: 15px !important;
-    min-height: 60px;
+    padding: 8px 12px !important;
+    min-height: 38px;
 
     /* Pas d'animation qui clignote */
-    transition: all 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
 
-/* On cache proprement les Ã©lÃ©ments inutiles */
+/* On cache proprement les éléments inutiles */
 .zone-selector.tower-mode label,
 .zone-selector.tower-mode select,
 .zone-selector.tower-mode .zone-progress-bar {
@@ -4392,23 +6678,13 @@ h3 {
 /* Le Texte : Propre, lisible, moderne */
 .zone-selector.tower-mode .zone-info {
     color: #f8fafc !important;
-    /* Blanc cassÃ© (plus doux que #FFF) */
-
-    /* Police systÃ¨me moderne (sans-serif) */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-
     font-size: 16px !important;
     font-weight: 600 !important;
-    /* Semi-bold */
     letter-spacing: 1.5px;
-    /* Espacement des lettres pour l'Ã©lÃ©gance */
     text-transform: uppercase;
     margin: 0 !important;
-
-    /* Pas d'ombres de texte agressives */
-    text-shadow: none !important;
 }
-
 
 .squad-selected {
     border: 2px solid #22c55e !important;
@@ -4432,14 +6708,15 @@ h3 {
     align-items: center;
 }
 
-/* --- STYLE DES Å’UFS --- */
+/* --- STYLE DES ŒUFS --- */
 
 .egg-sprite {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     image-rendering: pixelated;
-    /* Garde le look rÃ©tro net */
+    /* Garde le look rétro net */
     margin: 0 auto 5px auto;
+    transform: translateX(-15px);
     display: block;
     transition: transform 0.3s ease;
     animation: egg-float 3s ease-in-out infinite;
@@ -4468,29 +6745,21 @@ h3 {
 
 /* Common (Vert/Beige de base) : Pas de filtre */
 
-/* Rare (Bleu) */
-.egg-filter-rare {
-    filter: hue-rotate(180deg) brightness(1.1);
-}
-
-/* Epic (Violet/Rose) */
-.egg-filter-epic {
-    filter: hue-rotate(280deg) saturate(1.2);
-}
-
-/* Legendary (DorÃ© Brillant) */
+/* Rare / Epic / Legendary : plus aucun filtre pour respecter exactement les couleurs des fichiers sources */
+.egg-filter-rare,
+.egg-filter-epic,
 .egg-filter-legendary {
-    filter: sepia(1) saturate(3) hue-rotate(10deg) brightness(1.1) drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+    filter: none;
 }
 
 /* --- STYLE DE LA CARTE (Rappel) --- */
 .ball-item {
-    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    background: transparent;
     padding: 15px;
     border-radius: 12px;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
+    box-shadow: none;
+    border: none;
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
     overflow: hidden;
@@ -4498,30 +6767,30 @@ h3 {
 
 .ball-item:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
 }
 
-/* Bordures colorÃ©es selon la raretÃ© (optionnel si vous voulez renforcer l'effet) */
+/* Bordures colorées selon la rareté (optionnel si vous voulez renforcer l'effet) */
 .ball-item.rarity-common {
-    border-bottom: 3px solid #b0bec5;
+    border-bottom: none;
 }
 
 .ball-item.rarity-rare {
-    border-bottom: 3px solid #3b82f6;
+    border-bottom: none;
 }
 
 .ball-item.rarity-epic {
-    border-bottom: 3px solid #a855f7;
+    border-bottom: none;
 }
 
 .ball-item.rarity-legendary {
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: none;
 }
 
 
 .custom-tooltip {
     display: none;
-    /* CachÃ© par dÃ©faut */
+    /* Caché par défaut */
     position: fixed;
     z-index: 10000;
     /* Au-dessus de tout */
@@ -4533,7 +6802,7 @@ h3 {
     font-size: 12px;
     max-width: 250px;
     pointer-events: none;
-    /* La souris passe au travers (trÃ¨s important) */
+    /* La souris passe au travers (très important) */
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     white-space: pre-line;
@@ -4549,41 +6818,41 @@ h3 {
     display: block;
 }
 
-/* --- STYLE COMPACT POUR LE POKÃ‰DEX --- */
+/* --- STYLE COMPACT POUR LE POKÉDEX --- */
 #pokedexList {
-    /* Des colonnes plus Ã©troites pour en mettre plus par ligne */
+    /* Des colonnes plus étroites pour en mettre plus par ligne */
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important;
     gap: 8px !important;
 }
 
 #pokedexList .creature-card {
     padding: 8px !important;
-    /* Moins de marge intÃ©rieure */
+    /* Moins de marge intérieure */
     min-height: auto !important;
     /* Hauteur flexible */
 }
 
-/* --- Synergies de Collection (Pokédex) --- */
-.collection-synergy-card {
+/* --- Bonus de collection (Pokédex) --- */
+.collection-bonus-card {
     transition: box-shadow 0.2s ease;
 }
 
-.collection-synergy-card:hover {
+.collection-bonus-card:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.collection-synergy-grid img {
+.collection-bonus-grid img {
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
 }
 
-.collection-synergy-grid .creature-card {
+.collection-bonus-grid .creature-card {
     min-height: auto;
     padding: 6px !important;
 }
 
-/* Nouvelle classe pour les petites icÃ´nes (remplace les Ã©mojis) */
+/* Nouvelle classe pour les petites icônes (remplace les émojis) */
 .icon-img {
     width: 16px;
     height: 16px;
@@ -4646,11 +6915,11 @@ h3 {
     border-radius: 7px;
     font-size: 11px;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     cursor: help;
     /* Curseur ? pour indiquer le tooltip */
 
-    /* Style par dÃ©faut (Neutre) */
+    /* Style par défaut (Neutre) */
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     color: #475569;
@@ -4662,17 +6931,17 @@ h3 {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-/* --- VARIANTES SELON RARETÃ‰ (Subtiles) --- */
+/* --- VARIANTES SELON RARETÉ (Subtiles) --- */
 .talent-chip.epic {
     background: #f3e8ff;
-    /* Violet trÃ¨s pÃ¢le */
+    /* Violet très pâle */
     border-color: #d8b4fe;
     color: #7e22ce;
 }
 
 .talent-chip.legendary {
     background: #fef9c3;
-    /* Jaune trÃ¨s pÃ¢le */
+    /* Jaune très pâle */
     border-color: #fde047;
     color: #b45309;
 }
@@ -4684,7 +6953,7 @@ h3 {
     margin-left: 4px;
     padding-left: 4px;
     border-left: 1px solid rgba(0, 0, 0, 0.1);
-    /* Petite sÃ©paration */
+    /* Petite séparation */
 }
 
 
@@ -4694,13 +6963,13 @@ h3 {
 .atb-bar-container {
     width: 100%;
     height: 8px;
-    /* On augmente un peu la hauteur pour Ãªtre sÃ»r de la voir */
+    /* On augmente un peu la hauteur pour être sûr de la voir */
     background: #1e293b;
     margin-top: 4px;
     border-radius: 3px;
     overflow: visible !important;
     border: 1px solid #000;
-    /* Petit bord pour bien dÃ©limiter */
+    /* Petit bord pour bien délimiter */
     position: relative;
     /* Important */
     z-index: 1;
@@ -4731,7 +7000,7 @@ h3 {
     /* Even smaller */
     /* Un peu plus haut, comme un petit bouton */
 
-    /* Fond "Vide" : Clair, comme le fond des cartes d'amÃ©lioration (#e3f2fd en version orange) */
+    /* Fond "Vide" : Clair, comme le fond des cartes d'amélioration (#e3f2fd en version orange) */
     background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
     border: 1px solid #ffb300;
     /* Bordure nette */
@@ -4743,12 +7012,12 @@ h3 {
     cursor: not-allowed;
     z-index: 10;
 
-    /* Ombre colorÃ©e douce */
+    /* Ombre colorée douce */
     box-shadow: 0 2px 5px rgba(255, 179, 0, 0.2);
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
-/* La barre de remplissage (DÃ©gradÃ© vif, comme les boutons d'achat) */
+/* La barre de remplissage (Dégradé vif, comme les boutons d'achat) */
 /* Barre Ultime (Orange) */
 .ult-rect-fill {
     height: 100%;
@@ -4773,18 +7042,17 @@ h3 {
     align-items: center;
     justify-content: center;
 
-    /* Texte foncÃ© pour contraste sur fond clair/orange */
+    /* Texte foncé pour contraste sur fond clair/orange */
     color: #e65100;
     font-size: 5px;
     font-weight: 300;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     z-index: 2;
-    text-shadow: none;
     /* Pas d'ombre noire, pour un look "flat" propre */
 }
 
-/* --- Ã‰TAT PRÃŠT (READY) --- */
+/* --- ÉTAT PRÊT (READY) --- */
 .ult-rect-btn.ready {
     cursor: pointer;
     border-color: #ff6f00;
@@ -4794,23 +7062,22 @@ h3 {
 }
 
 .ult-rect-btn.ready .ult-rect-fill {
-    /* Devient dorÃ© brillant */
+    /* Devient doré brillant */
     background: linear-gradient(135deg, #ffd700, #ffb300);
 }
 
 .ult-rect-btn.ready .ult-rect-content {
     color: #fff;
-    /* Texte blanc sur fond dorÃ© */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    /* Texte blanc sur fond doré */
 }
 
 .ult-rect-btn.ready:hover {
     transform: translateY(-2px);
-    /* Effet "LevÃ©e" au survol */
+    /* Effet "Levée" au survol */
     box-shadow: 0 4px 8px rgba(255, 160, 0, 0.5);
 }
 
-/* --- Ã‰TAT ACTIF (ACTIVE) --- */
+/* --- ÉTAT ACTIF (ACTIVE) --- */
 .ult-rect-btn.active {
     border-color: #ef4444;
 }
@@ -4825,16 +7092,16 @@ h3 {
     color: white;
 }
 
-/* FIX : EmpÃªcher le HUD de sauter quand un statut apparaÃ®t */
+/* FIX : Empêcher le HUD de sauter quand un statut apparaît */
 .status-icons-container {
-    /* 1. On rÃ©serve une hauteur fixe (taille d'un Ã©moji + un peu de marge) */
+    /* 1. On réserve une hauteur fixe (taille d'un émoji + un peu de marge) */
     height: 28px;
     min-height: 28px;
 
-    /* 2. On s'assure que Ã§a ne dÃ©borde pas */
+    /* 2. On s'assure que ça ne déborde pas */
     overflow: hidden;
 
-    /* 3. On centre proprement les icÃ´nes */
+    /* 3. On centre proprement les icônes */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4843,7 +7110,7 @@ h3 {
     /* 4. Petits ajustements visuels */
     margin-top: 4px;
     font-size: 18px;
-    /* Taille des Ã©mojis de statut */
+    /* Taille des émojis de statut */
 }
 
 /* --- UI MODE CAPTURE MANUEL --- */
@@ -4916,7 +7183,7 @@ h3 {
     border: 2px solid transparent;
     background: white;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s, box-shadow 0.2s, filter 0.2s;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     position: relative;
     overflow: hidden;
@@ -4949,6 +7216,186 @@ h3 {
     padding: 2px 6px;
     border-radius: 10px;
     font-weight: bold;
+}
+
+/* =========================================
+   MODAL DE CAPTURE — Même palette que l’éclosion (marron moka)
+   Fond sombre boisée, halo doré, balls avec hover prononcé, Fuir discret
+   ========================================= */
+
+#captureModal.show {
+    background: radial-gradient(ellipse 80% 70% at 50% 45%,
+            rgba(255, 248, 240, 0.15) 0%,
+            rgba(72, 62, 52, 0.5) 50%,
+            rgba(58, 50, 42, 0.92) 100%) !important;
+    backdrop-filter: blur(4px);
+}
+
+#captureModal .quest-completion-content {
+    background: linear-gradient(165deg, #5c5042 0%, #4a4035 45%, #3d352b 100%) !important;
+    border: 4px solid var(--bg-tertiary, #5d4a3e) !important;
+    border-radius: 12px !important;
+    color: #f1f5f9 !important;
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.2)), 0 6px 0 var(--bg-tertiary, #5d4a3e), 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+    max-width: 560px !important;
+    overflow: hidden;
+}
+
+/* Creature-select (expéditions) : même cadre que .stats-content / .modal-content */
+#creatureSelectModal .creature-select-content {
+    border: 4px solid var(--bg-tertiary, #5d4a3e) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.2)), 0 6px 0 var(--bg-tertiary, #5d4a3e), 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+#captureModal .quest-completion-title {
+    color: #fef3c7 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 800;
+}
+
+/* =========================================
+   MODAL FIN DE TOUR (towerCompletionModal)
+   Même design que le captureModal
+   ========================================= */
+
+#towerCompletionModal.show {
+    background: radial-gradient(ellipse 80% 70% at 50% 45%,
+            rgba(255, 248, 240, 0.15) 0%,
+            rgba(72, 62, 52, 0.5) 50%,
+            rgba(58, 50, 42, 0.92) 100%) !important;
+    backdrop-filter: blur(4px);
+}
+
+#towerCompletionModal .quest-completion-content {
+    background: linear-gradient(165deg, #5c5042 0%, #4a4035 45%, #3d352b 100%) !important;
+    border: 4px solid var(--bg-tertiary, #5d4a3e) !important;
+    border-radius: 12px !important;
+    color: #f1f5f9 !important;
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.2)), 0 6px 0 var(--bg-tertiary, #5d4a3e), 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+    max-width: 520px !important;
+}
+
+#towerCompletionModal .quest-completion-title {
+    color: #fef3c7 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 800;
+}
+
+#towerCompletionModal #towerCompletionInfo {
+    margin: 20px 0;
+    font-size: 16px;
+}
+
+#towerCompletionModal #towerCompletionInfo h2 {
+    color: #fef3c7;
+    margin-bottom: 8px;
+}
+
+#towerCompletionModal #towerCompletionRewards {
+    margin-top: 15px;
+}
+
+#towerCompletionModal #towerCompletionRewards>div {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 10px;
+    padding: 12px 16px;
+    border: 1px solid rgba(180, 155, 100, 0.35);
+    color: #fef9c3;
+}
+
+/* Le bouton de fermeture utilise les styles globaux .stats-close */
+
+/* Carte cible (Pokémon à capturer) */
+#captureModal .capture-target-card {
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(180, 155, 100, 0.15) !important;
+    border-radius: 14px;
+}
+
+#captureModal .capture-target-card [style*="font-weight:800"],
+#captureModal .capture-target-card>div:not(.capture-scene) {
+    color: #f8fafc !important;
+}
+
+#captureModal .capture-target-card .rarity-label {
+    color: #e2e8f0 !important;
+}
+
+#captureModal .capture-target-card [style*="color:#666"] {
+    color: #94a3b8 !important;
+}
+
+#captureModal .capture-sprite {
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+
+/* Grille des balls — hover très prononcé */
+#captureModal .balls-grid {
+    gap: 12px;
+}
+
+#captureModal .ball-select-btn {
+    background: rgba(92, 80, 66, 0.95) !important;
+    border: 1px solid rgba(180, 155, 100, 0.3) !important;
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+#captureModal .ball-select-btn [style*="font-weight:bold"] {
+    color: #f1f5f9 !important;
+}
+
+#captureModal .ball-select-btn [style*="color:#666"] {
+    color: #94a3b8 !important;
+}
+
+#captureModal .ball-select-btn:hover:not(:disabled) {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    border-color: rgba(180, 155, 100, 0.5) !important;
+}
+
+#captureModal .ball-select-btn:active:not(:disabled) {
+    transform: scale(1.02) translateY(-2px);
+}
+
+#captureModal .ball-select-btn:disabled {
+    opacity: 0.45;
+    filter: grayscale(0.9);
+}
+
+#captureModal .capture-chance-bar {
+    background: rgba(0, 0, 0, 0.35) !important;
+    border-radius: 4px;
+}
+
+#captureModal .ball-count-badge {
+    background: rgba(180, 155, 100, 0.2);
+    color: #fef3c7;
+    border: 1px solid rgba(180, 155, 100, 0.3);
+}
+
+/* Bouton Fuir — discret, secondaire (tons moka) */
+#captureModal .capture-flee-btn {
+    width: 100%;
+    margin-top: 20px !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    box-shadow: none !important;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+#captureModal .capture-flee-btn:hover {
+    color: #cbd5e1 !important;
+    border-color: rgba(148, 163, 184, 0.45) !important;
+    background: rgba(92, 80, 66, 0.3) !important;
 }
 
 /* --- UI MODULE AUTO-CATCHER (Style Porygon) --- */
@@ -5023,42 +7470,83 @@ h3 {
     align-items: stretch;
 }
 
+/* Variante intégrée au battle-display : on "monte" la barre dans la scène */
+.battle-display .combat-controls-wrapper {
+    position: absolute;
+    inset: auto 0 0 0;
+    bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 20px;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.combat-controls-right {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+}
+
+.combat-controls-left {
+    justify-content: flex-start;
+    position: relative;
+}
+
 /* Style de base des boutons */
 .cmd-btn {
-    border: none;
-    border-radius: 12px;
+    border-radius: 999px;
     font-weight: 700;
-    font-size: 11px;
+    font-size: 9px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #475569;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    color: #e5e7eb;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(148, 163, 184, 0.55);
     position: relative;
     overflow: hidden;
-    height: 100%;
-    min-height: 56px;
+    height: 32px;
+    min-width: 60px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    backdrop-filter: blur(6px);
+    opacity: 0.55;
 }
 
 .cmd-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    opacity: 0.98;
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.5);
 }
 
 .cmd-btn:active:not(:disabled) {
-    transform: translateY(0);
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.4);
 }
 
 .cmd-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.35;
     cursor: not-allowed;
     filter: grayscale(1);
+}
+
+/* Auto / Fuir : gardent leur couleur même hors combat */
+#autoSelectBtn.cmd-btn:disabled,
+#forfeitBtn.cmd-btn:disabled {
+    opacity: 0.8;
+    /* proche de l'état normal */
+    filter: none;
+    /* pas de désaturation */
 }
 
 .cmd-icon {
@@ -5069,32 +7557,277 @@ h3 {
 
 /* --- VARIANTES DE COULEURS --- */
 .cmd-btn.auto-active {
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-    color: #15803d;
-    border-color: #86efac;
+    background: rgba(34, 197, 94, 0.25);
+    color: #bbf7d0;
+    border-color: rgba(74, 222, 128, 0.7);
 }
 
 .cmd-btn.capture-off {
-    background: #f1f5f9;
-    color: #94a3b8;
+    background: rgba(15, 23, 42, 0.35);
+    color: #9ca3af;
 }
 
 .cmd-btn.capture-all {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    color: #b91c1c;
-    border-color: #fca5a5;
+    background: rgba(248, 113, 113, 0.35);
+    color: #fee2e2;
+    border-color: rgba(248, 113, 113, 0.7);
 }
 
 .cmd-btn.capture-target {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    color: #1d4ed8;
-    border-color: #93c5fd;
+    background: rgba(59, 130, 246, 0.35);
+    color: #dbeafe;
+    border-color: rgba(59, 130, 246, 0.7);
 }
 
 .cmd-btn.forfeit {
-    background: white;
-    border: 2px solid #fee2e2;
-    color: #ef4444;
+    background: rgba(239, 68, 68, 0.30);
+    border: 1px solid rgba(248, 113, 113, 0.75);
+    color: #fee2e2;
+}
+
+/* Bouton Fuir : quart de cercle parfaitement dans l'angle bas droit */
+#forfeitBtn.cmd-btn {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    right: -35px;
+    bottom: -35px;
+    border-radius: 50%;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 6px;
+}
+
+/* --- QUART DE CERCLE CONCENTRIQUE (bas-gauche) - REFACTORISÉ --- */
+.menu-angle-gauche {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    z-index: 100;
+}
+
+/* Base commune */
+.menu-angle-gauche .bouton-part {
+    position: absolute;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: none;
+    min-width: 0;
+    opacity: 0.85;
+}
+
+.menu-angle-gauche .bouton-part span {
+    font-size: 0;
+    color: transparent;
+    position: absolute;
+    pointer-events: none;
+}
+
+.menu-angle-gauche .bouton-part:hover:not(:disabled) {
+    opacity: 1;
+}
+
+/* --- BOUTON CAPTURE (ANNEAU) --- */
+.menu-angle-gauche .bouton-capture {
+    width: 120px;
+    height: 120px;
+    bottom: -60px;
+    left: -60px;
+    background-color: #636b76;
+    z-index: 1;
+}
+
+/* Label par défaut (ON) */
+.menu-angle-gauche .bouton-capture::after {
+    content: "ON";
+    position: absolute;
+    top: 17%;
+    right: 12%;
+    transform: rotate(45deg);
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    font-family: 'Outfit', sans-serif;
+    transition: font-size 0.3s ease;
+}
+
+/* État OFF */
+.menu-angle-gauche .bouton-capture.capture-off {
+    background-color: rgba(55, 65, 81, 0.7);
+}
+
+.menu-angle-gauche .bouton-capture.capture-off::after {
+    content: 'OFF';
+    right: 10%;
+    letter-spacing: 2px;
+}
+
+/* État CIBLE (Target) */
+.menu-angle-gauche .bouton-capture.capture-target {
+    background-color: rgba(59, 130, 246, 0.7);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+/* Hover Capture */
+.menu-angle-gauche .bouton-capture:hover {
+    transform: scale(1.2) !important;
+    transform-origin: bottom left;
+    z-index: 150;
+}
+
+.menu-angle-gauche .bouton-capture:hover::after {
+    font-size: 16px;
+}
+
+/* --- BOUTON AUTO (DISQUE) --- */
+.menu-angle-gauche .bouton-auto {
+    width: 64px;
+    height: 64px;
+    bottom: -32px;
+    left: -32px;
+    background-color: #3b8c6e;
+    z-index: 2;
+    clip-path: circle(50%);
+}
+
+.menu-angle-gauche .bouton-auto::after {
+    content: "A";
+    position: absolute;
+    top: 18%;
+    left: 55%;
+    font-size: 11px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    font-family: 'Outfit', sans-serif;
+}
+
+.menu-angle-gauche .bouton-auto.auto-active {
+    background-color: rgba(34, 197, 94, 0.7);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.5);
+}
+
+.menu-angle-gauche .bouton-auto:hover {
+    transform: scale(1.6);
+    transform-origin: bottom left;
+    z-index: 151;
+}
+
+/* --- GESTION DES SPRITES --- */
+
+/* Masquer le label texte (ON/OFF) si sprite présent */
+.menu-angle-gauche .bouton-capture.has-sprite::after {
+    content: '' !important;
+    font-size: 0 !important;
+}
+
+/* CAS 1 : Sprite Unique - Harmonisé avec le label "ON" (Top/Right) */
+.menu-angle-gauche .bouton-capture.has-sprite:not([data-count])::before {
+    content: '';
+    position: absolute;
+    top: -2%;
+    right: 22%;
+    /* Plus de translate complexe, on pose simplement */
+    width: 40px;
+    height: 40px;
+    background-image: var(--sprite-url);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    pointer-events: none;
+    z-index: 1;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+/* Hover Sprite Unique */
+.menu-angle-gauche .bouton-capture.has-sprite:not([data-count]):hover::before {
+    width: 45px;
+    height: 45px;
+    top: 18%;
+    right: 18%;
+    /* On garde le centrage relatif */
+    transform: scale(1.1);
+}
+
+/* CAS 2 : Deux Sprites (Multi) */
+.menu-angle-gauche .bouton-capture.has-sprite[data-count]::before {
+    content: '';
+    position: absolute;
+    top: 25%;
+    right: 55%;
+    width: 32px;
+    height: 32px;
+    background-image: var(--sprite-url);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    pointer-events: none;
+    z-index: 1;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+/* Second sprite via span */
+.menu-angle-gauche .bouton-capture.has-sprite[data-count] span::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -30px;
+    width: 32px;
+    height: 32px;
+    background-image: var(--sprite-url-2);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    pointer-events: none;
+    z-index: 1;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+/* Badge compteur pour Multi */
+.menu-angle-gauche .bouton-capture.has-sprite[data-count]::after {
+    content: '' attr(data-count) !important;
+    font-size: 10px !important;
+    position: absolute;
+    top: 15%;
+    right: 15%;
+    background: #3b82f6;
+    color: white;
+    font-weight: 900;
+    padding: 2px 5px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+    transform: none;
+    letter-spacing: normal;
+}
+
+/* Hover Double Sprite */
+.menu-angle-gauche .bouton-capture.has-sprite[data-count]:hover::before {
+    width: 48px;
+    height: 48px;
+    top: 20%;
+    right: 60%;
+}
+
+.menu-angle-gauche .bouton-capture.has-sprite[data-count]:hover span::before {
+    width: 48px;
+    height: 48px;
+    top: -70px;
+    right: -20px;
 }
 
 .cmd-btn.forfeit:hover {
@@ -5102,9 +7835,9 @@ h3 {
     border-color: #ef4444;
 }
 
-/* --- NOUVEAU SÃ‰LECTEUR DE CIBLE (GRID) --- */
+/* --- NOUVEAU SÉLECTEUR DE CIBLE (GRID) --- */
 
-/* Le Conteneur principal (CachÃ© par dÃ©faut) */
+/* Le Conteneur principal (Caché par défaut) */
 .target-grid-wrapper {
     display: none;
     background: #f8fafc;
@@ -5118,10 +7851,10 @@ h3 {
 
     /* Animation fluide */
     transform-origin: top;
-    transition: all 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
 
-/* Classe ajoutÃ©e par JS pour afficher */
+/* Classe ajoutée par JS pour afficher */
 .target-grid-wrapper.show {
     display: block !important;
     animation: slideOpen 0.3s ease-out;
@@ -5139,24 +7872,24 @@ h3 {
     }
 }
 
-/* La Grille elle-mÃªme */
+/* La Grille elle-même */
 .target-grid {
     display: grid;
     /* Magie CSS : Remplit la ligne avec autant de cases de 42px que possible */
     grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
     gap: 6px;
     max-height: 160px;
-    /* Scroll vertical si trop de pokÃ©mons */
+    /* Scroll vertical si trop de pokémons */
     overflow-y: auto;
     padding-right: 2px;
     /* Pour la scrollbar */
 }
 
-/* LE SLOT (Le bouton carrÃ© avec l'image) */
+/* LE SLOT (Le bouton carré avec l'image) */
 .target-slot {
     width: 100%;
     aspect-ratio: 1;
-    /* Force le carrÃ© parfait */
+    /* Force le carré parfait */
     background: white;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
@@ -5165,27 +7898,21 @@ h3 {
     justify-content: center;
     cursor: pointer;
     /* Main au survol */
-    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.1s cubic-bezier(0.4, 0, 0.2, 1), color 0.1s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.1s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1), filter 0.1s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
 }
 
 /* Survol */
 .target-slot:hover {
-    transform: scale(1.1);
+    transform: scale(1.2);
     border-color: #94a3b8;
     z-index: 10;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Ã‰tat SÃ‰LECTIONNÃ‰ (Bleu) */
-.target-slot.selected {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-    /* Aura bleue */
-}
 
-/* L'image du PokÃ©mon */
+
+/* L'image du Pokémon */
 .target-slot img {
     width: 32px;
     height: 32px;
@@ -5195,25 +7922,7 @@ h3 {
     /* Le clic traverse l'image pour atteindre le bouton */
 }
 
-/* Tooltip (Nom au survol) */
-.target-slot:hover::after {
-    content: attr(data-name);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(15, 23, 42, 0.9);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
-    white-space: nowrap;
-    pointer-events: none;
-    margin-bottom: 6px;
-    z-index: 20;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
+
 
 
 
@@ -5226,30 +7935,38 @@ h3 {
     border-radius: 4px;
     font-size: 11px;
     margin-left: 5px;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
 }
 
 /* UI Floating Text (Ressources) */
 .ui-floating-text {
     position: fixed;
-    /* Fixe par rapport Ã  l'Ã©cran, pas au parent */
+    /* Fixe par rapport à l'écran, pas au parent */
     font-weight: 800;
     font-size: 14px;
     pointer-events: none;
-    /* La souris passe Ã  travers */
+    /* La souris passe à travers */
     z-index: 10000;
     /* Au-dessus de tout (Header inclus) */
     animation: ui-float-up 1.5s ease-out forwards;
-    text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-    /* Contour blanc pour lisibilitÃ© */
+    /* Contour blanc pour lisibilité */
 }
 
-/* Couleurs spÃ©cifiques */
+/* Couleurs spécifiques */
 .ft-money {
     color: #16a34a;
 }
 
 /* Vert Dollar */
+.ft-bank {
+    color: #0ea5e9;
+}
+
+/* Bleu Banque */
+.ft-debt {
+    color: #ef4444;
+}
+
+/* Rouge Dette */
 .ft-token {
     color: #d97706;
 }
@@ -5260,6 +7977,15 @@ h3 {
 }
 
 /* Violet Shard */
+
+/* Sprite Shard en inline (pour coûts, UI prestige, etc.) */
+.shard-inline {
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    display: inline-block;
+    object-fit: contain;
+}
 
 @keyframes ui-float-up {
     0% {
@@ -5278,13 +8004,13 @@ h3 {
     }
 }
 
-/* 2. Le Badge lui-mÃªme (Rappel pour Ãªtre sÃ»r) */
+/* 2. Le Badge lui-même (Rappel pour être sûr) */
 .atb-stack-badge {
     position: absolute;
     right: 0px;
-    /* CollÃ© Ã  droite */
+    /* Collé à droite */
     top: -12px;
-    /* RemontÃ© au dessus de la barre */
+    /* Remonté au dessus de la barre */
     background: #ef4444;
     color: white;
     font-size: 10px;
@@ -5295,7 +8021,7 @@ h3 {
     /* Au dessus de tout */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     pointer-events: none;
-    /* Pour ne pas gÃªner les clics */
+    /* Pour ne pas gêner les clics */
 }
 
 @keyframes bounce {
@@ -5311,7 +8037,7 @@ h3 {
 
 /* --- MODAL LOGS : STYLE RPG CLAIR --- */
 
-/* 1. La BoÃ®te Principale */
+/* 1. La Boîte Principale */
 .log-modal-content {
     background: #1e293b;
     /* Gris-Bleu "Slate 800" (Standard UI) */
@@ -5323,17 +8049,16 @@ h3 {
     border-radius: 12px;
     /* Coins plus arrondis */
     overflow: hidden;
-    /* Pour que le header ne dÃ©passe pas */
+    /* Pour que le header ne dépasse pas */
     display: flex;
     flex-direction: column;
 }
 
-/* 2. En-tÃªte (Header) */
+/* 2. En-tête (Header) */
 .modal-header-logs {
-    background: #334155;
-    /* Un peu plus clair que le fond */
+    background: var(--surface-dark-alt);
     padding: 15px 20px;
-    border-bottom: 1px solid #475569;
+    border-bottom: 1px solid var(--border-dark);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -5342,8 +8067,8 @@ h3 {
 .modal-header-logs h2 {
     margin: 0;
     font-size: 18px;
-    color: #f1f5f9;
-    /* Blanc cassÃ© (trÃ¨s lisible) */
+    color: var(--text-on-dark);
+    /* Blanc cassé (très lisible) */
     font-weight: 700;
 }
 
@@ -5365,9 +8090,9 @@ h3 {
 .log-entry {
     padding: 6px 0;
     border-bottom: 1px solid #1e293b;
-    /* SÃ©parateur subtil */
+    /* Séparateur subtil */
     color: #cbd5e1;
-    /* Gris clair (Slate 300) - TrÃ¨s lisible */
+    /* Gris clair (Slate 300) - Très lisible */
     transition: background 0.2s;
 }
 
@@ -5396,10 +8121,10 @@ h3 {
     text-align: right;
 }
 
-/* CORRECTIF VISIBILITÃ‰ : On cible l'ID prÃ©cis pour Ãªtre prioritaire */
+/* CORRECTIF VISIBILITÉ : On cible l'ID précis pour être prioritaire */
 #logModal {
     display: none;
-    /* CachÃ© par dÃ©faut */
+    /* Caché par défaut */
     position: fixed;
     top: 0;
     left: 0;
@@ -5413,7 +8138,7 @@ h3 {
     justify-content: center;
 }
 
-/* Quand la classe 'show' est ajoutÃ©e via JS, on force l'affichage */
+/* Quand la classe 'show' est ajoutée via JS, on force l'affichage */
 #logModal.show {
     display: flex !important;
 }
@@ -5440,24 +8165,24 @@ h3 {
     /* 2. L'effet visuel (Silhouette) */
     filter: sepia(1) saturate(5) hue-rotate(-50deg) brightness(1.2) contrast(1.2) !important;
 
-    /* 3. La rÃ©duction physique */
+    /* 3. La réduction physique */
     transform: translateY(50px) scale(0) !important;
 
-    /* 4. L'opacitÃ© finale */
+    /* 4. L'opacité finale */
     opacity: 0 !important;
 
-    /* 5. LA CLÃ‰ DU SUCCÃˆS : On force la rÃ¨gle de transition */
-    /* Cela empÃªche toute autre rÃ¨gle 'transition: all' de casser notre dÃ©lai */
+    /* 5. LA CLÉ DU SUCCÈS : On force la règle de transition */
+    /* Cela empêche toute autre règle 'transition: all' de casser notre délai */
     transition:
         transform 0.45s ease-in,
         /* Mouvement fluide */
         filter 0.1s linear,
-        /* Changement couleur immÃ©diat */
+        /* Changement couleur immédiat */
         opacity 0.1s linear 0.35s !important;
-    /* Disparition retardÃ©e (FORCE) */
+    /* Disparition retardée (FORCE) */
 }
 
-/* 1. Ã‰tat par dÃ©faut (En l'air) : Pivot au CENTRE pour tourner rond */
+/* 1. État par défaut (En l'air) : Pivot au CENTRE pour tourner rond */
 .flying-ball {
     position: absolute;
     width: 48px;
@@ -5467,22 +8192,22 @@ h3 {
     /* Rotation propre pendant le lancer */
 }
 
-/* 2. Ã‰tat au sol : Pivot en BAS pour les secousses rÃ©alistes */
+/* 2. État au sol : Pivot en BAS pour les secousses réalistes */
 .flying-ball.grounded {
     transform-origin: 50% 90%;
     transform: scale(1);
 }
 
-/* Lancer en cloche "PrÃ©cision Chirurgicale" (0-20-40-60-80-100) */
+/* Lancer en cloche "Précision Chirurgicale" (0-20-40-60-80-100) */
 @keyframes ball-throw-arc {
 
-    /* 0% : DÃ‰PART (Main du dresseur, bas-gauche) */
+    /* 0% : DÉPART (Main du dresseur, bas-gauche) */
     0% {
         transform: translate(-100px, 180px) scale(1.5) rotate(-360deg);
         opacity: 1;
     }
 
-    /* 20% : MONTÃ‰E INITIALE (Rapide) */
+    /* 20% : MONTÉE INITIALE (Rapide) */
     20% {
         transform: translate(-70px, 50px) scale(1.4) rotate(-280deg);
     }
@@ -5492,12 +8217,12 @@ h3 {
         transform: translate(-30px, -35px) scale(1.3) rotate(-200deg);
     }
 
-    /* 60% : APOGÃ‰E (Le point le plus haut, la balle "plane") */
+    /* 60% : APOGÉE (Le point le plus haut, la balle "plane") */
     60% {
         transform: translate(-10px, -50px) scale(1.2) rotate(-120deg);
     }
 
-    /* 80% : CHUTE (AccÃ©lÃ©ration vers la cible) */
+    /* 80% : CHUTE (Accélération vers la cible) */
     80% {
         transform: translate(-5px, -25px) scale(1.1) rotate(-60deg);
     }
@@ -5508,12 +8233,12 @@ h3 {
     }
 }
 
-/* On garde ta durÃ©e de 15s et on utilise 'linear' car les points clÃ©s font dÃ©jÃ  la courbe */
+/* On garde ta durée de 15s et on utilise 'linear' car les points clés font déjà la courbe */
 .anim-throw {
     animation: ball-throw-arc 15s linear forwards;
 }
 
-/* Le Rebond (AjustÃ© pour le nouveau pivot) */
+/* Le Rebond (Ajusté pour le nouveau pivot) */
 @keyframes ball-bounce {
     0% {
         transform: translateY(0) scaleY(1);
@@ -5523,12 +8248,12 @@ h3 {
         transform: translateY(-40px) scaleY(0.9);
     }
 
-    /* S'Ã©tire en montant */
+    /* S'étire en montant */
     100% {
         transform: translateY(0) scaleY(1);
     }
 
-    /* S'Ã©crase un peu en atterrissant */
+    /* S'écrase un peu en atterrissant */
 }
 
 @keyframes ball-shake-left {
@@ -5573,7 +8298,7 @@ h3 {
     }
 }
 
-/* 3. SuccÃ¨s (Lock) */
+/* 3. Succès (Lock) */
 @keyframes catch-success-dim {
     0% {
         filter: brightness(1);
@@ -5608,7 +8333,7 @@ h3 {
     }
 }
 
-/* 4. Ã‰chec (Break) */
+/* 4. Échec (Break) */
 @keyframes catch-break {
     0% {
         transform: scale(1);
@@ -5714,11 +8439,11 @@ h3 {
 .modal-body {
     padding: 15px !important;
     background: #bec3c6 !important;
-    max-height: 80vh;
+    max-height: 55vh !important;
     overflow-y: auto;
 }
 
-/* RÃ©sumÃ© Temps */
+/* Résumé Temps */
 .offline-summary {
     background: #3b3b3b !important;
     padding: 15px !important;
@@ -5770,6 +8495,79 @@ h3 {
     letter-spacing: 0.5px;
 }
 
+.offline-incubation-panel {
+    margin: 0 15px 12px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #3b3b3b;
+    border: 2px solid #1a1a1a;
+}
+
+.offline-incubation-summary {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.offline-incubation-pill {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+}
+
+.offline-incubation-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.offline-incubation-column {
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.offline-incubation-subtitle {
+    font-size: 11px;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.offline-incubation-row {
+    display: flex;
+    justify-content: space-between;
+    color: #e5e7eb;
+    font-size: 12px;
+    padding: 2px 0;
+}
+
+.offline-incubation-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.offline-incubation-pokemon-chip {
+    background: #1f2937;
+    border: 1px solid #374151;
+    color: #e5e7eb;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+}
+
+.offline-incubation-empty {
+    color: #9ca3af;
+    font-size: 11px;
+}
+
 /* Liste des Objets (Scrollable) */
 .loot-scroll-area {
     padding: 0 15px;
@@ -5779,12 +8577,22 @@ h3 {
 .loot-item {
     display: flex;
     align-items: center;
-    background: #3b3b3b !important;
+    background: var(--surface-dark-alt, #292524) !important;
     padding: 10px;
     margin-bottom: 8px;
     border-radius: 8px;
-    border: 2px solid #1a1a1a !important;
-    color: #fff !important;
+    border: 2px solid var(--surface-dark, #1c1917) !important;
+    color: var(--text-on-dark, #fafafa) !important;
+}
+
+/* Noms et quantités lisibles sur fond sombre (rapport offline) */
+.loot-item .item-name,
+.loot-item .item-qty {
+    color: var(--text-on-dark, #fafafa) !important;
+}
+
+.loot-item .item-info {
+    color: var(--text-on-dark-secondary, #d4d4d4);
 }
 
 .poke-capture {
@@ -5809,7 +8617,7 @@ h3 {
     box-shadow: 0 4px 0 #3b3b3b !important;
 }
 
-/* ========== Professor Chen Narrative Engine (cohérent avec le jeu) ========== */
+/* ========== Professor Chen Narrative Engine (coh�rent avec le jeu) ========== */
 .narrative-overlay {
     position: fixed;
     inset: 0;
@@ -5829,7 +8637,7 @@ h3 {
     opacity: 1;
 }
 
-/* Quand Chen parle du bouton des stats, le header (stats) ne doit pas être flouté */
+/* Quand Chen parle du bouton des stats, le header (stats) ne doit pas �tre flout� */
 body.narrative-stats-visible .narrative-overlay {
     backdrop-filter: none;
 }
@@ -5888,7 +8696,7 @@ body.narrative-stats-visible .header {
     padding: 20px;
     align-items: flex-start;
     background: #f1f5f9 !important;
-    /* Fond trÃ¨s clair pour un contraste texte noir optimal */
+    /* Fond très clair pour un contraste texte noir optimal */
     border-radius: 8px;
     border: 3px solid #3b3b3b;
     margin-top: 20px;
@@ -5933,7 +8741,7 @@ body.narrative-stats-visible .header {
 }
 
 .narrative-speaker {
-    color: #854d0e !important;
+    color: #fbbf24 !important;
     font-weight: 800;
     font-size: 14px;
     margin-bottom: 8px;
@@ -5942,7 +8750,8 @@ body.narrative-stats-visible .header {
 }
 
 .narrative-text {
-    color: #3b3b3b !important;
+    color: #ffffff !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     line-height: 1.6;
     font-size: 15px;
     font-weight: 800;
@@ -6060,7 +8869,7 @@ body.narrative-stats-visible .header {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-/* Billion finale — EPIC FX */
+/* Billion finale � EPIC FX */
 .narrative-overlay.narrative-epic {
     background: rgba(0, 0, 0, 0.9);
 }
@@ -6093,7 +8902,6 @@ body.narrative-stats-visible .header {
     font-size: clamp(24px, 5vw, 48px);
     font-weight: 900;
     color: #fbbf24;
-    text-shadow: 0 0 30px rgba(251, 191, 36, 0.8);
     animation: narrative-pulse 0.5s ease-in-out infinite alternate;
 }
 
@@ -6137,7 +8945,7 @@ body.narrative-stats-visible .header {
     }
 }
 
-/* Billion — ugly reveal box */
+/* Billion � ugly reveal box */
 .narrative-overlay.narrative-reveal {
     background: rgba(0, 0, 0, 0.85);
 }
@@ -6161,4 +8969,786 @@ body.narrative-stats-visible .header {
 
 .narrative-ugly-stats {
     letter-spacing: 0.02em;
+}
+
+/* === MODAL DE S�LECTION DES CIBLES DE CAPTURE === */
+.capture-target-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.target-slot {
+    background: #f8fafc;
+    border: 3px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    position: relative;
+}
+
+.target-slot:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: #94a3b8;
+}
+
+/* État SÉLECTIONNÉ (Bordure verte) */
+.target-slot.selected {
+    border-color: #64ac64 !important;
+    /* Vert */
+    box-shadow: 0 0 0 1px rgba(100, 172, 100, 1) !important;
+}
+
+/* Suppression de l'indicateur "point vert" */
+.target-slot.selected::after {
+    content: none;
+}
+
+.target-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+
+
+
+
+
+/* ========================================
+   DESIGN SYSTEM - Imported from design-system.css
+   ======================================== */
+
+/**
+ * DESIGN SYSTEM - Règle 60-30-10 avec Contraste WCAG AAA
+ * 
+ * 60% : Fonds globaux (tons chauds marron/moka)
+ * 30% : Surfaces à haut contraste (très clair OU très foncé)
+ * 10% : Accents vibrants (or, vert, rouge, bleu)
+ */
+
+:root {
+    /* ========================================
+       60% - FONDS GLOBAUX (Backgrounds)
+       ======================================== */
+
+    /* Fonds principaux - Tons chauds pour reposer les yeux */
+    --bg-primary: #947864;
+    /* Marron principal (actuel) */
+    --bg-secondary: #7a614e;
+    /* Marron plus foncé */
+    --bg-tertiary: #5d4a3e;
+    /* Marron très foncé */
+    --bg-warm: #bec3c6;
+    /* Gris-beige clair */
+
+    /* ========================================
+       30% - SURFACES (Cards, Modals, Panels)
+       ======================================== */
+
+    /* Surfaces CLAIRES - Pour texte FONCÉ */
+    --surface-light: #fafaf9;
+    /* Blanc cassé (stone-50) - Ratio 20.35:1 avec noir */
+    --surface-light-alt: #f5f5f4;
+    /* Crème (stone-100) - Ratio 18.67:1 avec noir */
+    --surface-light-hover: #e7e5e4;
+    /* Stone-200 - Pour hover */
+
+    /* Surfaces FONCÉES - Pour texte CLAIR */
+    --surface-dark: #1c1917;
+    /* Anthracite (stone-900) - Ratio 18.23:1 avec blanc */
+    --surface-dark-alt: #292524;
+    /* Gris foncé (stone-800) - Ratio 14.89:1 avec blanc */
+    --surface-dark-hover: #44403c;
+    /* Stone-700 - Pour hover */
+
+    /* ========================================
+       10% - ACCENTS (Actions & États)
+       ======================================== */
+
+    /* OR/JAUNE - Prestige, Légendaire, Récompenses */
+    --accent-gold: #fbbf24;
+    /* Amber-400 - Vif et chaleureux */
+    --accent-gold-dark: #f59e0b;
+    /* Amber-500 - Pour hover */
+    --accent-gold-darker: #d97706;
+    /* Amber-600 - Pour active/pressed */
+    --accent-gold-light: #fde68a;
+    /* Amber-200 - Pour backgrounds */
+
+    /* VERT - Succès, Évolutions, Améliorations */
+    --accent-green: #22c55e;
+    /* Green-500 - Éclatant */
+    --accent-green-dark: #16a34a;
+    /* Green-600 - Pour hover */
+    --accent-green-darker: #15803d;
+    /* Green-700 - Pour active/pressed */
+    --accent-green-light: #86efac;
+    /* Green-300 - Pour backgrounds */
+
+    /* ROUGE - Danger, Fermer, Annuler */
+    --accent-red: #ef4444;
+    /* Red-500 - Net et visible */
+    --accent-red-dark: #dc2626;
+    /* Red-600 - Pour hover */
+    --accent-red-darker: #b91c1c;
+    /* Red-700 - Pour active/pressed */
+    --accent-red-light: #fca5a5;
+    /* Red-300 - Pour backgrounds */
+
+    /* BLEU - Informations, Actions secondaires */
+    --accent-blue: #3b82f6;
+    /* Blue-500 - Pour boutons secondaires */
+    --accent-blue-dark: #2563eb;
+    /* Blue-600 - Pour hover */
+    --accent-blue-darker: #1d4ed8;
+    /* Blue-700 - Pour active/pressed */
+    --accent-blue-light: #93c5fd;
+    /* Blue-300 - Pour backgrounds */
+
+    /* ========================================
+       TEXTES avec Contraste Garanti
+       ======================================== */
+
+    /* Texte sur SURFACES CLAIRES */
+    --text-on-light: #1a1a1a;
+    /* Noir presque pur - Ratio 18.5:1 */
+    --text-on-light-secondary: #404040;
+    /* Gris très foncé - Ratio 12.6:1 */
+    --text-on-light-tertiary: #525252;
+    /* Gris foncé - Ratio 9.7:1 */
+    --text-on-light-muted: #737373;
+    /* Gris moyen - Ratio 7.1:1 (AAA large text) */
+
+    /* Texte sur SURFACES FONCÉES */
+    --text-on-dark: #fafafa;
+    /* Blanc cassé - Ratio 18.2:1 */
+    --text-on-dark-secondary: #d4d4d4;
+    /* Gris très clair - Ratio 12.1:1 */
+    --text-on-dark-tertiary: #a3a3a3;
+    /* Gris clair - Ratio 7.8:1 */
+    --text-on-dark-muted: #737373;
+    /* Gris moyen - Ratio 4.6:1 (AA) */
+
+    /* Texte sur FONDS MARRON (60%) */
+    --text-on-brown: #fafafa;
+    /* Blanc cassé pour lisibilité */
+    --text-on-brown-dark: #1a1a1a;
+    /* Noir pour zones claires */
+
+    /* ========================================
+       BORDURES & SÉPARATEURS
+       ======================================== */
+
+    --border-light: #e7e5e4;
+    /* Bordure sur fond clair */
+    --border-dark: #44403c;
+    /* Bordure sur fond foncé */
+    --border-accent: #a3a3a3;
+    /* Bordure neutre */
+
+    /* ========================================
+       OMBRES
+       ======================================== */
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.2);
+
+    /* ========================================
+       TRANSITIONS
+       ======================================== */
+
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+}
+
+/* ========================================
+   CLASSES UTILITAIRES
+   ======================================== */
+
+/* Surfaces */
+.surface-light {
+    background: var(--surface-light);
+    color: var(--text-on-light);
+}
+
+.surface-dark {
+    background: var(--surface-dark);
+    color: var(--text-on-dark);
+}
+
+/* Boutons d'action */
+.btn-primary {
+    background: var(--accent-gold);
+    color: var(--text-on-dark);
+    border: 2px solid var(--accent-gold-dark);
+    font-weight: 900;
+    transition: var(--transition-fast);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-gold-dark);
+    border-color: var(--accent-gold-darker);
+}
+
+.btn-success {
+    background: var(--accent-green);
+    color: var(--text-on-dark);
+    border: 2px solid var(--accent-green-dark);
+    font-weight: 900;
+    transition: var(--transition-fast);
+}
+
+.btn-success:hover:not(:disabled) {
+    background: var(--accent-green-dark);
+    border-color: var(--accent-green-darker);
+}
+
+.btn-danger {
+    background: var(--accent-red);
+    color: var(--text-on-dark);
+    border: 2px solid var(--accent-red-dark);
+    font-weight: 900;
+    transition: var(--transition-fast);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: var(--accent-red-dark);
+    border-color: var(--accent-red-darker);
+}
+
+.btn-secondary {
+    background: var(--accent-blue);
+    color: var(--text-on-dark);
+    border: 2px solid var(--accent-blue-dark);
+    font-weight: 800;
+    transition: var(--transition-fast);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--accent-blue-dark);
+    border-color: var(--accent-blue-darker);
+}
+
+/* Texte */
+.text-primary {
+    color: var(--text-on-light);
+}
+
+.text-secondary {
+    color: var(--text-on-light-secondary);
+}
+
+.text-muted {
+    color: var(--text-on-light-tertiary);
+}
+
+/* Bordures */
+.border-light {
+    border-color: var(--border-light);
+}
+
+.border-dark {
+    border-color: var(--border-dark);
+}
+
+
+/* ========================================
+   POKEDEX FIXES - Imported from pokedex-fixes.css
+   ======================================== */
+
+/* Fix for malformed arrow characters in sort buttons */
+.sort-btn.active::after {
+    content: " ";
+}
+
+.sort-btn.active.asc::after {
+    content: " ";
+}
+
+/* Additional Pokedex card improvements */
+.creature-card h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+
+/* ========================================
+   CAPTURE BUTTON SPRITES - Imported from capture-sprite-fix.css
+   ======================================== */
+
+/* Masquer le texte par défaut */
+
+
+/* === MODAL AUTO SETTINGS === */
+
+.auto-settings-btn {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    width: 24px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.auto-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1) rotate(90deg);
+}
+
+.auto-setting-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.auto-setting-item:hover {
+    background: #e8e8e8;
+}
+
+.auto-setting-item input[type=\"checkbox\"] {
+    margin-top: 2px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.auto-setting-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.auto-setting-label strong {
+    font-size: 15px;
+    color: #333;
+}
+
+.auto-setting-label small {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+}
+
+/* === TOGGLE SWITCH === */
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: '';
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked+.toggle-slider {
+    background-color: #4CAF50;
+}
+
+.toggle-switch input:checked+.toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* === COMPACT POPUPS (Auto Settings & Capture Target) === */
+
+/* Popup compact au lieu de modal plein écran */
+.compact-popup {
+    position: fixed;
+    background: rgba(30, 30, 30, 0.98);
+    border: 2px solid #d97706;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    padding: 0;
+    z-index: 1000;
+    display: none;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.compact-popup.show {
+    display: block;
+}
+
+/* Position près du bouton Auto (bas-gauche) */
+#autoSettingsModal.compact-popup {
+    bottom: 80px;
+    left: 20px;
+}
+
+/* Position près du bouton Capture (bas-gauche, un peu plus haut) */
+#captureTargetWrapper.compact-popup {
+    bottom: 80px;
+    left: 20px;
+}
+
+/* Header compact */
+.compact-popup .stats-header {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    padding: 12px 15px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.compact-popup .stats-header h2 {
+    font-size: 16px;
+    margin: 0;
+    color: white;
+}
+
+.compact-popup .stats-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 18px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.compact-popup .stats-close:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Contenu compact */
+.compact-popup .popup-content {
+    padding: 15px;
+    color: #e0e0e0;
+}
+
+.compact-popup p {
+    font-size: 12px;
+    color: #aaa;
+    margin: 10px 0;
+}
+
+/* Auto settings items compacts */
+.compact-popup .auto-setting-item {
+    padding: 10px;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 8px;
+}
+
+.compact-popup .auto-setting-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.compact-popup .auto-setting-label strong {
+    font-size: 13px;
+    color: #fff;
+}
+
+.compact-popup .auto-setting-label small {
+    font-size: 11px;
+    color: #aaa;
+}
+
+/* Toggle master compact */
+.compact-popup .master-toggle-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.compact-popup .master-toggle-section span {
+    font-weight: bold;
+    font-size: 14px;
+    color: #fff;
+}
+
+/* Capture target grid compact */
+.compact-popup .capture-target-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+    padding: 10px;
+}
+
+.compact-popup .target-slot {
+    width: 60px;
+    height: 60px;
+}
+
+/* =========================================
+   UTILITY CLASSES POUR MODALS (Nettoyage inline styles)
+   ========================================= */
+.modal-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.modal-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-menu-btn {
+    color: white;
+    padding: 15px 5px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    transition: transform 0.2s, filter 0.2s;
+}
+
+.modal-menu-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.modal-menu-btn.blue {
+    background: #3b82f6;
+}
+
+.modal-menu-btn.purple {
+    background: #8b5cf6;
+}
+
+.modal-menu-btn.green {
+    background: #10b981;
+}
+
+.modal-action-btn {
+    padding: 10px;
+    font-size: 11px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: filter 0.2s;
+}
+
+.modal-action-btn:hover {
+    filter: brightness(1.1);
+}
+
+.modal-action-btn.cyan {
+    background: #0dcaf0;
+    color: white;
+}
+
+.modal-action-btn.yellow {
+    background: #ffc107;
+    color: #333;
+}
+
+.modal-options-box {
+    text-align: left;
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+
+.modal-section-title {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.modal-option-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.modal-option-row:last-child {
+    margin-bottom: 0;
+}
+
+.modal-option-label {
+    font-size: 13px;
+    color: #334155;
+    font-weight: bold;
+}
+
+.modal-info-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 20px;
+    min-width: 50px;
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    cursor: pointer;
+}
+
+.modal-danger-box {
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.modal-reset-btn {
+    width: 100%;
+    font-size: 11px;
+    padding: 8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.modal-reset-btn:hover {
+    background: #dc2626;
+}
+
+/* --- OFFLINE PROGRESS BAR ANIMATION --- */
+.offline-progress-container {
+    width: 100%;
+    height: 28px;
+    background: #1e293b;
+    position: relative;
+    border-radius: 14px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border: 1px solid #475569;
+    margin-bottom: 20px;
+}
+
+.offline-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+    background-size: 200% 100%;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+    transition: width 0.1s linear;
+    border-radius: 14px;
+    animation: gradientMove 2s infinite linear;
+    position: relative;
+}
+
+.offline-progress-stripes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+    background-size: 40px 40px;
+    animation: progressStripes 1s linear infinite;
+    border-radius: 14px;
+}
+
+.offline-progress-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-size: 14px;
+    line-height: 28px;
+    color: #ffffff;
+    font-weight: 900;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 5px rgba(59, 130, 246, 0.8);
+    letter-spacing: 1px;
+    font-family: 'Outfit', sans-serif;
+    z-index: 2;
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: -100% 0;
+    }
+}
+
+@keyframes progressStripes {
+    0% {
+        background-position: 40px 0;
+    }
+
+    100% {
+        background-position: 0 0;
+    }
 }

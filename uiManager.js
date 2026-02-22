@@ -244,8 +244,8 @@ function getItemIconPath(itemKey) {
         return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/lucky-egg.png";
     }
 
-    // 3. Fallback : Si aucune image n'est définie
-    return `assets/items/${itemKey}.png`;
+    // 3. Fallback : sprite item générique hébergé (fiable sur GitHub Pages)
+    return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png";
 }
 
 /**
@@ -274,7 +274,7 @@ function getPokemonSpritePath(name, isShiny) {
     }
 
     // 3. Fallback ultime
-    return `assets/sprites/${name.toLowerCase()}.png`;
+    return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/substitute.png";
 }
 
 /**
@@ -627,6 +627,22 @@ function getItemIconHTML(item) {
     return item.icon || '📦';
 }
 
+/**
+ * Badge HTML pour l'objet tenu sur une carte créature (en haut à droite).
+ * @param {Object} creature - Créature avec heldItem
+ * @returns {string} HTML ou chaîne vide
+ */
+function getHeldItemBadgeHTML(creature) {
+    if (!creature || !creature.heldItem || typeof HELD_ITEMS === 'undefined') return '';
+    const item = HELD_ITEMS[creature.heldItem];
+    if (!item) return '';
+    const name = (item.name || creature.heldItem).replace(/"/g, '&quot;');
+    if (item.img) {
+        return `<img src="${item.img}" class="creature-card-held-item" alt="${name}" title="${name}">`;
+    }
+    return `<span class="creature-card-held-item creature-card-held-item-icon" title="${name}">${item.icon || '🎒'}</span>`;
+}
+
 // ============================================================
 // BLOC 3 : Mise à jour des panneaux (Inventaire, Équipe, Boutiques)
 // Ces fonctions reçoivent game en paramètre et accèdent aux données via game.xxx
@@ -635,33 +651,83 @@ function getItemIconHTML(item) {
 /**
  * Affiche le contenu du Sac à Dos (Inventaire).
  */
+// Filtre actif pour l'inventaire (sac à dos)
+// 'all' | 'combat' | 'permanent' | 'held' | 'key'
+let currentInventoryFilter = 'all';
+
+function setInventoryFilter(filter) {
+    currentInventoryFilter = filter || 'all';
+    if (typeof game !== 'undefined') {
+        updateItemsDisplayUI(game);
+    }
+}
+
 function updateItemsDisplayUI(game) {
     const container = document.getElementById('itemsContainer');
     if (!container) return;
 
-    const itemKeys = Object.keys(game.items).filter(key => game.items[key] > 0);
+    const allItemKeys = Object.keys(game.items).filter(key => game.items[key] > 0);
 
     let headerCount = document.getElementById('inventory-total-count');
     let grid = container.querySelector('.inventory-grid');
+    let emptyMsg = document.getElementById('inventory-empty-msg');
 
     if (!grid) {
         container.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h3 style="margin:0; color:#334155; font-size:18px;">🎒 Sac à dos</h3>
                 <span id="inventory-total-count" style="font-size:11px; color:#64748b; font-weight:700; background:#f1f5f9; padding:4px 8px; border-radius:12px;">0 OBJETS</span>
             </div>
+            <div class="inventory-filters" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+                <button class="sort-btn inventory-tab-btn" data-filter="all" onclick="setInventoryFilter('all')">Tous</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="combat" onclick="setInventoryFilter('combat')">Combat</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="permanent" onclick="setInventoryFilter('permanent')">Permanents</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="held" onclick="setInventoryFilter('held')">Objets tenus</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="key" onclick="setInventoryFilter('key')">Objets clés</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="ct" onclick="setInventoryFilter('ct')">CT</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="misc" onclick="setInventoryFilter('misc')">Divers</button>
+            </div>
             <div id="inventory-empty-msg" style="display:none; text-align: center; color: #94a3b8; padding: 30px; border: 2px dashed #e2e8f0; border-radius: 10px; font-style: italic;">Votre sac est vide.</div>
+            <div class="inventory-grid"></div>
         `;
-        grid = document.createElement('div');
-        grid.className = 'inventory-grid';
-        container.appendChild(grid);
+        grid = container.querySelector('.inventory-grid');
         headerCount = document.getElementById('inventory-total-count');
+        emptyMsg = document.getElementById('inventory-empty-msg');
     }
 
-    if (headerCount) headerCount.textContent = `${itemKeys.length} TYPES D'OBJETS`;
+    // Met à jour l'onglet actif visuellement
+    const tabButtons = container.querySelectorAll('.inventory-tab-btn');
+    tabButtons.forEach(btn => {
+        const f = btn.getAttribute('data-filter') || 'all';
+        if (f === currentInventoryFilter) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
 
-    const emptyMsg = document.getElementById('inventory-empty-msg');
-    if (itemKeys.length === 0) {
+    // Filtrage par type
+    const filteredKeys = allItemKeys.filter(key => {
+        if (currentInventoryFilter === 'all') return true;
+        const item = ALL_ITEMS[key] || {};
+        const isKeyItem = item.type === 'key_item';
+        const isHeldItem = typeof HELD_ITEMS !== 'undefined' && HELD_ITEMS[key];
+        const effect = item.effect || null;
+        const isPermanent = !!(effect && effect.duration === null);
+        const isCombat = !!(effect && effect.duration !== null);
+        const isCT = typeof key === 'string' && key.startsWith('ct_');
+
+        switch (currentInventoryFilter) {
+            case 'key': return isKeyItem;
+            case 'held': return isHeldItem;
+            case 'permanent': return isPermanent;
+            case 'combat': return isCombat && !isKeyItem && !isHeldItem;
+            case 'ct': return isCT;
+            case 'misc': return !isKeyItem && !isHeldItem && !isPermanent && !isCombat && !isCT;
+            default: return true;
+        }
+    });
+
+    if (headerCount) headerCount.textContent = `${filteredKeys.length} TYPES D'OBJETS`;
+
+    if (filteredKeys.length === 0) {
         if (grid) grid.style.display = 'none';
         if (emptyMsg) emptyMsg.style.display = 'block';
         return;
@@ -669,7 +735,7 @@ function updateItemsDisplayUI(game) {
     if (grid) grid.style.display = 'grid';
     if (emptyMsg) emptyMsg.style.display = 'none';
 
-    itemKeys.sort((a, b) => {
+    filteredKeys.sort((a, b) => {
         const itemA = ALL_ITEMS[a] || { rarity: 'common' };
         const itemB = ALL_ITEMS[b] || { rarity: 'common' };
         const getWeight = (key, item) => {
@@ -685,7 +751,7 @@ function updateItemsDisplayUI(game) {
     const currentSlots = Array.from(grid.children);
     const activeIds = new Set();
 
-    itemKeys.forEach(key => {
+    filteredKeys.forEach(key => {
         const item = ALL_ITEMS[key] || { name: key, description: "Objet inconnu", icon: "❓", rarity: "common" };
         const count = game.items[key];
         const slotId = `inv-slot-${key}`;
@@ -706,9 +772,7 @@ function updateItemsDisplayUI(game) {
             let clickAction = `game.useItem('${key}', 1, event)`;
 
             if (item.type === 'key_item') {
-                card.style.borderColor = "#ffd700";
-                card.style.background = "#fffbeb";
-                typeIcon = '<span class="item-type-badge" style="background:#fef3c7; color:#d97706;">CLÉ</span>';
+                typeIcon = '<span class="item-type-badge" style="background:transparent; color:#fbbf24; text-shadow:0 0 4px rgba(251, 191, 36, 0.7);">CLÉ</span>';
                 clickAction = "toast.info('Objet Clé', 'Cet objet s\\'active automatiquement dans les zones appropriées.')";
             } else if (typeof HELD_ITEMS !== 'undefined' && HELD_ITEMS[key]) {
                 card.classList.add('is-held-item');
@@ -716,9 +780,9 @@ function updateItemsDisplayUI(game) {
                 clickAction = "toast.info('Objet Tenu', 'Équipez cet objet depuis le menu d\\'une créature.')";
             }
 
-            let iconHTML = `<div style="font-size:32px;">${item.icon || '📦'}</div>`;
+            let iconHTML = `<div style="font-size:28px;">${item.icon || '📦'}</div>`;
             if (item.img) {
-                iconHTML = `<img src="${item.img}" class="item-sprite-img" alt="${item.name}" style="width:48px; height:48px; object-fit:contain;">`;
+                iconHTML = `<img src="${item.img}" class="item-sprite-img" alt="${item.name}" style="width:40px; height:40px; object-fit:contain;">`;
             }
 
             const isVitamin = item.effect && item.effect.duration === null;
@@ -738,6 +802,11 @@ function updateItemsDisplayUI(game) {
                     <div style="font-size: 9px; color: #94a3b8; margin-top: 2px; opacity: 1; min-height:11px;">${isVitamin ? 'Ctrl: Tout' : ''}</div>
                 </div>
             `;
+            grid.appendChild(card);
+            // 🛑 OPTIMISATION : Actions liées aux objets sont hors thread
+            card.addEventListener('click', (e) => {
+                requestAnimationFrame(() => game.useItem(key, 1, e));
+            });
             grid.appendChild(card);
         }
     });
@@ -759,17 +828,81 @@ function updateTeamDisplayUI(game) {
     teamCount.textContent = game.playerTeam.length + "/" + maxTeamSize;
     teamList.innerHTML = '';
 
+    let teamDragFromIndex = -1;
+    let teamDragToIndex = -1;
+    let teamDragApplied = false;
+
     for (let i = 0; i < maxTeamSize; i++) {
         if (i < game.playerTeam.length) {
             const creature = game.playerTeam[i];
             const card = document.createElement('div');
             card.className = "creature-card rarity-" + creature.rarity;
-            card.style.cursor = 'pointer';
-            card.setAttribute('onclick', `game.showCreatureModal(${i}, 'team')`);
+            card.setAttribute('data-team-index', String(i));
+            card.draggable = true;
+
+            card.addEventListener('click', function (e) {
+                if (card.classList.contains('team-card-dragging')) return;
+                // 🛑 OPTIMISATION : Déporter la génération de modale lourde 
+                // pour que le clic réponde instantanément 
+                requestAnimationFrame(() => {
+                    game.showCreatureModal(i, 'team');
+                });
+            });
+            card.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                if (creature.isAlive()) game.setActiveCreature(i);
+            });
+            card.addEventListener('dragstart', function (e) {
+                teamDragFromIndex = i;
+                teamDragToIndex = -1;
+                teamDragApplied = false;
+                card.classList.add('team-card-dragging');
+                e.dataTransfer.setData('text/plain', String(i));
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('application/team-index', String(i));
+            });
+            card.addEventListener('dragend', function () {
+                if (!teamDragApplied && teamDragFromIndex >= 0 && teamDragToIndex >= 0 && teamDragFromIndex !== teamDragToIndex && typeof game.reorderTeam === 'function') {
+                    game.reorderTeam(teamDragFromIndex, teamDragToIndex);
+                }
+                teamDragFromIndex = -1;
+                teamDragToIndex = -1;
+                teamDragApplied = false;
+                card.classList.remove('team-card-dragging');
+                teamList.querySelectorAll('.creature-card.team-drag-over, .team-slot-empty.team-drag-over').forEach(el => el.classList.remove('team-drag-over'));
+            });
+            card.addEventListener('dragenter', function (e) {
+                e.preventDefault();
+                if (teamDragFromIndex !== -1 && teamDragFromIndex !== i) {
+                    teamDragToIndex = i;
+                    card.classList.add('team-drag-over');
+                }
+            });
+            card.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (teamDragFromIndex !== -1 && teamDragFromIndex !== i) {
+                    teamDragToIndex = i;
+                    card.classList.add('team-drag-over');
+                }
+            });
+            card.addEventListener('dragleave', function (e) {
+                if (e.relatedTarget && card.contains(e.relatedTarget)) return;
+                card.classList.remove('team-drag-over');
+            });
+            card.addEventListener('drop', function (e) {
+                e.preventDefault();
+                card.classList.remove('team-drag-over');
+                const fromIdx = parseInt(e.dataTransfer.getData('application/team-index'), 10);
+                if (isNaN(fromIdx) || fromIdx === i) return;
+                teamDragApplied = true;
+                if (typeof game.reorderTeam === 'function') game.reorderTeam(fromIdx, i);
+            });
 
             if (creature.isShiny) card.className += " shiny";
             if (i === game.activeCreatureIndex) card.classList.add('active');
-            if (!creature.isAlive()) card.classList.add('fainted');
+            const isFaintedInTower = game.towerState && game.towerState.isActive && game.faintedThisCombat && game.faintedThisCombat.has(creature.name);
+            if (!creature.isAlive() || isFaintedInTower) card.classList.add('fainted');
 
             const maxLevel = 100 + (creature.prestige * 10);
             const shardKey = typeof getShardKey === 'function' ? getShardKey(creature.name, creature.rarity) : creature.name;
@@ -782,8 +915,10 @@ function updateTeamDisplayUI(game) {
 
             const teamTransferRate = ((game.getTeamContributionRate && game.getTeamContributionRate()) || 0.10) * 100;
             const teamTransferRateStr = teamTransferRate.toFixed(0);
+            const shinyStars = creature.isShiny ? '<div class="shiny-stars" aria-hidden="true"><span>✦</span><span>✦</span><span>✦</span><span>✦</span></div>' : '';
+            const heldItemBadge = typeof getHeldItemBadgeHTML === 'function' ? getHeldItemBadgeHTML(creature) : '';
 
-            card.innerHTML = `
+            card.innerHTML = shinyStars + heldItemBadge + `
                 <img src="${spriteUrl}" alt="${creature.name}" class="team-slot-sprite">
                 <div class="team-slot-name">${creature.name} ${creature.prestige > 0 ? `★${creature.prestige}` : ''}</div>
                 <div class="team-slot-level">Niv. ${creature.level}</div>
@@ -792,7 +927,7 @@ function updateTeamDisplayUI(game) {
                 </div>
                 <div class="team-slot-info">
                     <span style="color: ${creature.currentStamina === 0 ? '#ef4444' : '#22c55e'};">⚡ ${creature.currentStamina}/${creature.maxStamina}</span>
-                    <span style="color: #8a2be2;">💎 ${currentShards}/${prestigeCost}</span>
+                    <span style="color: #8a2be2;"><img src="img/shard.png" class="shard-inline" alt=""> ${currentShards}/${prestigeCost}</span>
                 </div>
                 <div class="team-contribution-trigger" data-creature-index="${i}" style="background: rgba(34, 197, 94, 0.15); padding: 6px 8px; border-radius: 5px; margin-top: 5px; width: 100%; font-size: 11px;">
                     <span style="font-weight: bold; color: #16a34a;">Contribution (${teamTransferRateStr}%) :</span>
@@ -808,7 +943,37 @@ function updateTeamDisplayUI(game) {
         } else {
             const emptySlot = document.createElement('div');
             emptySlot.className = "team-slot-empty";
+            emptySlot.setAttribute('data-slot-index', String(i));
             emptySlot.textContent = "+";
+            emptySlot.addEventListener('dragenter', function (e) {
+                e.preventDefault();
+                if (teamDragFromIndex !== -1 && game.playerTeam.length > 1) {
+                    teamDragToIndex = Math.min(i, game.playerTeam.length - 1);
+                    emptySlot.classList.add('team-drag-over');
+                }
+            });
+            emptySlot.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (teamDragFromIndex !== -1) {
+                    teamDragToIndex = Math.min(i, game.playerTeam.length - 1);
+                    emptySlot.classList.add('team-drag-over');
+                }
+            });
+            emptySlot.addEventListener('dragleave', function (e) {
+                if (e.relatedTarget && emptySlot.contains(e.relatedTarget)) return;
+                emptySlot.classList.remove('team-drag-over');
+            });
+            emptySlot.addEventListener('drop', function (e) {
+                e.preventDefault();
+                emptySlot.classList.remove('team-drag-over');
+                const fromIdx = parseInt(e.dataTransfer.getData('application/team-index'), 10);
+                if (isNaN(fromIdx)) return;
+                const toIndex = Math.min(i, game.playerTeam.length - 1);
+                if (fromIdx === toIndex) return;
+                teamDragApplied = true;
+                if (typeof game.reorderTeam === 'function') game.reorderTeam(fromIdx, toIndex);
+            });
             teamList.appendChild(emptySlot);
         }
     }
@@ -866,7 +1031,9 @@ function updateStorageDisplayUI(game) {
 
         if (creature.level >= maxLevel && currentShards >= prestigeCost) card.classList.add('prestige-ready');
 
-        card.innerHTML = `
+        const shinyStars = creature.isShiny ? '<div class="shiny-stars" aria-hidden="true"><span>✦</span><span>✦</span><span>✦</span><span>✦</span></div>' : '';
+        const heldItemBadge = typeof getHeldItemBadgeHTML === 'function' ? getHeldItemBadgeHTML(creature) : '';
+        card.innerHTML = shinyStars + heldItemBadge + `
             <img src="${spriteUrl}" alt="${creature.name}" class="team-slot-sprite">
             <div class="team-slot-name">${creature.name} ${creature.prestige > 0 ? `★${creature.prestige}` : ''}</div>
             <div class="team-slot-level">Niv. ${creature.level}</div>
@@ -874,7 +1041,7 @@ function updateStorageDisplayUI(game) {
                 <div class="exp-fill" style="width: ${expPercent}%;"></div>
             </div>
             <div class="team-slot-info" style="justify-content: center;">
-                <span style="color: #8a2be2;">💎 ${currentShards}/${prestigeCost}</span>
+                <span style="color: #8a2be2;"><img src="img/shard.png" class="shard-inline" alt=""> ${currentShards}/${prestigeCost}</span>
             </div>
         `;
         storageList.appendChild(card);
@@ -898,14 +1065,14 @@ function updatePokeMartDisplayUI(game) {
     container.innerHTML = '';
 
     if (typeof POKEMART_ITEMS === 'undefined') return;
+    let html = '';
     Object.entries(POKEMART_ITEMS).forEach(([key, shopEntry]) => {
-        const card = document.createElement('div');
-        card.className = 'shop-item';
         const realItem = ALL_ITEMS[shopEntry.itemId];
         const iconHTML = getItemIconHTML(realItem || shopEntry);
         const canAfford = game.pokedollars >= shopEntry.cost;
 
-        card.innerHTML = `
+        html += `
+        <div class="shop-item">
             <div class="shop-item-name" style="display:flex; align-items:center; gap:10px;">
                 ${iconHTML}
                 <span>${shopEntry.name}</span>
@@ -918,9 +1085,9 @@ function updatePokeMartDisplayUI(game) {
                     ${!canAfford ? 'disabled' : ''}>
                 ${canAfford ? 'Acheter' : "Pas assez d'argent"}
             </button>
-        `;
-        container.appendChild(card);
+        </div>`;
     });
+    container.innerHTML = html;
 }
 
 /**
@@ -933,47 +1100,39 @@ function updateUpgradesDisplayUI(game) {
     upgradesContainer.innerHTML = '';
 
     if (!game.upgrades) return;
-    Object.entries(game.upgrades).forEach(([key, upgrade]) => {
+    const entries = Object.entries(game.upgrades);
+    const sorted = entries.slice().sort((a, b) => {
+        const aMaxed = a[1].level >= a[1].maxLevel;
+        const bMaxed = b[1].level >= b[1].maxLevel;
+        if (aMaxed === bMaxed) return 0;
+        return aMaxed ? 1 : -1;
+    });
+
+    let html = '';
+    sorted.forEach(([key, upgrade]) => {
         const cost = game.getUpgradeCost(key);
         const canAfford = game.canAffordUpgrade(key);
         const isMaxLevel = upgrade.level >= upgrade.maxLevel;
 
-        const upgradeCard = document.createElement('div');
-        upgradeCard.className = 'upgrade-card';
-        if (!canAfford && !isMaxLevel) upgradeCard.classList.add('not-affordable');
-
         let currentEffect = "";
         switch (key) {
-            case 'critMastery':
-                currentEffect = "Bonus actuel: +" + (upgrade.level * 1).toFixed(0) + "%";
-                break;
-            case 'expBoost':
-                currentEffect = "Multiplicateur: x" + (game.getExpMultiplier() * 100 / 100).toFixed(1);
-                break;
-            case 'eggDrop':
-                currentEffect = "Bonus: +" + (game.getEggDropBonus() * 100).toFixed(0) + "%";
-                break;
-            case 'staminaRegen':
-                currentEffect = "Temps: " + (game.getStaminaRegenTime() / 1000).toFixed(1) + "s";
-                break;
-            case 'shardBonus':
-                currentEffect = "Chance: " + (game.getShardBonusChance() * 100).toFixed(0) + "%";
-                break;
-            case 'pension':
-                currentEffect = "Slots: " + game.getPensionSlots() + " | Transfert: " + (game.getPensionTransferRate() * 100).toFixed(0) + "%";
-                break;
-            case 'respawn':
-                currentEffect = `Délai réduit: -${upgrade.level * 50}ms`;
-                break;
-            case 'recycle':
-                currentEffect = "Chance d'économie: " + (upgrade.level * 2.5).toFixed(0) + "%";
-                break;
-            case 'second_chance':
-                currentEffect = "Chance de relance: " + (upgrade.level * 1).toFixed(0) + "%";
-                break;
+            case 'critMastery': currentEffect = "Bonus actuel: +" + (upgrade.level * 1).toFixed(0) + "%"; break;
+            case 'expBoost': currentEffect = "Multiplicateur: x" + (game.getExpMultiplier() * 100 / 100).toFixed(1); break;
+            case 'eggDrop': currentEffect = "Bonus: +" + (game.getEggDropBonus() * 100).toFixed(0) + "%"; break;
+            case 'staminaRegen': currentEffect = "Temps: " + (game.getStaminaRegenTime() / 1000).toFixed(1) + "s"; break;
+            case 'shardBonus': currentEffect = "Chance: " + (game.getShardBonusChance() * 100).toFixed(0) + "%"; break;
+            case 'pension': currentEffect = "Slots: " + game.getPensionSlots() + " | Transfert: " + (game.getPensionTransferRate() * 100).toFixed(0) + "%"; break;
+            case 'respawn': currentEffect = `Délai réduit: -${upgrade.level * 50}ms`; break;
+            case 'recycle': currentEffect = "Chance d'économie: " + (upgrade.level * 2.5).toFixed(0) + "%"; break;
+            case 'second_chance': currentEffect = "Chance de relance: " + (upgrade.level * 1).toFixed(0) + "%"; break;
+            case 'incubatorSlots': currentEffect = "Incubateurs: " + (1 + (upgrade.level || 0)) + "/4"; break;
+            case 'incubationSpeed': currentEffect = "Temps d'incubation: -" + ((upgrade.level || 0) * 10) + "%"; break;
         }
 
-        upgradeCard.innerHTML = `
+        const classList = `upgrade-card ${isMaxLevel ? 'maxed' : ''} ${!canAfford && !isMaxLevel ? 'not-affordable' : ''}`;
+
+        html += `
+        <div class="${classList}">
             <div class="upgrade-title">${upgrade.name}</div>
             <div class="upgrade-description">${upgrade.description}</div>
             <div class="upgrade-stats">
@@ -982,16 +1141,16 @@ function updateUpgradesDisplayUI(game) {
             </div>
             ${currentEffect ? `<div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-bottom: 10px; font-weight: 600;">${currentEffect}</div>` : ''}
             <div class="upgrade-cost" style="margin-bottom: 15px;">
-                ${isMaxLevel ? 'NIVEAU MAX' : cost + ' Pokédollars'}
+                ${isMaxLevel ? 'NIVEAU MAX' : `<img src="img/pokedollars.png" class="pokedollars-inline" alt=""> ${typeof formatNumber === 'function' ? formatNumber(cost) : cost}`}
             </div>
             <button class="upgrade-btn" 
                     onclick="game.buyUpgrade('${key}')" 
                     ${!canAfford || isMaxLevel ? 'disabled' : ''}>
                 ${isMaxLevel ? 'NIVEAU MAX' : (canAfford ? 'ACHETER' : 'PAS ASSEZ DE FONDS')}
             </button>
-        `;
-        upgradesContainer.appendChild(upgradeCard);
+        </div>`;
     });
+    upgradesContainer.innerHTML = html;
 }
 
 /**
@@ -1002,11 +1161,15 @@ function updateShopDisplayUI(game) {
     const shopTokens = document.getElementById('shopTokens');
     if (!shopContainer) return;
 
-    if (shopTokens) shopTokens.textContent = game.questTokens;
+    if (shopTokens) {
+        shopTokens.textContent = typeof formatNumber === 'function' ? formatNumber(game.questTokens) : game.questTokens;
+    }
     shopContainer.innerHTML = '';
 
     if (typeof SHOP_ITEMS === 'undefined') return;
-    Object.entries(SHOP_ITEMS).forEach(([key, item]) => {
+
+    let html = '';
+    const shopEntries = Object.entries(SHOP_ITEMS).map(([key, item]) => {
         let currentCost = item.cost;
         let isMaxed = false;
         let levelInfo = "";
@@ -1026,11 +1189,16 @@ function updateShopDisplayUI(game) {
             levelInfo = ` <span style="font-size:11px; color:#666;">(Niv ${currentLevel}/${item.maxLevel})</span>`;
         }
 
+        return { key, item, currentCost, isMaxed, levelInfo };
+    });
+    const sortedShop = shopEntries.slice().sort((a, b) => {
+        if (a.isMaxed === b.isMaxed) return 0;
+        return a.isMaxed ? 1 : -1;
+    });
+    sortedShop.forEach(({ key, item, currentCost, isMaxed, levelInfo }) => {
         const canAfford = !isMaxed && game.questTokens >= currentCost;
 
-        const card = document.createElement('div');
-        card.className = 'shop-item';
-        if (!canAfford && !isMaxed) card.classList.add('not-affordable');
+        const classList = `shop-item ${isMaxed ? 'maxed' : ''} ${!canAfford && !isMaxed ? 'not-affordable' : ''}`;
 
         let extraInfo = '';
         if (item.type === 'permanent' && item.effect.type === 'permanentXP') {
@@ -1041,10 +1209,12 @@ function updateShopDisplayUI(game) {
         }
 
         const buttonText = isMaxed ? "MAXIMISÉ" : (canAfford ? 'Acheter' : 'Pas assez de jetons');
-        const costText = isMaxed ? "" : `🎫 ${currentCost} Jetons`;
+        const formattedCurrentCost = typeof formatNumber === 'function' ? formatNumber(currentCost) : currentCost;
+        const costText = isMaxed ? "" : `<img src="img/quest-token.png" class="quest-token-inline" alt=""> ${formattedCurrentCost} Jetons`;
         const iconHTML = getItemIconHTML(item);
 
-        card.innerHTML = `
+        html += `
+        <div class="${classList}">
             <div class="shop-item-name" style="display:flex; align-items:center; gap:10px;">
                 ${iconHTML}
                 <span>${item.name}${levelInfo}</span>
@@ -1055,9 +1225,9 @@ function updateShopDisplayUI(game) {
             <button class="shop-buy-btn" onclick="game.buyShopItem('${key}')" ${!canAfford ? 'disabled' : ''}>
                 ${buttonText}
             </button>
-        `;
-        shopContainer.appendChild(card);
+        </div>`;
     });
+    shopContainer.innerHTML = html;
 }
 
 /**
@@ -1070,10 +1240,9 @@ function updateTowerShopDisplayUI(game) {
     shopContainer.innerHTML = '';
 
     if (typeof TOWER_SHOP_ITEMS === 'undefined') return;
-    Object.entries(TOWER_SHOP_ITEMS).forEach(([key, item]) => {
-        const card = document.createElement('div');
-        card.className = 'shop-item';
 
+    let html = '';
+    Object.entries(TOWER_SHOP_ITEMS).forEach(([key, item]) => {
         let currentLevel = 0;
         let isMaxLevel = false;
         let cost = item.cost;
@@ -1089,16 +1258,21 @@ function updateTowerShopDisplayUI(game) {
 
         const canAfford = !isMaxLevel && game.marquesDuTriomphe >= cost;
 
-        card.innerHTML = `
+        const formattedTowerCost = (isMaxLevel || cost === 'MAX')
+            ? 'MAX'
+            : (typeof formatNumber === 'function' ? formatNumber(cost) : cost);
+
+        html += `
+        <div class="shop-item">
             <div class="shop-item-name">${item.name}${levelText}</div>
             <div class="shop-item-description">${item.description}</div>
-            <div class="shop-item-cost">Ⓜ️ ${isMaxLevel ? 'MAX' : cost} Marques</div>
+            <div class="shop-item-cost"><img src="img/marque-triomphe.png" class="marque-triomphe-inline" alt=""> ${formattedTowerCost} Marques</div>
             <button class="shop-buy-btn" onclick="game.buyTowerShopItem('${key}')" ${!canAfford || isMaxLevel ? 'disabled' : ''}>
                 ${isMaxLevel ? 'NIVEAU MAX' : (canAfford ? 'Acheter' : 'Marques insuffisantes')}
             </button>
-        `;
-        shopContainer.appendChild(card);
+        </div>`;
     });
+    shopContainer.innerHTML = html;
 }
 
 /**
@@ -1132,7 +1306,7 @@ function updateRecyclerDisplayUI(game) {
         return 'common';
     };
 
-    shardListDiv.innerHTML = '<div class="recycler-header">Vos Shards</div>';
+    let shardHtml = '<div class="recycler-header">Vos Shards</div>';
     let shardsFound = 0;
 
     Object.entries(game.shards || {}).forEach(([shardKey, count]) => {
@@ -1142,11 +1316,14 @@ function updateRecyclerDisplayUI(game) {
             const rarity = getFamilyRarity(familyName);
             const dustValue = count * (typeof DUST_CONVERSION_RATES !== 'undefined' ? (DUST_CONVERSION_RATES[rarity] || 1) : 1);
 
-            shardListDiv.innerHTML += `
+            const formattedCount = typeof formatNumber === 'function' ? formatNumber(count) : count;
+            const formattedDustValue = typeof formatNumber === 'function' ? formatNumber(dustValue) : dustValue;
+
+            shardHtml += `
                 <div class="recycler-item">
                     <div>
                         <span class="recycler-item-name">${familyName}<span class="rarity-label ${rarity}">${rarity}</span></span>
-                        <div style="font-size: 12px; color: #666;">x${count} ➜ 💠 ${dustValue}</div>
+                        <div style="font-size: 12px; color: #666;">x${formattedCount} ➜ <img src="img/essence-dust.png" class="essence-dust-inline" alt=""> ${formattedDustValue}</div>
                     </div>
                     <button class="recycler-btn" onclick="game.recycleShards('${shardKey}', '${rarity}')">Recycler</button>
                 </div>
@@ -1155,26 +1332,162 @@ function updateRecyclerDisplayUI(game) {
     });
 
     if (shardsFound === 0) {
-        shardListDiv.innerHTML += '<p style="font-size: 12px; color: #666;">Aucun shard à recycler.</p>';
+        shardHtml += '<p style="font-size: 12px; color: #666;">Aucun shard à recycler.</p>';
     }
+    shardListDiv.innerHTML = shardHtml;
 
-    shopDiv.innerHTML = '<div class="recycler-header">Boutique de Poussière</div>';
+    let shopHtml = '<div class="recycler-header">Boutique de Poussière</div>';
     if (typeof DUST_SHOP_ITEMS !== 'undefined') {
         Object.values(DUST_SHOP_ITEMS).forEach(item => {
             if (item.id === 'shiny_egg') return;
             const canAfford = game.essenceDust >= item.cost;
-            shopDiv.innerHTML += `
+            shopHtml += `
                 <div class="dust-shop-item">
                     <div>
                         <div class="shop-item-name" style="color: #a855f7;">${item.name}</div>
                         <div class="shop-item-description" style="font-size: 11px;">${item.description}</div>
-                        <div class="shop-item-cost" style="font-size: 16px; margin: 5px 0 0 0;">💠 ${formatNumber(item.cost)}</div>
+                        <div class="shop-item-cost" style="font-size: 16px; margin: 5px 0 0 0;"><img src="img/essence-dust.png" class="essence-dust-inline" alt=""> ${formatNumber(item.cost)}</div>
                     </div>
                     <button class="btn shop-buy-btn" onclick="game.buyDustItem('${item.id}')" ${!canAfford ? 'disabled' : ''}>Acheter</button>
                 </div>
             `;
         });
     }
+    shopDiv.innerHTML = shopHtml;
+}
+
+function updateTeamRocketDisplayUI(game) {
+    const panel = document.getElementById('teamRocketPanel');
+    if (!panel || !game.teamRocketState) return;
+
+    const tr = game.teamRocketState;
+    const now = Date.now();
+    const bank = tr.bank || {};
+    const loan = tr.loan || {};
+    const staking = tr.staking || {};
+    const trust = (typeof ROCKET_TRUST_LEVELS !== 'undefined' && ROCKET_TRUST_LEVELS[tr.trustLevel]) ? ROCKET_TRUST_LEVELS[tr.trustLevel] : null;
+    const debtPct = loan.totalDebt > 0 ? Math.floor(((loan.totalDebt - loan.remainingDebt) / loan.totalDebt) * 100) : 0;
+    const trustLevelRate = Math.max(1, Math.floor(Number(tr.trustLevel) || 1));
+    const loanCap = game.getRocketLoanCap ? game.getRocketLoanCap() : 0;
+
+    const fmt = (v) => typeof formatNumber === 'function' ? formatNumber(v) : v;
+    const fmtMoneyPrecise = (v) => {
+        const n = Number(v) || 0;
+        return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    const totalInterestRaw = Math.max(0, Number(bank.totalInterestGenerated) || 0) + Math.max(0, Number(bank.interestCarry) || 0);
+    const totalInterestDisplay = Math.max(0, totalInterestRaw - Math.max(0, Number(bank.interestDisplayOffset) || 0));
+    const activeContracts = Array.isArray(staking.activeContracts) ? staking.activeContracts : [];
+    const availableContracts = Array.isArray(staking.availableContracts) ? staking.availableContracts : [];
+    const maxContracts = Math.max(1, Number(staking.maxAvailableContracts) || 3);
+    const nextReadyAt = Math.max(0, Number(staking.nextContractReadyAt) || 0);
+    const nextLeftMs = Math.max(0, nextReadyAt - now);
+    const nextLeftText = (typeof formatTimeString === 'function') ? formatTimeString(nextLeftMs) : `${Math.ceil(nextLeftMs / 1000)}s`;
+
+    const activeHtml = activeContracts.map(c => {
+        const left = Math.max(0, c.endAt - now);
+        const min = Math.ceil(left / 60000);
+        const canClaim = left <= 0;
+        return `
+            <div class="shop-item ${canClaim ? '' : 'not-affordable'}">
+                <div class="shop-item-name">Contrat actif</div>
+                <div class="shop-item-description">Exigence: ${c.requestedType} ${c.requestedKey} x${c.amount}</div>
+                <div class="shop-item-cost">${canClaim ? 'Prêt à réclamer' : `Temps restant: ${min} min`}</div>
+                <button class="shop-buy-btn" onclick="game.handleRocketClaimContract('${c.contractId}')" ${!canClaim ? 'disabled' : ''}>Réclamer ${c.rewardRJ} RJ</button>
+            </div>
+        `;
+    }).join('') || '<p style="color:#94a3b8;">Aucun contrat actif.</p>';
+
+    const availableHtml = availableContracts.map(c => `
+        <div class="shop-item">
+            <div class="shop-item-name">Contrat Rocket</div>
+            <div class="shop-item-description">Exigence: ${c.requestedType} ${c.requestedKey} x${c.amount}</div>
+            <div class="shop-item-cost">Durée ${c.durationMinutes} min • Récompense ${c.rewardRJ} RJ</div>
+            <div class="tr-input-row">
+                <button class="shop-buy-btn" onclick="game.handleRocketStartContract('${c.contractId}')">Sélectionner</button>
+                <button class="shop-buy-btn" onclick="game.handleRocketRefuseContract('${c.contractId}')" style="background:#7f1d1d;">Refuser</button>
+            </div>
+        </div>
+    `).join('') || '<p style="color:#94a3b8;">Aucun contrat disponible.</p>';
+
+    panel.innerHTML = `
+        <div class="quest-stats" style="margin-bottom: 12px;">
+            <div class="quest-stat"><div class="quest-stat-value">${fmt(tr.rj || 0)}</div><div class="quest-stat-label">RJ</div></div>
+            <div class="quest-stat"><div class="quest-stat-value">${tr.trustLevel || 1}</div><div class="quest-stat-label">Confiance</div></div>
+            <div class="quest-stat"><div class="quest-stat-value">${fmt(loanCap)}</div><div class="quest-stat-label">Cap prêt</div></div>
+        </div>
+
+        <div class="team-rocket-grid">
+            <div class="shop-item tr-bank-card">
+                <button class="tr-bank-gear-btn" onclick="game.handleRocketBankOptionsToggle()" title="Options banque">⚙</button>
+                <div class="shop-item-name">Banque Team Rocket</div>
+                <div class="shop-item-description" id="rocketBankRateText">Rendement ${trustLevelRate}%/h, payé chaque minute.</div>
+                <div class="shop-item-cost" id="rocketBankBalanceText">Solde: ${fmt(bank.balance || 0)}$ • Intérêts cumulés: ${fmtMoneyPrecise(totalInterestDisplay)}$</div>
+                <div class="tr-input-row" style="margin-top:8px;">
+                    <input id="rocketBankDepositInput" type="number" min="0" placeholder="Montant dépôt" style="padding:8px;">
+                    <button class="shop-buy-btn" onclick="game.handleRocketDeposit()">Déposer</button>
+                </div>
+                <div class="tr-input-row" style="margin-top:8px;">
+                    <input id="rocketBankWithdrawInput" type="number" min="0" placeholder="Montant retrait" style="padding:8px;">
+                    <button class="shop-buy-btn" onclick="game.handleRocketWithdraw()">Retirer</button>
+                </div>
+                <div style="margin-top:8px; font-size:12px; color:#22c55e;">
+                    Retrait disponible
+                </div>
+                <div style="margin-top:8px;">
+                    <button class="shop-buy-btn" onclick="game.handleRocketResetInterestCounter()">Reset intérêts cumulés</button>
+                </div>
+                <div class="tr-bank-options ${game.rocketBankOptionsOpen ? 'open' : ''}">
+                    <label style="display:flex; gap:8px; align-items:center; margin-top:8px; font-size:12px; color:#cbd5e1;">
+                        <input type="checkbox" ${(bank.autoInjectCombatHalf ? 'checked' : '')} onchange="game.handleRocketAutoInjectCombatHalfToggle(this.checked)">
+                        Injecter 50% des gains de combats
+                    </label>
+                    <label style="display:flex; gap:8px; align-items:center; margin-top:8px; font-size:12px; color:#cbd5e1;">
+                        <input type="checkbox" ${(bank.autoInjectInterests ? 'checked' : '')} onchange="game.handleRocketAutoInjectInterestsToggle(this.checked)">
+                        Injecter les intérêts
+                    </label>
+                </div>
+            </div>
+
+            <div class="shop-item ${loan.active ? '' : 'not-affordable'}" id="rocketLoanCard">
+                <div class="shop-item-name">Prêt Team Rocket</div>
+                <div class="shop-item-description">Prélèvement auto 50% sur gains de combat.</div>
+                <div class="shop-item-cost">Maximum empruntable: ${fmt(loanCap)}$</div>
+                <div class="shop-item-cost" id="rocketLoanDebtText">Dette: ${fmt(loan.remainingDebt || 0)}$ / ${fmt(loan.totalDebt || 0)}$</div>
+                <div style="width:100%; height:10px; border-radius:6px; background:#1f2937; overflow:hidden; margin:8px 0;">
+                    <div id="rocketLoanDebtFill" style="height:100%; width:${debtPct}%; background:${loan.active ? '#ef4444' : '#22c55e'};"></div>
+                </div>
+                <div class="tr-input-row">
+                    <input id="rocketLoanInput" type="number" min="0" placeholder="Montant prêt" style="padding:8px;">
+                    <button class="shop-buy-btn" id="rocketLoanBorrowBtn" onclick="game.handleRocketTakeLoan()" ${(loan.active && loan.remainingDebt > 0) ? 'disabled' : ''}>Emprunter</button>
+                </div>
+                <div id="rocketLoanStatusText" style="margin-top:8px; font-size:12px; color:${loan.active ? '#ef4444' : '#94a3b8'};">
+                    ${loan.active ? `Endetté: ${debtPct}% remboursé` : 'Aucune dette active'}
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin:16px 0 8px 0;">Marché de Staking</h4>
+        <div id="rocketStakingContractTimerText" style="font-size:12px; color:#cbd5e1; margin-bottom:8px;">
+            Contrats disponibles: ${availableContracts.length}/${maxContracts}
+            ${availableContracts.length < maxContracts ? `• Prochain contrat dans ${nextLeftText}` : '• Slots pleins'}
+        </div>
+        <div class="team-rocket-grid">${availableHtml}</div>
+
+        <h4 style="margin:16px 0 8px 0;">Contrats en cours</h4>
+        <div class="team-rocket-grid">${activeHtml}</div>
+
+        <h4 style="margin:16px 0 8px 0;">Casino Rocket</h4>
+        <div class="shop-item">
+            <div class="shop-item-name">Machine à Sous Rocket</div>
+            <div class="shop-item-description">Misez des RJ pour tenter des multiplicateurs et récompenses rares.</div>
+            <div class="shop-item-cost">Niveau: ${trust ? trust.label : 'Recrue'} • XP confiance: ${fmt(tr.trustXp || 0)}</div>
+            <div class="tr-input-row" style="margin-top:8px;">
+                <input id="rocketCasinoStakeInput" type="number" min="1" placeholder="Mise RJ" style="padding:8px;">
+                <button class="shop-buy-btn" onclick="game.handleRocketCasinoSpin()">Lancer</button>
+            </div>
+        </div>
+    `;
 }
 
 // ============================================================
@@ -1249,7 +1562,15 @@ function updatePlayerStatsDisplayUI(game) {
         const el = document.getElementById(id);
         if (el) {
             const statVal = el.querySelector('.stat-value');
-            if (statVal) statVal.innerText = typeof formatNumber === 'function' ? formatNumber(val) : val;
+            if (statVal) {
+                if (typeof formatNumberHeader === 'function') {
+                    statVal.innerText = formatNumberHeader(val);
+                } else if (typeof formatNumber === 'function') {
+                    statVal.innerText = formatNumber(val);
+                } else {
+                    statVal.innerText = val;
+                }
+            }
         }
     };
     setStatVal('headerStatHP', hpWithBoost);
@@ -1276,18 +1597,31 @@ function updatePlayerStatsDisplayUI(game) {
     const totalSpDefenseGain = ((game.playerTeamStats.spdefense * teamContributionRate) + pensionStats.spdefense) * vitaminBonus.defense;
     const totalSpeedGain = ((game.playerTeamStats.speed * teamContributionRate) + pensionStats.speed) * vitaminBonus.speed;
 
-    document.getElementById('playerHPGain').textContent = `+${formatNumber(totalHPGain)}/s`;
-    document.getElementById('playerAttackGain').textContent = `+${formatNumber(totalAttackGain)}/s`;
-    document.getElementById('playerSpAttackGain').textContent = `+${formatNumber(totalSpAttackGain)}/s`;
-    document.getElementById('playerDefenseGain').textContent = `+${formatNumber(totalDefenseGain)}/s`;
-    document.getElementById('playerSpDefenseGain').textContent = `+${formatNumber(totalSpDefenseGain)}/s`;
-    document.getElementById('playerSpeedGain').textContent = `+${formatNumber(totalSpeedGain)}/s`;
+    const headerFmt = (v) =>
+        typeof formatNumberHeader === 'function'
+            ? formatNumberHeader(v)
+            : (typeof formatNumber === 'function' ? formatNumber(v) : v);
+
+    document.getElementById('playerHPGain').textContent = `+${headerFmt(totalHPGain)}/s`;
+    document.getElementById('playerAttackGain').textContent = `+${headerFmt(totalAttackGain)}/s`;
+    document.getElementById('playerSpAttackGain').textContent = `+${headerFmt(totalSpAttackGain)}/s`;
+    document.getElementById('playerDefenseGain').textContent = `+${headerFmt(totalDefenseGain)}/s`;
+    document.getElementById('playerSpDefenseGain').textContent = `+${headerFmt(totalSpDefenseGain)}/s`;
+    document.getElementById('playerSpeedGain').textContent = `+${headerFmt(totalSpeedGain)}/s`;
 
     const setResVal = (id, val) => {
         const el = document.getElementById(id);
         if (el) {
             const resVal = el.querySelector('.resource-val');
-            if (resVal) resVal.innerText = formatNumber(val);
+            if (resVal) {
+                if (typeof formatNumberHeader === 'function') {
+                    resVal.innerText = formatNumberHeader(val);
+                } else if (typeof formatNumber === 'function') {
+                    resVal.innerText = formatNumber(val);
+                } else {
+                    resVal.innerText = val;
+                }
+            }
         }
     };
     setResVal('headerStatMoney', game.pokedollars);
@@ -1318,6 +1652,16 @@ function updateCombatDisplayUI(game) {
     if (!game.ui) initUiCacheUI(game);
     const ui = game.ui;
 
+    // Fond d'arène : afficher img/background-arena.png sur la scène de combat quand le joueur est en arène
+    const battleDisplayEl = document.getElementById('battleDisplay');
+    if (battleDisplayEl) {
+        if (game.arenaState.active) {
+            battleDisplayEl.classList.add('arena-background');
+        } else {
+            battleDisplayEl.classList.remove('arena-background');
+        }
+    }
+
     if (game.currentPlayerCreature) {
         const creature = game.currentPlayerCreature;
         let maxHp = game.arenaState.active ? creature.maxHp : game.getPlayerMaxHp();
@@ -1340,14 +1684,13 @@ function updateCombatDisplayUI(game) {
         updateTextContentUI(ui.playerHpText, `${formatNumber(currentHp)} / ${formatNumber(maxHp)}`);
 
         const stats = game.getEffectiveStats();
-        const statsHTML = `
-            <span>⚔️ ${formatNumber(stats.attack)}</span>
-            <span>💥 ${formatNumber(stats.spattack)}</span>
-            <span>🛡️ ${formatNumber(stats.defense)}</span>
-            <span>💠 ${formatNumber(stats.spdefense)}</span>
-            <span>👟 ${formatNumber(stats.speed)}</span>
-        `;
-        if (ui.playerStats && ui.playerStats.innerHTML !== statsHTML) ui.playerStats.innerHTML = statsHTML;
+        if (ui.playerStats) {
+            updateTextContentUI(document.getElementById('playerHudAtk'), formatNumber(stats.attack));
+            updateTextContentUI(document.getElementById('playerHudSpAtk'), formatNumber(stats.spattack));
+            updateTextContentUI(document.getElementById('playerHudDef'), formatNumber(stats.defense));
+            updateTextContentUI(document.getElementById('playerHudSpDef'), formatNumber(stats.spdefense));
+            updateTextContentUI(document.getElementById('playerHudSpd'), formatNumber(stats.speed));
+        }
 
         const pThreshold = creature.actionThreshold || 10000;
         const rawAtbRatio = creature.actionGauge / pThreshold;
@@ -1416,14 +1759,13 @@ function updateCombatDisplayUI(game) {
         updateTransformScaleXUI(ui.enemyATB, Math.min(1, rawEnemyAtb));
         updateTextContentUI(ui.enemyHpText, `${formatNumber(enemy.currentHp)} / ${formatNumber(maxHp)}`);
 
-        const statsHTML = `
-            <span>⚔️ ${formatNumber(enemy.attack)}</span>
-            <span>💥 ${formatNumber(enemy.spattack)}</span>
-            <span>🛡️ ${formatNumber(enemy.defense)}</span>
-            <span>💠 ${formatNumber(enemy.spdefense)}</span>
-            <span>👟 ${formatNumber(enemy.speed)}</span>
-        `;
-        if (ui.enemyStats && ui.enemyStats.innerHTML !== statsHTML) ui.enemyStats.innerHTML = statsHTML;
+        if (ui.enemyStats) {
+            updateTextContentUI(document.getElementById('enemyHudAtk'), formatNumber(enemy.attack));
+            updateTextContentUI(document.getElementById('enemyHudSpAtk'), formatNumber(enemy.spattack));
+            updateTextContentUI(document.getElementById('enemyHudDef'), formatNumber(enemy.defense));
+            updateTextContentUI(document.getElementById('enemyHudSpDef'), formatNumber(enemy.spdefense));
+            updateTextContentUI(document.getElementById('enemyHudSpd'), formatNumber(enemy.speed));
+        }
     } else {
         const placeholderUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png";
         if (ui.enemySprite) {
@@ -1436,7 +1778,13 @@ function updateCombatDisplayUI(game) {
         updateTransformScaleXUI(ui.enemyHpFill, 0);
         updateTransformScaleXUI(ui.enemyATB, 0);
         updateTextContentUI(ui.enemyHpText, "- / -");
-        if (ui.enemyStats) ui.enemyStats.innerHTML = "⚔️ - | 🛡️ - | 👟 -";
+        if (ui.enemyStats) {
+            updateTextContentUI(document.getElementById('enemyHudAtk'), "-");
+            updateTextContentUI(document.getElementById('enemyHudSpAtk'), "-");
+            updateTextContentUI(document.getElementById('enemyHudDef'), "-");
+            updateTextContentUI(document.getElementById('enemyHudSpDef'), "-");
+            updateTextContentUI(document.getElementById('enemyHudSpd'), "-");
+        }
         if (ui.effectiveness) ui.effectiveness.classList.remove('show');
     }
 
@@ -1444,24 +1792,17 @@ function updateCombatDisplayUI(game) {
     const alive = game.playerTeam ? game.playerTeam.filter(c => c.isAlive()).length : 0;
 
     if (ui.autoSelectBtn) {
-        if (alive > 1) {
-            if (ui.autoSelectBtn.disabled !== !inCombat) ui.autoSelectBtn.disabled = !inCombat;
-            const targetOpacity = inCombat ? '1' : '0.5';
-            if (ui.autoSelectBtn.style.opacity !== targetOpacity) ui.autoSelectBtn.style.opacity = targetOpacity;
-            const hasActive = ui.autoSelectBtn.classList.contains('auto-active');
-            if (game.autoSelectEnabled && !hasActive) ui.autoSelectBtn.classList.add('auto-active');
-            else if (!game.autoSelectEnabled && hasActive) ui.autoSelectBtn.classList.remove('auto-active');
-        } else {
-            if (!ui.autoSelectBtn.disabled) ui.autoSelectBtn.disabled = true;
-            if (ui.autoSelectBtn.style.opacity !== '0.3') ui.autoSelectBtn.style.opacity = '0.3';
-        }
+        // Toujours cliquable : on ne désactive plus le bouton entre les combats
+        ui.autoSelectBtn.disabled = false;
+        const hasActive = ui.autoSelectBtn.classList.contains('auto-active');
+        if (game.autoSelectEnabled && !hasActive) ui.autoSelectBtn.classList.add('auto-active');
+        else if (!game.autoSelectEnabled && hasActive) ui.autoSelectBtn.classList.remove('auto-active');
     }
 
     if (ui.forfeitBtn) {
         ui.forfeitBtn.classList.remove('hidden');
-        if (ui.forfeitBtn.disabled !== !inCombat) ui.forfeitBtn.disabled = !inCombat;
-        const targetOpacity = inCombat ? '1' : '0.5';
-        if (ui.forfeitBtn.style.opacity !== targetOpacity) ui.forfeitBtn.style.opacity = targetOpacity;
+        // Toujours cliquable : la logique de `forfeitCombat` gère déjà le cas "aucun combat"
+        ui.forfeitBtn.disabled = false;
     }
 }
 
@@ -1476,11 +1817,19 @@ function updateCombatDisplayUI(game) {
  */
 function renderEggHatchModalContent(data) {
     const type2 = data.secondaryType ? `<span class="type-badge type-${data.secondaryType}">${data.secondaryType}</span>` : '';
-    return `
+    const rarityLabels = { common: '★ COMMUN ★', rare: '★★ RARE ★★', epic: '★★★ EPIC ★★★', legendary: '✦ LÉGENDAIRE ✦' };
+    const rarityLabel = rarityLabels[data.rarity] || data.rarity || '';
+    const rarityBadge = rarityLabel ? `<div class="egg-hatch-rarity rarity-${data.rarity}">${rarityLabel}</div>` : '';
+    const particlesHTML = '<div class="egg-hatch-particles" aria-hidden="true">' +
+        '<span class="egg-particle"></span><span class="egg-particle"></span><span class="egg-particle"></span><span class="egg-particle"></span>' +
+        '<span class="egg-particle"></span><span class="egg-particle"></span><span class="egg-particle"></span><span class="egg-particle"></span>' +
+        '</div>';
+    return particlesHTML + `
+        ${rarityBadge}
         <div class="egg-hatch-title">${data.title}</div>
         <img src="${data.spriteUrl}" alt="${data.name}" class="egg-hatch-sprite">
-        <h3 style="font-size: 20px;">${data.name}</h3>
-        <div>
+        <h3 class="egg-hatch-name" style="font-size: 20px;">${data.name}</h3>
+        <div class="egg-hatch-types">
             <span class="type-badge type-${data.type}">${data.type}</span>
             ${type2}
         </div>
@@ -1489,7 +1838,7 @@ function renderEggHatchModalContent(data) {
                 ${data.statsHTML}
             </div>
         </div>
-        <button class="btn btn-save" onclick="game.closeEggHatchModal()">Super !</button>
+        <button class="btn btn-save btn-super-confirm" onclick="game.closeEggHatchModal()">Super !</button>
     `;
 }
 
@@ -1502,7 +1851,10 @@ function renderEggHatchModalContent(data) {
  */
 function showEggHatchModalUI(modalEl, contentEl, data, options) {
     if (!modalEl || !contentEl) return;
-    contentEl.className = "quest-completion-content" + (options.contentClass ? ' ' + options.contentClass : '');
+    let className = "quest-completion-content";
+    if (options.contentClass) className += ' ' + options.contentClass;
+    if (options.rarity) className += ' rarity-' + options.rarity;
+    contentEl.className = className;
     contentEl.innerHTML = renderEggHatchModalContent(data);
     modalEl.classList.add('show');
 }
@@ -1631,6 +1983,166 @@ function closeCreatureModalUI() {
     if (modal) modal.classList.remove('show');
 }
 
+function closeRocketContractSelectModalUI() {
+    const existing = document.getElementById('rocketContractSelectOverlay');
+    if (existing) existing.remove();
+}
+
+function updateTeamRocketLoanRealtimeUI(game) {
+    if (!game || !game.teamRocketState) return;
+    const tr = game.teamRocketState;
+    const loan = tr.loan || {};
+    const debtPct = loan.totalDebt > 0 ? Math.floor(((loan.totalDebt - loan.remainingDebt) / loan.totalDebt) * 100) : 0;
+    const fmt = (v) => typeof formatNumber === 'function' ? formatNumber(v) : v;
+
+    const card = document.getElementById('rocketLoanCard');
+    if (card) {
+        if (loan.active) card.classList.remove('not-affordable');
+        else card.classList.add('not-affordable');
+    }
+
+    const debtText = document.getElementById('rocketLoanDebtText');
+    if (debtText) debtText.textContent = `Dette: ${fmt(loan.remainingDebt || 0)}$ / ${fmt(loan.totalDebt || 0)}$`;
+
+    const fill = document.getElementById('rocketLoanDebtFill');
+    if (fill) {
+        fill.style.width = `${debtPct}%`;
+        fill.style.background = loan.active ? '#ef4444' : '#22c55e';
+    }
+
+    const status = document.getElementById('rocketLoanStatusText');
+    if (status) {
+        status.style.color = loan.active ? '#ef4444' : '#94a3b8';
+        status.textContent = loan.active ? `Endetté: ${debtPct}% remboursé` : 'Aucune dette active';
+    }
+
+    const borrowBtn = document.getElementById('rocketLoanBorrowBtn');
+    if (borrowBtn) borrowBtn.disabled = !!(loan.active && loan.remainingDebt > 0);
+}
+
+function updateTeamRocketBankRealtimeUI(game) {
+    if (!game || !game.teamRocketState) return;
+    const tr = game.teamRocketState;
+    const bank = tr.bank || {};
+    const trustLevelRate = Math.max(1, Math.floor(Number(tr.trustLevel) || 1));
+    const fmt = (v) => typeof formatNumber === 'function' ? formatNumber(v) : v;
+    const totalInterestRaw = Math.max(0, Number(bank.totalInterestGenerated) || 0) + Math.max(0, Number(bank.interestCarry) || 0);
+    const totalInterestDisplay = Math.max(0, totalInterestRaw - Math.max(0, Number(bank.interestDisplayOffset) || 0));
+
+    const rateText = document.getElementById('rocketBankRateText');
+    if (rateText) rateText.textContent = `Rendement ${trustLevelRate}%/h, payé chaque minute.`;
+
+    const balanceText = document.getElementById('rocketBankBalanceText');
+    if (balanceText) {
+        const precise = totalInterestDisplay.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        balanceText.textContent = `Solde: ${fmt(bank.balance || 0)}$ • Intérêts cumulés: ${precise}$`;
+    }
+}
+
+function updateTeamRocketStakingRealtimeUI(game) {
+    if (!game || !game.teamRocketState || !game.teamRocketState.staking) return;
+    const staking = game.teamRocketState.staking;
+    const maxContracts = Math.max(1, Number(staking.maxAvailableContracts) || 3);
+    const available = Array.isArray(staking.availableContracts) ? staking.availableContracts.length : 0;
+    const now = Date.now();
+    const nextReadyAt = Math.max(0, Number(staking.nextContractReadyAt) || 0);
+    const nextLeftMs = Math.max(0, nextReadyAt - now);
+    const nextLeftText = (typeof formatTimeString === 'function') ? formatTimeString(nextLeftMs) : `${Math.ceil(nextLeftMs / 1000)}s`;
+
+    const timerText = document.getElementById('rocketStakingContractTimerText');
+    if (!timerText) return;
+    timerText.textContent = `Contrats disponibles: ${available}/${maxContracts}${available < maxContracts ? ` • Prochain contrat dans ${nextLeftText}` : ' • Slots pleins'}`;
+}
+
+function showRocketContractSelectModalUI(game, contract, options) {
+    closeRocketContractSelectModalUI();
+    const list = Array.isArray(options) ? options : [];
+    const needed = Math.max(1, Number(contract && contract.amount) || 1);
+    const requestedType = (contract && contract.requestedType) || '';
+    const requestedKey = (contract && contract.requestedKey) || '';
+
+    const modal = document.createElement('div');
+    modal.id = 'rocketContractSelectOverlay';
+    modal.className = 'stats-modal js-modal-overlay';
+    modal.style.display = 'flex';
+    modal.onclick = function (e) {
+        if (e.target === modal) closeRocketContractSelectModalUI();
+    };
+
+    let bodyHtml = '';
+    if (requestedType === 'item') {
+        const opt = list[0] || { name: requestedKey, key: requestedKey, have: 0, needed, img: null, icon: '📦' };
+        const ok = (opt.have || 0) >= needed;
+        const iconHtml = (typeof getItemIconHTML === 'function')
+            ? getItemIconHTML({ name: opt.name, img: opt.img, icon: opt.icon })
+            : (opt.icon || '📦');
+        bodyHtml = `
+            <div class="shop-item ${ok ? '' : 'not-affordable'}" style="margin-top:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="min-width:32px; display:flex; align-items:center; justify-content:center;">${iconHtml}</div>
+                    <div class="shop-item-name">${opt.name}</div>
+                </div>
+                <div class="shop-item-cost">Possédé: ${typeof formatNumber === 'function' ? formatNumber(opt.have || 0) : (opt.have || 0)} / ${needed}</div>
+                ${!ok ? '<div style="font-size:12px; color:#ef4444; margin-top:6px;">Ressources insuffisantes.</div>' : ''}
+            </div>
+        `;
+    } else {
+        const cards = list.map(opt => `
+            <label class="shop-item rocket-contract-select-card" style="display:block; cursor:pointer; margin-top:8px;">
+                <div class="rocket-contract-select-row">
+                    <input type="checkbox" class="rocket-contract-choice" value="${opt.storageIndex}">
+                    <img src="${typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(opt.name, opt.isShiny) : ''}" alt="${opt.name}" style="width:44px; height:44px; image-rendering:pixelated; object-fit:contain;">
+                    <div class="rocket-contract-select-meta">
+                        <div class="shop-item-name">${opt.isShiny ? '✨ ' : ''}${opt.name}</div>
+                        <div class="shop-item-description">Rareté: ${opt.rarity} • Niveau ${opt.level}</div>
+                    </div>
+                </div>
+            </label>
+        `).join('');
+        bodyHtml = cards || `<div style="font-size:12px; color:#ef4444; margin-top:10px;">Aucun Pokémon compatible disponible.</div>`;
+    }
+
+    modal.innerHTML = `
+        <div class="stats-content js-modal-content" style="max-width: 760px; width:min(92vw, 760px);">
+            <div class="stats-header">
+                <h2>Sélection contrat Rocket</h2>
+                <button class="stats-close js-close-modal" type="button" onclick="closeRocketContractSelectModalUI()">&times;</button>
+            </div>
+            <div style="font-size:12px; color:#cbd5e1;">
+                Exigence: ${requestedType} ${requestedKey} x${needed}
+            </div>
+            <div id="rocketContractSelectList" style="margin-top: 8px;">
+                ${bodyHtml}
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top: 12px;">
+                <button class="shop-buy-btn" onclick="closeRocketContractSelectModalUI()">Annuler</button>
+                <button class="shop-buy-btn" id="rocketContractConfirmBtn">Confirmer</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const confirmBtn = document.getElementById('rocketContractConfirmBtn');
+    if (!confirmBtn) return;
+    confirmBtn.onclick = function () {
+        if (!game || typeof game.handleRocketConfirmContractSelection !== 'function') return;
+        if (requestedType === 'item') {
+            const ok = game.handleRocketConfirmContractSelection(contract.contractId, []);
+            if (ok) closeRocketContractSelectModalUI();
+            return;
+        }
+        const checked = Array.from(document.querySelectorAll('#rocketContractSelectList .rocket-contract-choice:checked'))
+            .map(el => Number(el.value))
+            .filter(Number.isInteger);
+        if (checked.length !== needed) {
+            if (typeof logMessage === 'function') logMessage(`❌ Sélection invalide: choisissez exactement ${needed} Pokémon.`);
+            return;
+        }
+        const ok = game.handleRocketConfirmContractSelection(contract.contractId, checked);
+        if (ok) closeRocketContractSelectModalUI();
+    };
+}
+
 // ============================================================
 // EXPORTS GLOBAUX (Pas d'import/export ES6 - Scope window)
 // ============================================================
@@ -1667,6 +2179,7 @@ window.updateTextContentUI = updateTextContentUI;
 window.updateTransformScaleXUI = updateTransformScaleXUI;
 window.updatePlayerStatsDisplayUI = updatePlayerStatsDisplayUI;
 window.updateCombatDisplayUI = updateCombatDisplayUI;
+window.updateTeamRocketDisplayUI = updateTeamRocketDisplayUI;
 window.STATUS_ICONS = STATUS_ICONS;
 window.renderEggHatchModalContent = renderEggHatchModalContent;
 window.showEggHatchModalUI = showEggHatchModalUI;
@@ -1674,3 +2187,8 @@ window.closeEggHatchModalUI = closeEggHatchModalUI;
 window.showItemSelectModalUI = showItemSelectModalUI;
 window.renderCreatureModalContent = renderCreatureModalContent;
 window.closeCreatureModalUI = closeCreatureModalUI;
+window.showRocketContractSelectModalUI = showRocketContractSelectModalUI;
+window.closeRocketContractSelectModalUI = closeRocketContractSelectModalUI;
+window.updateTeamRocketBankRealtimeUI = updateTeamRocketBankRealtimeUI;
+window.updateTeamRocketLoanRealtimeUI = updateTeamRocketLoanRealtimeUI;
+window.updateTeamRocketStakingRealtimeUI = updateTeamRocketStakingRealtimeUI;

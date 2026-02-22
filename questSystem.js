@@ -53,14 +53,18 @@ class Quest {
 
         this.description = this.description.replace('{target}', this.target);
 
-        const diffMultiplier = QUEST_DIFFICULTIES[difficulty].multiplier;
+        const diffDef = (typeof QUEST_DIFFICULTIES !== 'undefined' && QUEST_DIFFICULTIES[difficulty]) || {};
+        const diffMultiplier = Number(diffDef.multiplier ?? diffDef.rewardMultiplier ?? 1);
         this.rewards = this.calculateRewards(diffMultiplier * multiplier);
     }
 
     calculateRewards(multiplier) {
+        const rewardBase = (typeof QUEST_REWARD_BASE !== 'undefined' && QUEST_REWARD_BASE)
+            ? QUEST_REWARD_BASE
+            : { pokedollars: 100, tokens: 1 };
         const base = {
-            pokedollars: Math.floor(100 * multiplier),
-            tokens: Math.floor(1 * multiplier),
+            pokedollars: Math.floor((Number(rewardBase.pokedollars) || 100) * multiplier),
+            tokens: Math.floor((Number(rewardBase.tokens) || 1) * multiplier),
             eggs: {}
         };
         if (this.difficulty === 'MEDIUM') {
@@ -123,10 +127,32 @@ function ensureStoryQuestProgress(game) {
     }
 }
 
+function ensureTeamRocketQuestProgress(game) {
+    if (typeof TEAM_ROCKET_QUEST_ORDER === 'undefined' || typeof TEAM_ROCKET_QUESTS === 'undefined') return;
+    if (game.quests.length >= 10) return;
+
+    const order = TEAM_ROCKET_QUEST_ORDER;
+    for (let i = 0; i < order.length; i++) {
+        const key = order[i];
+        const def = TEAM_ROCKET_QUESTS[key];
+        if (!def) continue;
+        const alreadyInList = game.quests.some(q => q.id === def.id);
+        if (alreadyInList) continue;
+        const completed = game.completedTeamRocketQuests && game.completedTeamRocketQuests.includes(def.id);
+        if (completed) continue;
+        const prevCompleted = i === 0 || (game.completedTeamRocketQuests && game.completedTeamRocketQuests.includes(TEAM_ROCKET_QUESTS[order[i - 1]].id));
+        const prevInListCompleted = i === 0 || game.quests.some(q => q.id === TEAM_ROCKET_QUESTS[order[i - 1]].id && q.completed);
+        if (i > 0 && !prevCompleted && !prevInListCompleted) return;
+        addTeamRocketQuestLogic(game, def);
+        return;
+    }
+}
+
 function generateQuestLogic(game) {
     if (game.quests.length >= 10) return;
 
     ensureStoryQuestProgress(game);
+    ensureTeamRocketQuestProgress(game);
     if (game.quests.length >= 10) return;
 
     let difficulty = 'EASY';
@@ -155,15 +181,23 @@ function generateQuestLogic(game) {
 
     if (!templates || templates.length === 0) return;
 
-    const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-    const quest = new Quest(randomTemplate, 1, difficulty);
+    const difficultyRank = { EASY: 1, MEDIUM: 2, HARD: 3, EXTREME: 4 };
+    const desiredRank = difficultyRank[difficulty] || 1;
+    const eligibleTemplates = templates.filter(t => (difficultyRank[t.difficulty || 'EASY'] || 1) <= desiredRank);
+    const templatePool = eligibleTemplates.length > 0 ? eligibleTemplates : templates;
+
+    const randomTemplate = templatePool[Math.floor(Math.random() * templatePool.length)];
+    const templateDifficulty = randomTemplate.difficulty || difficulty;
+    const quest = new Quest(randomTemplate, 1, templateDifficulty);
     quest.questType = randomType;
 
     game.quests.push(quest);
-    if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('quest_generated', { questType: randomType, questId: quest.id });
+    updateQuestsDisplayLogic(game);
 
-    const diffInfo = QUEST_DIFFICULTIES[difficulty];
-    logMessage(`${diffInfo.icon} Nouvelle quête ${diffInfo.name} : ${quest.title}`);
+    const diffInfo = QUEST_DIFFICULTIES[quest.difficulty] || { name: quest.difficulty };
+    const diffPrefix = diffInfo.icon || `[${quest.difficulty}]`;
+    logMessage(`${diffPrefix} Nouvelle quête ${diffInfo.name} : ${quest.title}`);
 }
 
 function addStoryQuestLogic(game, storyDef) {
@@ -179,50 +213,79 @@ function addStoryQuestLogic(game, storyDef) {
     quest.questType = 'STORY';
     if (storyDef.dialogue) quest.dialogue = storyDef.dialogue;
     if (storyDef.requiredSpecies) quest.requiredSpecies = storyDef.requiredSpecies;
+    if (storyDef.specialParams && typeof storyDef.specialParams === 'object') {
+        quest.specialParams = { ...storyDef.specialParams };
+    }
 
     if (storyDef.id === 'story_vitamin' && game.items) {
         game.items['pv_plus'] = (game.items['pv_plus'] || 0) + 1;
-        if (typeof logMessage === 'function') logMessage("🎁 Le Professeur vous donne 1 PV Plus pour tester les vitamines !");
-        if (typeof toast !== 'undefined') toast.info("Vitamine offerte", "1 PV Plus ajouté au sac. Les vitamines s'obtiennent aussi en drop ou en boutique.");
+        logMessage("🎁 Le Professeur vous donne 1 PV Plus pour tester les vitamines !");
+        toast.info("Vitamine offerte", "1 PV Plus ajouté au sac. Les vitamines s'obtiennent aussi en drop ou en boutique.");
     }
     if (storyDef.id === 'story_stat_boost' && game.items) {
         game.items['defense_plus'] = (game.items['defense_plus'] || 0) + 1;
-        if (typeof logMessage === 'function') logMessage("🎁 Le Professeur vous donne 1 Défense + pour tester les boosts temporaires !");
-        if (typeof toast !== 'undefined') toast.info("Boost offert", "1 Défense + ajouté au sac. Les boosts (Défense +, Attaque +, etc.) s'obtiennent en drop ou en boutique.");
+        logMessage("🎁 Le Professeur vous donne 1 Défense + pour tester les boosts temporaires !");
+        toast.info("Boost offert", "1 Défense + ajouté au sac. Les boosts (Défense +, Attaque +, etc.) s'obtiennent en drop ou en boutique.");
     }
     if (storyDef.id === 'story_equip_item' && game.items) {
         game.items['leftovers'] = (game.items['leftovers'] || 0) + 1;
-        if (typeof logMessage === 'function') logMessage("🎁 Le Professeur vous donne des Restes pour équiper un Pokémon !");
-        if (typeof toast !== 'undefined') toast.info("Objet tenu offert", "1 Restes ajouté au sac. Équipez-le sur un Pokémon (fiche → Objet tenu).");
+        logMessage("🎁 Le Professeur vous donne des Restes pour équiper un Pokémon !");
+        toast.info("Objet tenu offert", "1 Restes ajouté au sac. Équipez-le sur un Pokémon (fiche → Objet tenu).");
     }
     if (storyDef.id === 'story_tower_climb') {
         game.combatTickets = (game.combatTickets || 0) + 1;
-        if (typeof logMessage === 'function') logMessage("🎁 Le Professeur vous donne 1 Ticket de Combat pour tenter la Tour ! Les autres tickets se récupèrent en droppant sur les Boss.");
-        if (typeof toast !== 'undefined') toast.info("Ticket de Combat offert", "1 ticket ajouté. Les tickets supplémentaires dropent sur les Boss. La Tour rapporte des Marques du Triomphe (boutique Tour).");
+        logMessage("🎁 Le Professeur vous donne 1 Ticket de Combat pour tenter la Tour ! Les autres tickets se récupèrent en droppant sur les Boss.");
+        toast.info("Ticket de Combat offert", "1 ticket ajouté. Les tickets supplémentaires dropent sur les Boss. La Tour rapporte des Marques du Triomphe (boutique Tour).");
     }
 
     game.quests.push(quest);
-    if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('quest_generated', { questType: 'STORY', questId: quest.id });
+    updateQuestsDisplayLogic(game);
 
-    if (typeof narrativeManager !== 'undefined' && narrativeManager.showStoryQuestIntro) {
+    if (narrativeManager && narrativeManager.showStoryQuestIntro) {
         const introDone = !narrativeManager.state || narrativeManager.state.introComplete;
         const suppressFirst = narrativeManager.state && narrativeManager.state.suppressNextStoryQuestIntro;
         if (introDone && !suppressFirst) {
             narrativeManager.showStoryQuestIntro(game, storyDef);
         }
-    } else if (typeof toast !== 'undefined') {
+    } else {
         toast.legendary("Quête Spéciale !", storyDef.title);
     }
     logMessage(`📜 QUÊTE SCÉNARIO : ${storyDef.title}`);
 
-    // Les quêtes de scénario sont désormais automatiquement acceptées
-    if (typeof acceptQuestLogic === 'function') {
-        acceptQuestLogic(game, storyDef.id);
-    } else {
-        // Fallback minimal : marquer la quête comme acceptée pour qu'elle progresse
-        const q = game.quests.find(qt => qt.id === storyDef.id);
-        if (q) q.accepted = true;
+    acceptQuestLogic(game, storyDef.id);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('quest_accepted', { questType: 'STORY', questId: storyDef.id });
+}
+
+function addTeamRocketQuestLogic(game, rocketDef) {
+    const quest = new Quest({
+        title: rocketDef.title,
+        desc: rocketDef.description,
+        target: rocketDef.target,
+        trackingKey: rocketDef.trackingKey
+    }, 1, rocketDef.difficulty);
+
+    quest.id = rocketDef.id;
+    quest.rewards = rocketDef.rewards || {};
+    quest.questType = 'TEAM_ROCKET';
+    quest.tags = Array.isArray(rocketDef.tags) ? [...rocketDef.tags] : ['team_rocket'];
+    if (rocketDef.dialogue) quest.dialogue = rocketDef.dialogue;
+    if (rocketDef.requiredSpecies) quest.requiredSpecies = rocketDef.requiredSpecies;
+    if (rocketDef.specialParams && typeof rocketDef.specialParams === 'object') {
+        quest.specialParams = { ...rocketDef.specialParams };
     }
+
+    game.quests.push(quest);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('quest_generated', { questType: 'TEAM_ROCKET', questId: quest.id });
+    updateQuestsDisplayLogic(game);
+
+    if (typeof toast !== 'undefined' && toast.warning) {
+        toast.warning("Mission Team Rocket", rocketDef.title);
+    }
+    logMessage(`🚀 QUÊTE TEAM ROCKET : ${rocketDef.title}`);
+
+    acceptQuestLogic(game, rocketDef.id);
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('quest_accepted', { questType: 'TEAM_ROCKET', questId: rocketDef.id });
 }
 
 // ============================================================
@@ -241,7 +304,9 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
             'combatsWon', 'bossDefeated', 'eggsOpened', 'creaturesObtained',
             'newDiscoveriesDuringQuest', 'legendariesObtainedDuringQuest',
             'statusInflicted', 'totalShards', 'shiniesObtained',
-            'zone_visited', 'level_up', 'creature_captured'
+            'zone_visited', 'level_up', 'creature_captured',
+            'statBoostUsed', 'recyclerUsed', 'expeditionLaunched', 'ultimateUsed',
+            'rocket_staking_completed'
         ];
 
         let effectiveEvent = eventType;
@@ -346,7 +411,7 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
                     quest.startValue = game.pokedollars;
                     quest.current = 0;
                     quest.updateProgress(0);
-                    if (typeof toast !== 'undefined') toast.warning("Économe", "Dépense détectée ! La quête repart à zéro.");
+                    toast.warning("Économe", "Dépense détectée ! La quête repart à zéro.");
                 }
                 break;
             case 'zonesUnlocked':
@@ -417,20 +482,14 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
                     quest.updateProgress(count);
                 }
                 break;
-            case 'collectionSynergyActive':
-                if (eventType === 'collectionSynergyActive') {
+            case 'collectionBonusActive':
+                if (eventType === 'collectionBonusActive') {
                     quest.current = 1;
                     quest.updateProgress(1);
                 }
                 break;
             case 'vitaminUsed':
                 if (eventType === 'vitaminUsed') {
-                    quest.current = 1;
-                    quest.updateProgress(1);
-                }
-                break;
-            case 'statBoostUsed':
-                if (eventType === 'statBoostUsed') {
                     quest.current = 1;
                     quest.updateProgress(1);
                 }
@@ -450,26 +509,46 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
                     quest.updateProgress(Math.min(floor, quest.target));
                 }
                 break;
-            case 'recyclerUsed':
-                if (eventType === 'recyclerUsed') {
-                    quest.current = 1;
-                    quest.updateProgress(1);
+            case 'incubator_hatched':
+                if (eventType === 'incubator_hatched') {
+                    const current = (quest.current || 0) + 1;
+                    quest.updateProgress(current);
                 }
                 break;
-            case 'expeditionLaunched':
-                if (eventType === 'expeditionLaunched') {
-                    quest.current = 1;
-                    quest.updateProgress(1);
+            case 'incubator_hatched_rare_plus':
+                if (eventType === 'incubator_hatched_rare_plus') {
+                    const current = (quest.current || 0) + 1;
+                    quest.updateProgress(current);
+                }
+                break;
+            case 'incubator_hatched_epic':
+                if (eventType === 'incubator_hatched_epic') {
+                    const current = (quest.current || 0) + 1;
+                    quest.updateProgress(current);
+                }
+                break;
+            case 'incubator_hatched_legendary':
+                if (eventType === 'incubator_hatched_legendary') {
+                    const current = (quest.current || 0) + 1;
+                    quest.updateProgress(current);
+                }
+                break;
+            case 'genetics_stage_3_combo':
+                if (eventType === 'incubation_speed_upgraded' || eventType === 'incubator_hatched_epic') {
+                    if (!quest.specialParams || typeof quest.specialParams !== 'object') {
+                        quest.specialParams = {};
+                    }
+                    if (!Array.isArray(quest.specialParams.doneFlags)) {
+                        quest.specialParams.doneFlags = [];
+                    }
+                    if (!quest.specialParams.doneFlags.includes(eventType)) {
+                        quest.specialParams.doneFlags.push(eventType);
+                    }
+                    quest.updateProgress(quest.specialParams.doneFlags.length);
                 }
                 break;
             case 'evolution_fusion':
                 if (eventType === 'evolution_fusion') {
-                    quest.current = 1;
-                    quest.updateProgress(1);
-                }
-                break;
-            case 'ultimateUsed':
-                if (eventType === 'ultimateUsed') {
                     quest.current = 1;
                     quest.updateProgress(1);
                 }
@@ -495,13 +574,15 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
 
         if (questWasJustCompleted) {
             showQuestCompletionModalLogic(game, quest);
-            if (quest.questType === 'STORY' && typeof ensureStoryQuestProgress === 'function') {
+            if (quest.questType === 'STORY') {
                 ensureStoryQuestProgress(game);
+            } else if (quest.questType === 'TEAM_ROCKET') {
+                ensureTeamRocketQuestProgress(game);
             }
         }
     });
 
-    if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
+    updateQuestsDisplayLogic(game);
 }
 
 // ============================================================
@@ -510,7 +591,7 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
 
 function updateQuestTimerLogic(game, deltaTime) {
     if (game.quests.length >= 10) {
-        if (typeof updateQuestTimerDisplayLogic === 'function') updateQuestTimerDisplayLogic(game);
+        updateQuestTimerDisplayLogic(game);
         return;
     }
 
@@ -529,12 +610,12 @@ function updateQuestTimerLogic(game, deltaTime) {
     }
 
     if (game.nextQuestTimer <= 0) {
-        if (typeof generateQuestLogic === 'function') generateQuestLogic(game);
+        generateQuestLogic(game);
         game.nextQuestTimer = 120000 + (Math.random() * 360000);
         logMessage("📜 Une nouvelle quête est disponible !");
     }
 
-    if (typeof updateQuestTimerDisplayLogic === 'function') updateQuestTimerDisplayLogic(game);
+    updateQuestTimerDisplayLogic(game);
 }
 
 function updateQuestTimerDisplayLogic(game) {
@@ -588,8 +669,8 @@ function acceptQuestLogic(game, questId) {
         case 'badgesEarned':
             quest.current = game.stats && game.stats.badgesEarned !== undefined ? game.stats.badgesEarned : (Object.values(game.badges || {}).filter(Boolean).length);
             break;
-        case 'collectionSynergyActive':
-            quest.current = (game.getCollectionSynergyDetails && game.getCollectionSynergyDetails().some(d => d.isActive)) ? 1 : 0;
+        case 'collectionBonusActive':
+            quest.current = (game.getCollectionBonusDetails && game.getCollectionBonusDetails().some(d => d.isActive)) ? 1 : 0;
             break;
         case 'zonesUnlocked':
             if (typeof ZONES !== 'undefined' && typeof game.isZoneUnlocked === 'function') {
@@ -599,11 +680,25 @@ function acceptQuestLogic(game, questId) {
         case 'zone_2_visited':
             quest.current = (typeof currentZone !== 'undefined' && currentZone === 2) || (game.sessionStats && game.sessionStats.zonesVisited && game.sessionStats.zonesVisited.has(2)) ? 1 : 0;
             break;
+        case 'genetics_stage_3_combo': {
+            const doneFlags = [];
+            if (game.upgrades && game.upgrades.incubationSpeed && game.upgrades.incubationSpeed.level > 0) {
+                doneFlags.push('incubation_speed_upgraded');
+            }
+            quest.specialParams = quest.specialParams || {};
+            quest.specialParams.doneFlags = doneFlags;
+            quest.current = doneFlags.length;
+            break;
+        }
         case 'vitaminUsed':
         case 'statBoostUsed':
         case 'heldItemEquipped':
         case 'recyclerUsed':
         case 'expeditionLaunched':
+        case 'incubator_hatched':
+        case 'incubator_hatched_rare_plus':
+        case 'incubator_hatched_epic':
+        case 'incubator_hatched_legendary':
             quest.current = 0;
             break;
         case 'towerFloor':
@@ -622,6 +717,8 @@ function acceptQuestLogic(game, questId) {
         showQuestCompletionModalLogic(game, quest);
         if (quest.questType === 'STORY' && typeof ensureStoryQuestProgress === 'function') {
             ensureStoryQuestProgress(game);
+        } else if (quest.questType === 'TEAM_ROCKET' && typeof ensureTeamRocketQuestProgress === 'function') {
+            ensureTeamRocketQuestProgress(game);
         }
     }
 
@@ -633,24 +730,26 @@ function acceptQuestLogic(game, questId) {
     if (quest.trackingKey === 'fusion_completed') {
         game.items['pokeball'] = (game.items['pokeball'] || 0) + 5;
         logMessage("🎁 Léo vous donne 5 Poké Balls pour l'expérience.");
-        if (typeof toast !== 'undefined') toast.info("Léo vous donne 5 Poké Balls", "Pour capturer des doublons !");
+        toast.info("Léo vous donne 5 Poké Balls", "Pour capturer des doublons !");
     }
 
     logMessage("✅ Quête acceptée : " + quest.title);
-    if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
-    // Afficher le guide détaillé pour les quêtes scénario (sans masquer le module de capture)
-    if (quest.questType === 'STORY' && game.showQuestGuide) game.showQuestGuide(quest.id);
+    updateQuestsDisplayLogic(game);
+    // Afficher le guide détaillé pour les quêtes scénario/faction (sans masquer le module de capture)
+    if ((quest.questType === 'STORY' || quest.questType === 'TEAM_ROCKET') && game.showQuestGuide) game.showQuestGuide(quest.id);
+    updateQuestsDisplayLogic(game);
 }
 
 function refuseQuestLogic(game, questId) {
-    const index = game.quests.findIndex(q => q.id == questId);
-    if (index === -1) return;
+    const index = game.quests.findIndex(q => q.id === questId);
+    if (index !== -1) {
+        const quest = game.quests[index]; // Re-add quest definition
+        logMessage(`❌ Quête refusée : ${quest.title}`); // Corrected message and variable
+        game.quests.splice(index, 1);
+        game.saveGame(); // Direct call
+    }
 
-    const quest = game.quests[index];
-    game.quests.splice(index, 1);
-
-    logMessage("❌ Quête refusée : " + quest.title);
-    if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
+    updateQuestsDisplayLogic(game);
 }
 
 function abandonQuestLogic(game, questId) {
@@ -659,8 +758,8 @@ function abandonQuestLogic(game, questId) {
 
     const quest = game.quests[index];
 
-    if (quest.questType === 'STORY') {
-        logMessage("❌ Les quêtes scénario ne peuvent pas être abandonnées !");
+    if (quest.questType === 'STORY' || quest.questType === 'TEAM_ROCKET') {
+        logMessage("❌ Les quêtes scénario/faction ne peuvent pas être abandonnées !");
         return;
     }
 
@@ -676,49 +775,48 @@ function abandonQuestLogic(game, questId) {
     game.quests.splice(index, 1);
 
     logMessage("❌ Quête abandonnée : " + quest.title);
-    if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
+    updateQuestsDisplayLogic(game);
 }
 
 // ============================================================
 // MODAL COMPLÉTION & CLAIM
 // ============================================================
 
-/** Construit le HTML des récompenses d'une quête pour le modal de récap (story quest terminée). */
 function buildQuestRewardsSummaryHtml(quest) {
     if (!quest || !quest.rewards) return '';
     let html = '';
-    if (quest.rewards.pokedollars && quest.rewards.pokedollars > 0) {
-        html += `<div class="quest-completion-reward">💰 ${typeof formatNumber === 'function' ? formatNumber(quest.rewards.pokedollars) : quest.rewards.pokedollars} Pokédollars</div>`;
-    }
-    if (quest.rewards.tokens && quest.rewards.tokens > 0) {
-        html += `<div class="quest-completion-reward">🎫 ${quest.rewards.tokens} Jetons de Quêtes</div>`;
-    }
-    if (quest.rewards.eggs && typeof quest.rewards.eggs === 'object') {
-        Object.entries(quest.rewards.eggs).forEach(([rarity, count]) => {
+    const r = quest.rewards;
+    if (r.pokedollars > 0) html += `<div class="quest-completion-reward">💰 ${formatNumber(r.pokedollars)} Pokédollars</div>`;
+    if (r.tokens > 0) html += `<div class="quest-completion-reward"><img src="img/quest-token.png" class="quest-token-inline" alt=""> ${r.tokens} Jetons de Quêtes</div>`;
+
+    if (r.eggs) {
+        Object.entries(r.eggs).forEach(([rarity, count]) => {
             if (count > 0) html += `<div class="quest-completion-reward">🥚 ${count}x Œuf ${rarity}</div>`;
         });
     }
-    if (quest.rewards.boosts && Array.isArray(quest.rewards.boosts)) {
+    if (r.boosts) {
         const boostNames = { xp: 'XP', money: 'Pokédollars', eggDrop: 'Drop Œufs' };
-        quest.rewards.boosts.forEach(boost => {
-            const duration = Math.floor((boost.duration || 0) / 60000);
-            html += `<div class="quest-completion-reward">⚡ +${((boost.value || 0) * 100)}% ${boostNames[boost.type] || boost.type} (${duration}min)</div>`;
+        r.boosts.forEach(b => {
+            const min = Math.floor((b.duration || 0) / 60000);
+            html += `<div class="quest-completion-reward">⚡ +${(b.value || 0) * 100}% ${boostNames[b.type] || b.type} (${min}min)</div>`;
         });
     }
-    if (quest.rewards.items && typeof quest.rewards.items === 'object') {
-        Object.entries(quest.rewards.items).forEach(([itemKey, count]) => {
+    if (r.items) {
+        Object.entries(r.items).forEach(([key, count]) => {
             if (count <= 0) return;
-            const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[itemKey]) ? ALL_ITEMS[itemKey] : (typeof KEY_ITEMS !== 'undefined' && KEY_ITEMS[itemKey]) ? KEY_ITEMS[itemKey] : { name: itemKey, icon: '📦' };
-            html += `<div class="quest-completion-reward">${itemDef.icon || '📦'} ${count}x ${itemDef.name || itemKey}</div>`;
+            const itemDef = ALL_ITEMS[key] || KEY_ITEMS[key] || { name: key, icon: '📦' };
+            html += `<div class="quest-completion-reward">${itemDef.icon || '📦'} ${count}x ${itemDef.name || key}</div>`;
         });
+    }
+    if (r.unlocks && r.unlocks.autoIncubatorSlots) {
+        html += `<div class="quest-completion-reward">🧪 Débloque +${r.unlocks.autoIncubatorSlots} incubateur(s) auto</div>`;
     }
     return html;
 }
 
 function showQuestCompletionModalLogic(game, quest) {
-    // Ancien modal supprimé : on signale seulement la complétion ; la récompense se récupère depuis l'onglet Quêtes.
-    if (typeof logMessage === 'function') logMessage("🎉 Quête terminée : " + quest.title + " ! Récupérez la récompense dans l'onglet Quêtes.");
-    if (typeof toast !== 'undefined' && toast.info) toast.info("Quête terminée", quest.title + " — Récupérez la récompense dans l'onglet Quêtes.");
+    logMessage("🎉 Quête terminée : " + quest.title + " ! Récupérez la récompense dans l'onglet Quêtes.");
+    toast.info("Quête terminée", quest.title + " — Récupérez la récompense dans l'onglet Quêtes.");
 }
 
 function claimQuestRewardLogic(game, quest) {
@@ -755,6 +853,18 @@ function claimQuestRewardLogic(game, quest) {
                 game.addItem(itemKey, count);
             });
         }
+        if (questToUse.rewards.unlocks && questToUse.rewards.unlocks.autoIncubatorSlots) {
+            const delta = Math.max(0, Number(questToUse.rewards.unlocks.autoIncubatorSlots) || 0);
+            if (!game.autoIncubation && typeof game.createDefaultAutoIncubationState === 'function') {
+                game.autoIncubation = game.createDefaultAutoIncubationState();
+            }
+            if (game.autoIncubation) {
+                game.autoIncubation.unlockedAutoSlots = Math.min(4, (game.autoIncubation.unlockedAutoSlots || 0) + delta);
+                if (typeof toast !== 'undefined' && toast.success) {
+                    toast.success("Auto-incubation", `Incubateurs auto débloqués: ${game.autoIncubation.unlockedAutoSlots}/4`);
+                }
+            }
+        }
     }
 
     // Dialogue spécial : canne à pêche débloquée après la quête doublons
@@ -773,9 +883,21 @@ function claimQuestRewardLogic(game, quest) {
         if (!game.completedStoryQuests.includes(questToUse.id)) {
             game.completedStoryQuests.push(questToUse.id);
         }
+    } else if (questToUse.questType === 'TEAM_ROCKET') {
+        if (!game.completedTeamRocketQuests) game.completedTeamRocketQuests = [];
+        if (!game.completedTeamRocketQuests.includes(questToUse.id)) {
+            game.completedTeamRocketQuests.push(questToUse.id);
+        }
+    }
+
+    const questTags = Array.isArray(questToUse.tags) ? questToUse.tags.map(t => String(t).toLowerCase()) : [];
+    const isTeamRocketTagged = questToUse.questType === 'TEAM_ROCKET' || questTags.includes('team_rocket') || questTags.includes('team-rocket');
+    if (isTeamRocketTagged && typeof game.addRocketTrustProgress === 'function') {
+        game.addRocketTrustProgress('quest', 1, { questId: questToUse.id });
     }
 
     questToUse.claimed = true;
+    if (typeof game.trackBalanceEvent === 'function') game.trackBalanceEvent('quest_claimed', { questType: questToUse.questType || 'UNKNOWN', questId: questToUse.id });
     const index = game.quests.findIndex(q => q.id === questToUse.id);
     if (index !== -1) game.quests.splice(index, 1);
 
@@ -799,6 +921,11 @@ function claimQuestRewardLogic(game, quest) {
         } else {
             if (typeof ensureStoryQuestProgress === 'function') ensureStoryQuestProgress(game);
         }
+    } else if (questToUse.questType === 'TEAM_ROCKET') {
+        const delayMs = 1200;
+        setTimeout(() => {
+            if (typeof ensureTeamRocketQuestProgress === 'function') ensureTeamRocketQuestProgress(game);
+        }, delayMs);
     }
 
     if (typeof updateQuestsDisplayLogic === 'function') updateQuestsDisplayLogic(game);
@@ -821,6 +948,9 @@ function buildQuestCardHTML(game, quest) {
     if (quest.questType === 'STORY') {
         badgeClass = 'badge-extreme';
         badgeText = 'Scénario';
+    } else if (quest.questType === 'TEAM_ROCKET') {
+        badgeClass = 'badge-hard';
+        badgeText = 'Team Rocket';
     } else {
         if (quest.difficulty === 'MEDIUM') { badgeClass = 'badge-medium'; badgeText = 'Moyen'; }
         if (quest.difficulty === 'HARD') { badgeClass = 'badge-hard'; badgeText = 'Difficile'; }
@@ -832,12 +962,15 @@ function buildQuestCardHTML(game, quest) {
     let rewardsHTML = '';
     if (quest.rewards) {
         if (quest.rewards.pokedollars) rewardsHTML += `<span class="quest-reward-item">💰 ${formatNumber(quest.rewards.pokedollars)}</span>`;
-        if (quest.rewards.tokens) rewardsHTML += `<span class="quest-reward-item">🎫 ${quest.rewards.tokens}</span>`;
+        if (quest.rewards.tokens) rewardsHTML += `<span class="quest-reward-item"><img src="img/quest-token.png" class="quest-token-inline" alt=""> ${quest.rewards.tokens}</span>`;
         if (quest.rewards.items) {
             Object.entries(quest.rewards.items).forEach(([key, count]) => {
                 const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[key]) ? ALL_ITEMS[key] : { name: key, icon: '📦' };
                 rewardsHTML += `<span class="quest-reward-item">${itemDef.icon} ${count}x ${itemDef.name}</span>`;
             });
+        }
+        if (quest.rewards.unlocks && quest.rewards.unlocks.autoIncubatorSlots) {
+            rewardsHTML += `<span class="quest-reward-item">🧪 +${quest.rewards.unlocks.autoIncubatorSlots} incubateur auto</span>`;
         }
         if (quest.rewards.eggs) {
             Object.entries(quest.rewards.eggs).forEach(([rarity, count]) => {
@@ -851,14 +984,14 @@ function buildQuestCardHTML(game, quest) {
     } else if (quest.completed) {
         actionsHTML = `<button class="quest-btn btn-claim" onclick="game.showQuestCompletionModal(game.quests.find(q => q.id == '${quest.id}'))">🎁 Récupérer</button>`;
     } else {
-        if (quest.questType !== 'STORY') {
+        if (quest.questType !== 'STORY' && quest.questType !== 'TEAM_ROCKET') {
             actionsHTML = `<button class="quest-btn btn-refuse" style="width:100%;" onclick="game.abandonQuest('${quest.id}')">Abandonner</button>`;
         } else {
             actionsHTML = `<div class="quest-actions" style="color:#94a3b8;font-size:12px;">Quête scénario — non abandonnable</div>`;
         }
     }
     const dialogueBlock = quest.dialogue ? `<div class="quest-dialogue" style="color:#555;font-style:italic;margin:6px 0;font-size:12px;">"${quest.dialogue}"</div>` : '';
-    const guideBtn = quest.questType === 'STORY' ? `<button type="button" class="quest-btn" onclick="game.showQuestGuide('${String(quest.id).replace(/'/g, "\\'")}')" title="Comment faire ?" style="padding:4px 10px;font-size:12px;margin-left:6px;">?</button>` : '';
+    const guideBtn = (quest.questType === 'STORY' || quest.questType === 'TEAM_ROCKET') ? `<button type="button" class="quest-btn" onclick="game.showQuestGuide('${String(quest.id).replace(/'/g, "\\'")}')" title="Comment faire ?" style="padding:4px 10px;font-size:12px;margin-left:6px;">?</button>` : '';
     return `
         <div class="quest-header"><div class="quest-title" style="display:flex;align-items:center;flex-wrap:wrap;">${quest.title}${guideBtn}</div><div class="quest-badge ${badgeClass}">${badgeText}</div></div>
         <div class="quest-description">${quest.description}</div>${dialogueBlock}
@@ -884,17 +1017,8 @@ function updateQuestsDisplayLogic(game) {
 
     const displayableQuests = game.quests.filter(q => !q.claimed);
     const storyQuests = displayableQuests.filter(q => q.questType === 'STORY');
-    const otherQuests = displayableQuests.filter(q => q.questType !== 'STORY');
-
-    if (questsTabBadge) {
-        if (storyQuests.length > 0) {
-            questsTabBadge.innerHTML = '<span class="story-quest-tab-badge">📜</span>';
-            questsTabBadge.style.display = '';
-        } else {
-            questsTabBadge.innerHTML = '';
-            questsTabBadge.style.display = 'none';
-        }
-    }
+    const teamRocketQuests = displayableQuests.filter(q => q.questType === 'TEAM_ROCKET');
+    const otherQuests = displayableQuests.filter(q => q.questType !== 'STORY' && q.questType !== 'TEAM_ROCKET');
 
     if (game.quests.length === 0) {
         questContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 30px; font-style: italic;">Aucune quête disponible.<br>Revenez plus tard !</div>';
@@ -931,10 +1055,36 @@ function updateQuestsDisplayLogic(game) {
         });
     }
 
+    if (teamRocketQuests.length > 0) {
+        const rocketSection = document.createElement('div');
+        rocketSection.className = 'story-quests-section';
+        rocketSection.innerHTML = `
+            <div class="story-quests-header">
+                <div class="story-quests-header-icon"><span class="story-quest-section-chen-fallback visible">🚀</span></div>
+                <div class="story-quests-header-text">
+                    <h3 class="story-quests-section-title">Missions Team Rocket</h3>
+                    <p class="story-quests-section-desc">Objectifs spéciaux de la faction Rocket.</p>
+                </div>
+            </div>
+            <div class="story-quests-list" id="teamRocketQuestsList"></div>
+        `;
+        questContainer.appendChild(rocketSection);
+        const rocketList = document.getElementById('teamRocketQuestsList');
+        teamRocketQuests.forEach(quest => {
+            const card = document.createElement('div');
+            card.className = 'quest-card quest-card-story';
+            if (quest.accepted && !quest.completed) card.classList.add('accepted');
+            if (quest.completed) card.classList.add('completed');
+            card.style.borderLeft = '4px solid #ef4444';
+            card.innerHTML = buildQuestCardHTML(game, quest);
+            rocketList.appendChild(card);
+        });
+    }
+
     if (otherQuests.length > 0) {
         const otherHeader = document.createElement('h3');
         otherHeader.className = 'other-quests-title';
-        otherHeader.textContent = storyQuests.length > 0 ? 'Autres quêtes' : 'Quêtes du Jour';
+        otherHeader.textContent = (storyQuests.length > 0 || teamRocketQuests.length > 0) ? 'Autres quêtes' : 'Quêtes du Jour';
         questContainer.appendChild(otherHeader);
         otherQuests.forEach(quest => {
             const card = document.createElement('div');
@@ -945,4 +1095,6 @@ function updateQuestsDisplayLogic(game) {
             questContainer.appendChild(card);
         });
     }
+
+    if (typeof game.updateTabBadges === 'function') game.updateTabBadges();
 }

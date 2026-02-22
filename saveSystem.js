@@ -11,6 +11,8 @@
 
 // Clé localStorage — NE PAS MODIFIER
 const SAVE_KEY = 'creatureGameSave';
+// Cap de progression hors-ligne pour éviter les simulations extrêmes.
+const OFFLINE_CAP_MS = 72 * 60 * 60 * 1000; // 72h
 
 // ============================================================
 // SAUVEGARDE
@@ -81,6 +83,7 @@ function saveGameLogic(game) {
         isPensionCollapsed: game.isPensionCollapsed,
         captureMode: game.captureMode,
         captureTargets: game.captureTargets,
+        teamRocketState: game.teamRocketState ? JSON.parse(JSON.stringify(game.teamRocketState)) : null,
 
         // -- Objets & Buffs --
         items: game.items ? { ...game.items } : {},
@@ -116,6 +119,7 @@ function saveGameLogic(game) {
             difficulty: quest.difficulty,
             special: quest.special,
             specialParams: quest.specialParams,
+            tags: quest.tags,
             accepted: quest.accepted,
             completed: quest.completed,
             claimed: quest.claimed,
@@ -125,6 +129,7 @@ function saveGameLogic(game) {
 
         questsCompleted: game.questsCompleted,
         completedStoryQuests: game.completedStoryQuests || [],
+        completedTeamRocketQuests: game.completedTeamRocketQuests || [],
         nextQuestTimer: game.nextQuestTimer,
         lastQuestUpdate: game.lastQuestUpdate,
 
@@ -153,7 +158,7 @@ function saveGameLogic(game) {
             btn.classList.add('save-active');
             setTimeout(() => btn.classList.remove('save-active'), 1000);
         }
-        return true;
+        return json;
     } catch (error) {
         console.error("ERREUR FATALE SAUVEGARDE :", error);
         toast.error("Erreur Critique", "Impossible de sauvegarder (Quota de stockage dépassé ?).");
@@ -165,12 +170,113 @@ function saveGameLogic(game) {
 // CHARGEMENT
 // ============================================================
 
+/**
+ * Vérifie qu'une entrée "créature" sérialisée a les champs requis pour désérialisation.
+ */
+function isValidCreatureEntry(entry, context) {
+    if (!entry || typeof entry !== 'object') return context + ' : entrée créature invalide.';
+    if (typeof entry.name !== 'string' || !entry.name) return context + ' : créature sans nom.';
+    if (typeof entry.level !== 'number' || entry.level < 1 || entry.level > 999) return context + ' : niveau invalide (' + entry.name + ').';
+    if (typeof entry.type !== 'string' || !entry.type) return context + ' : type manquant (' + entry.name + ').';
+    if (typeof entry.rarity !== 'string' && typeof entry.rarity !== 'undefined') return context + ' : rareté invalide (' + entry.name + ').';
+    return null;
+}
+
+/**
+ * Vérifie qu'une entrée "quête" a une structure minimale cohérente.
+ */
+function isValidQuestEntry(entry, index) {
+    if (!entry || typeof entry !== 'object') return 'Quête #' + index + ' : entrée invalide.';
+    if (typeof entry.id !== 'string' && typeof entry.id !== 'number' && typeof entry.id !== 'undefined') return 'Quête #' + index + ' : id invalide.';
+    if (typeof entry.target !== 'number' && typeof entry.target !== 'undefined') return 'Quête #' + index + ' : target invalide.';
+    if (typeof entry.current !== 'number' && typeof entry.current !== 'undefined') return 'Quête #' + index + ' : current invalide.';
+    if (entry.target != null && entry.current != null && entry.current > entry.target) return 'Quête #' + index + ' : current > target.';
+    return null;
+}
+
+/**
+ * Vérifie que les données chargées ont une structure complète et cohérente (équipe, quêtes, créatures, etc.).
+ * Retourne une chaîne d'erreur ou null si OK.
+ */
+function validateSaveData(gameData) {
+    if (!gameData || typeof gameData !== 'object') return 'Sauvegarde vide ou invalide.';
+
+    // --- Équipe (obligatoire, non vide) ---
+    if (!Array.isArray(gameData.playerTeam)) return 'Données corrompues : équipe manquante ou invalide.';
+    if (gameData.playerTeam.length === 0) return 'Données corrompues : équipe vide.';
+    for (let i = 0; i < gameData.playerTeam.length; i++) {
+        const err = isValidCreatureEntry(gameData.playerTeam[i], 'Équipe slot ' + (i + 1));
+        if (err) return err;
+    }
+
+    // --- Stockage & Pension (doivent être des tableaux) ---
+    if (gameData.storage != null && !Array.isArray(gameData.storage)) return 'Données corrompues : stockage invalide.';
+    if (gameData.storage && gameData.storage.length > 0) {
+        for (let i = 0; i < gameData.storage.length; i++) {
+            const err = isValidCreatureEntry(gameData.storage[i], 'Stockage slot ' + (i + 1));
+            if (err) return err;
+        }
+    }
+    if (gameData.pension != null && !Array.isArray(gameData.pension)) return 'Données corrompues : pension invalide.';
+    if (gameData.pension && gameData.pension.length > 0) {
+        for (let i = 0; i < gameData.pension.length; i++) {
+            const err = isValidCreatureEntry(gameData.pension[i], 'Pension slot ' + (i + 1));
+            if (err) return err;
+        }
+    }
+
+    // --- Ressources & Stats ---
+    if (typeof gameData.pokedollars !== 'number' || gameData.pokedollars < 0 || !Number.isFinite(gameData.pokedollars)) return 'Données corrompues : Pokédollars invalides.';
+    if (!gameData.stats || typeof gameData.stats !== 'object') return 'Données corrompues : statistiques manquantes.';
+    if (!gameData.playerMainStats || typeof gameData.playerMainStats !== 'object') return 'Données corrompues : stats joueur manquantes.';
+    if (!gameData.upgrades || typeof gameData.upgrades !== 'object') return 'Données corrompues : upgrades manquants.';
+
+    // --- Quêtes (tableau, chaque entrée valide) ---
+    if (gameData.quests != null && !Array.isArray(gameData.quests)) return 'Données corrompues : quêtes invalides.';
+    if (gameData.quests) {
+        for (let i = 0; i < gameData.quests.length; i++) {
+            const err = isValidQuestEntry(gameData.quests[i], i);
+            if (err) return err;
+        }
+    }
+
+    // --- Objets & listes optionnels mais typés ---
+    if (gameData.items != null && typeof gameData.items !== 'object') return 'Données corrompues : items invalides.';
+    if (gameData.pokedex != null && typeof gameData.pokedex !== 'object') return 'Données corrompues : Pokédex invalide.';
+    if (gameData.badges != null && typeof gameData.badges !== 'object') return 'Données corrompues : badges invalides.';
+    if (gameData.achievements != null && typeof gameData.achievements !== 'object') return 'Données corrompues : succès invalides.';
+    if (gameData.activeExpeditions != null && !Array.isArray(gameData.activeExpeditions)) return 'Données corrompues : expéditions actives invalides.';
+    if (gameData.incubators != null && !Array.isArray(gameData.incubators)) return 'Données corrompues : incubateurs invalides.';
+    if (gameData.teamRocketState != null && typeof gameData.teamRocketState !== 'object') return 'Données corrompues : Team Rocket invalide.';
+
+    // --- Index équipe dans les bornes ---
+    const teamLen = gameData.playerTeam.length;
+    const idx = gameData.activeCreatureIndex;
+    if (typeof idx === 'number' && (idx < 0 || idx >= teamLen)) return 'Données corrompues : index de créature active hors limites.';
+
+    return null;
+}
+
 function loadGameLogic(game) {
     try {
         const savedData = localStorage.getItem(SAVE_KEY);
         if (!savedData) return false;
 
-        const gameData = JSON.parse(savedData);
+        let gameData;
+        try {
+            gameData = JSON.parse(savedData);
+        } catch (parseError) {
+            console.error('Sauvegarde corrompue (JSON invalide):', parseError);
+            if (typeof toast !== 'undefined') toast.error('Sauvegarde corrompue', 'Le fichier de sauvegarde est illisible (JSON invalide). Impossible de charger.');
+            return false;
+        }
+
+        const validationError = validateSaveData(gameData);
+        if (validationError) {
+            console.error('Sauvegarde corrompue (structure invalide):', validationError);
+            if (typeof toast !== 'undefined') toast.error('Sauvegarde corrompue', validationError + ' Le chargement a été annulé.');
+            return false;
+        }
 
         game.playerTeam = gameData.playerTeam.map(data => Creature.deserialize(data));
 
@@ -248,6 +354,7 @@ function loadGameLogic(game) {
         }
         game.achievements = gameData.achievements || {};
         game.completedStoryQuests = gameData.completedStoryQuests || [];
+        game.completedTeamRocketQuests = gameData.completedTeamRocketQuests || [];
 
         if (gameData.quests) {
             game.quests = gameData.quests.map(questData => {
@@ -259,7 +366,7 @@ function loadGameLogic(game) {
                     special: questData.special
                 };
                 const quest = new Quest(template, 1, questData.difficulty || 'EASY');
-                quest.id = questData.id;
+                quest.id = (questData.id === undefined || questData.id === null) ? quest.id : String(questData.id);
                 quest.type = questData.type;
                 quest.questType = questData.questType || questData.type;
                 quest.current = questData.current || 0;
@@ -269,6 +376,7 @@ function loadGameLogic(game) {
                 quest.claimed = questData.claimed || false;
                 quest.rewards = questData.rewards;
                 if (questData.specialParams) quest.specialParams = questData.specialParams;
+                if (questData.tags) quest.tags = Array.isArray(questData.tags) ? questData.tags : [questData.tags];
                 if (questData.dialogue) quest.dialogue = questData.dialogue;
                 return quest;
             });
@@ -319,13 +427,18 @@ function loadGameLogic(game) {
         game.autoSwitchStamina = gameData.autoSwitchStamina !== undefined ? gameData.autoSwitchStamina : true;
         game.autoUltimate = gameData.autoUltimate !== undefined ? gameData.autoUltimate : true;
         game.isPensionCollapsed = gameData.isPensionCollapsed || false;
+        if (typeof game.normalizeTeamRocketState === 'function') {
+            game.teamRocketState = game.normalizeTeamRocketState(gameData.teamRocketState);
+        } else {
+            game.teamRocketState = gameData.teamRocketState || null;
+        }
 
         if (gameData.stats) {
             game.stats = { ...game.stats, ...gameData.stats };
         }
         game.achievementsCompleted = gameData.achievementsCompleted || {};
 
-        if (typeof narrativeManager !== 'undefined' && narrativeManager.loadSaveData) {
+        if (typeof narrativeManager !== 'undefined' && narrativeManager && typeof narrativeManager.loadSaveData === 'function') {
             if (gameData.narrative) {
                 narrativeManager.loadSaveData(gameData.narrative);
             } else if (gameData.playerTeam && gameData.playerTeam.length > 0) {
@@ -390,7 +503,8 @@ function loadGameLogic(game) {
         }
 
         if (gameData.lastSaveTime) {
-            const offlineTime = Date.now() - gameData.lastSaveTime;
+            const rawOfflineTime = Date.now() - gameData.lastSaveTime;
+            const offlineTime = Math.max(0, Math.min(rawOfflineTime, OFFLINE_CAP_MS));
             const offlineSeconds = Math.floor(offlineTime / 1000);
 
             if (offlineSeconds > 0) {
@@ -408,24 +522,9 @@ function loadGameLogic(game) {
                     logMessage("Progression hors ligne : " + offlineSeconds + " secondes appliquee !");
                 }
 
-                if (game.simulateIncubatorsForElapsedOffline) {
-                    const offlineStats = {
-                        simulated: 0,
-                        won: 0,
-                        lost: 0,
-                        xp: 0,
-                        money: 0,
-                        items: {},
-                        captured: 0,
-                        capturedPokemonList: [],
-                        time: offlineTime,
-                        incubation: game.createOfflineIncubationStats ? game.createOfflineIncubationStats() : null
-                    };
-                    game.simulateIncubatorsForElapsedOffline(offlineTime, offlineStats);
-                    game.offlineIncubationLastReport = offlineStats.incubation;
-                    if (offlineTime >= 30000 && offlineStats.incubation && offlineStats.incubation.hatchedTotal > 0 && game.showOfflineReport) {
-                        setTimeout(() => game.showOfflineReport(offlineStats), 200);
-                    }
+                // Déléguer toute la simulation hors-ligne (combats, butin, œufs) à la fonction unifiée
+                if (game.catchupMissedCombats) {
+                    setTimeout(() => game.catchupMissedCombats(offlineTime), 500);
                 }
             }
 
@@ -454,6 +553,7 @@ function loadGameLogic(game) {
         return true;
     } catch (error) {
         console.error('Erreur de chargement:', error);
+        if (typeof toast !== 'undefined') toast.error('Erreur de chargement', 'La sauvegarde est corrompue ou incompatible. Chargement annulé.');
         return false;
     }
 }
@@ -463,8 +563,7 @@ function loadGameLogic(game) {
 // ============================================================
 
 function exportSaveLogic(game) {
-    if (!saveGameLogic(game)) return;
-
+    const saveData = saveGameLogic(game);
     if (!saveData) {
         toast.error("Erreur", "Aucune donnée à exporter.");
         return;
@@ -500,8 +599,9 @@ function importSaveLogic(game) {
             const content = event.target.result;
             try {
                 const parsedData = JSON.parse(content);
-                if (!parsedData.playerTeam || !parsedData.pokedollars || !parsedData.stats) {
-                    throw new Error("Format de sauvegarde invalide (Clés manquantes).");
+                const validationError = validateSaveData(parsedData);
+                if (validationError) {
+                    throw new Error(validationError);
                 }
                 localStorage.setItem(SAVE_KEY, content);
                 toast.success("Import Réussi", "Le jeu va recharger...");

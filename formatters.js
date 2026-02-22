@@ -8,16 +8,25 @@
  * Affichage global (2 décimales, ex: 9.84M)
  */
 function formatNumber(num) {
-    if (num >= 1000000000) {
-        return (num / 1000000000).toFixed(2) + 'B';
+    const n = Number(num);
+    if (!Number.isFinite(n)) {
+        return '0';
     }
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(2) + 'M';
+
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+
+    if (abs >= 1e3) {
+        const suffixes = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
+        const tier = Math.floor(Math.log10(abs) / 3);
+        if (tier < suffixes.length) {
+            const scaled = abs / Math.pow(1000, tier);
+            return sign + scaled.toFixed(2) + suffixes[tier];
+        }
+        return sign + abs.toExponential(2);
     }
-    if (num >= 1000) {
-        return (num / 1000).toFixed(2) + 'K';
-    }
-    return Math.floor(num).toString();
+
+    return sign + Math.floor(abs).toString();
 }
 
 /**

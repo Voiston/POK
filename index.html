@@ -14,7 +14,7 @@
     <script src="constants.js" defer></script>
     <script src="formatters.js" defer></script>
     <script src="pokemonStats.js" defer></script>
-    <script src="creature.js" defer></script>
+    <script src="Creature.js" defer></script>
     <script src="gameManager.js" defer></script>
     <script src="narrativeData.js" defer></script>
     <script src="narrativeManager.js" defer></script>
@@ -365,6 +365,7 @@
                 <button class="tab-btn" onclick="switchTab('tower')">Tour de Combat</button>
                 <button class="tab-btn" onclick="switchTab('expeditions')">🗺️ Expéditions<span
                         id="expeditionsTabBadge"></span></button>
+                <button class="tab-btn" onclick="switchTab('teamrocket')">🚀 Team Rocket<span id="teamRocketTabBadge"></span></button>
 
             </div>
 
@@ -488,8 +489,8 @@
                 <div style="display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap;">
                     <button class="sort-btn active" id="pokedexSubTab-pokedex"
                         onclick="game.switchPokedexSubTab('pokedex')">Pokédex</button>
-                    <button class="sort-btn" id="pokedexSubTab-synergies"
-                        onclick="game.switchPokedexSubTab('synergies')">⭐ Synergies</button>
+                    <button class="sort-btn" id="pokedexSubTab-collectionbonuses"
+                        onclick="game.switchPokedexSubTab('collectionbonuses')">⭐ Bonus collection</button>
                 </div>
 
                 <div id="pokedexSubView-pokedex">
@@ -506,13 +507,13 @@
                     <div class="team-list" id="pokedexList"></div>
                 </div>
 
-                <div id="pokedexSubView-synergies" style="display:none;">
-                    <h3>Synergies de Collection</h3>
+                <div id="pokedexSubView-collectionbonuses" style="display:none;">
+                    <h3>Bonus de collection</h3>
                     <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Bonus "Maillon Faible" : évolution
                         finale requise, niveau = min(prestige). Manquant ou prestige 0 = bonus 0.</p>
-                    <div id="collectionSynergiesTabs"
+                    <div id="collectionBonusesTabs"
                         style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px;"></div>
-                    <div id="collectionSynergiesContainer"></div>
+                    <div id="collectionBonusesContainer"></div>
                 </div>
             </div>
 
@@ -607,6 +608,14 @@
                     </div>
                 </div>
                 <div class="upgrades-container" id="arenasContainer"></div>
+            </div>
+
+            <div class="tab-content" id="teamrocketTab">
+                <h3>🚀 Onglet Team Rocket</h3>
+                <p style="font-size:12px; color:#64748b; margin:0 0 10px 0;">
+                    Banque à intérêts, Prêt, Staking et Casino Rocket autour des Jetons Rocket (RJ).
+                </p>
+                <div id="teamRocketPanel"></div>
             </div>
 
 
