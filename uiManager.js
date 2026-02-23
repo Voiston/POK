@@ -2712,3 +2712,52 @@ window.addEventListener('resize', () => {
 });
 
 window.switchMobilePanel = switchMobilePanel;
+
+// --- GESTION DES SWIPES (MOBILE) ---
+let touchStartX = 0;
+let touchEndX = 0;
+let touchStartY = 0;
+let touchEndY = 0;
+const SWIPE_THRESHOLD = 50;
+
+function handleGesture() {
+    if (window.innerWidth > 768) return;
+
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+
+    // Ignore swipe if it's more vertical than horizontal (user is scrolling)
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
+
+    if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+        const activeNavBtn = document.querySelector('.mobile-nav-btn.active');
+        if (!activeNavBtn) return;
+
+        const currentPanel = activeNavBtn.dataset.panel;
+        const panels = ['combat', 'team', 'extras'];
+        const currentIndex = panels.indexOf(currentPanel);
+
+        if (diffX < 0) {
+            // Swipe Left -> next panel
+            if (currentIndex < panels.length - 1) {
+                switchMobilePanel(panels[currentIndex + 1]);
+            }
+        } else {
+            // Swipe Right -> previous panel
+            if (currentIndex > 0) {
+                switchMobilePanel(panels[currentIndex - 1]);
+            }
+        }
+    }
+}
+
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleGesture();
+}, { passive: true });

@@ -10650,21 +10650,29 @@ body.narrative-stats-visible .header {
     .toastContainer {
         right: 5px !important;
         left: 5px !important;
-        top: auto !important;
-        bottom: 72px !important;
+        top: 10px !important;
+        bottom: auto !important;
         z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     .toast {
         min-width: unset !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        padding: 10px 14px !important;
+        max-width: 90% !important;
+        width: 90% !important;
+        padding: 8px 12px !important;
+        margin-bottom: 8px !important;
+        border-radius: 20px !important;
+        font-size: 13px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        animation: slideDown 0.3s ease-out forwards !important;
     }
 
-    @keyframes slideIn {
+    @keyframes slideDown {
         from {
-            transform: translateY(40px);
+            transform: translateY(-40px);
             opacity: 0;
         }
 
@@ -10681,7 +10689,7 @@ body.narrative-stats-visible .header {
         }
 
         to {
-            transform: translateY(40px);
+            transform: translateY(-40px);
             opacity: 0;
         }
     }
@@ -10702,6 +10710,69 @@ body.narrative-stats-visible .header {
     .shop-buy-btn,
     button {
         min-height: 36px;
+    }
+
+    /* --- TEAM AREA ACTIONS (Plus compact) --- */
+    .card-actions {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 4px !important;
+        padding: 4px 0 !important;
+    }
+
+    .card-actions button {
+        padding: 4px !important;
+        font-size: 9px !important;
+        min-height: 28px !important;
+    }
+
+    /* --- STORAGE GRID (Dense) --- */
+    #storageList {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)) !important;
+        gap: 6px !important;
+        padding: 4px !important;
+    }
+
+    #storageList .creature-card {
+        padding: 4px !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #storageList .creature-info,
+    #storageList .creature-iv,
+    #storageList .creature-types,
+    #storageList .card-actions {
+        display: none !important;
+        /* Hide details on mobile grid */
+    }
+
+    #storageList .creature-sprite {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    #storageList .creature-header {
+        flex-direction: column !important;
+        gap: 2px !important;
+        align-items: center !important;
+        margin-bottom: 0 !important;
+    }
+
+    #storageList .creature-name {
+        font-size: 9px !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+    }
+
+    #storageList .creature-level {
+        font-size: 8px !important;
     }
 
     /* --- NAVIGATION MOBILE FIXE --- */
