@@ -45,6 +45,7 @@ class Game {
         this.quests = [];
         this.pendingRoamer = null;
         this.pauseOnRare = true; // Par défaut : On s'arrête (Sécurité)
+        this.offlineSimMaxCombatsPerSecond = (GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300;
         this.achievements = {};
         this.tooltipTimer = null; // Stocke le timer
         this.TOOLTIP_DELAY = 200; // Délai en millisecondes (0.2s) - Modifiez ici !
@@ -201,6 +202,13 @@ class Game {
             // --- ÉCONOMIE & PROGRESSION ---
             totalPokedollarsEarned: 0, // (Anciennement totalGoldEarned)
             totalRocketBankInterestGained: 0, // Total intérêts générés par la banque Team Rocket
+            rocketTrustLevelMax: 1,
+            rocketLoanActiveRealtimeMs: 0,
+            rocketLargeLoansRepaid: 0,
+            rocketStakingTier8Reached: 0,
+            rocketStakingRecoveredTier9Plus: 0,
+            rocketStakingRecoveredHighRisk: 0,
+            rocketStakingLegendaryStolen: 0,
             prestigeCount: 0,          // (Anciennement prestigesDone)
             upgradesPurchased: 0,      // Pour "Investisseur Avisé"
             badgesEarned: 0,           // Pour "Collectionneur de Badges"
@@ -240,37 +248,16 @@ class Game {
 
                     if (timeHidden > 1000) { // Si absence > 1 seconde
 
-                        // 1. Rattrapage des Combats (Existant)
+                        // 1. Rattrapage des Combats + tout le reste (stats passives, banque, prêt, staking, quêtes, boosts)
                         if (timeHidden > 5000) {
                             this.catchupMissedCombats(timeHidden);
                         } else {
-                            // Si l'absence est courte (<5s), on rattrape quand même les stats passives
+                            // Absence courte (<5s) : pas de simu combats, mais on rattrape le reste
                             this.catchUpPassiveStats(timeHidden);
+                            this.catchUpAllSystems(timeHidden);
                         }
 
-                        // 2. ✅ RATTRAPAGE GÉNÉRATION EXPÉDITIONS (NOUVEAU)
-                        // On simule l'écoulement du temps pour le timer d'expédition
-                        if (this.availableExpeditions.length < this.maxAvailableExpeditions) {
-                            let remainingTime = timeHidden;
-
-                            // Boucle tant qu'on a du temps à dépenser et des slots libres
-                            while (remainingTime > 0 && this.availableExpeditions.length < this.maxAvailableExpeditions) {
-                                if (remainingTime >= this.expeditionTimer) {
-                                    // Assez de temps pour finir le timer actuel -> Une mission apparaît !
-                                    remainingTime -= this.expeditionTimer;
-                                    this.generateRandomExpedition();
-
-                                    // On reset le timer pour la suivante
-                                    this.expeditionTimer = this.EXPEDITION_GEN_TIME;
-                                } else {
-                                    // Pas assez pour finir, on avance juste le timer
-                                    this.expeditionTimer -= remainingTime;
-                                    remainingTime = 0;
-                                }
-                            }
-                        }
-
-                        // Mise à jour immédiate de l'affichage des expéditions
+                        // 2. Affichage à jour (expéditions déjà rattrapées dans catchUpAllSystems / catchupMissedCombats)
                         this.updateExpeditionsDisplay();
                     }
 
@@ -734,6 +721,10 @@ class Game {
     useItem(itemKey, quantity = 1, event = null) {
         const item = ALL_ITEMS[itemKey];
         if (!item) return false;
+        if (this.isRocketStakingItemLocked(itemKey)) {
+            logMessage("❌ Cet objet est immobilisé en staking Team Rocket.");
+            return false;
+        }
 
         let amountToUse = quantity;
 
@@ -1049,15 +1040,17 @@ class Game {
                 totalDebt: 0,
                 remainingDebt: 0,
                 repaidTotal: 0,
-                withholdingRate: 0.5
+                withholdingRate: 0.5,
+                startedAt: 0,
+                lastRealtimeTickAt: 0
             },
             staking: {
-                activeContracts: [],
-                availableContracts: [],
-                completedContracts: 0,
-                contractSeed: Math.floor(Math.random() * 1000000),
-                maxAvailableContracts: 3,
-                nextContractReadyAt: 0
+                activeSession: null,
+                completedSessions: 0,
+                stolenSessions: 0,
+                offeredItemKeys: [],
+                nextOfferRotateAt: 0,
+                lastStealFeedback: null
             },
             casino: {
                 stats: {
@@ -1065,7 +1058,8 @@ class Game {
                     rjSpent: 0,
                     rjWon: 0,
                     jackpots: 0
-                }
+                },
+                history: []
             }
         };
     }
@@ -1112,15 +1106,25 @@ class Game {
                 totalDebt: Math.max(0, Number(loan.totalDebt) || 0),
                 remainingDebt: Math.max(0, Number(loan.remainingDebt) || 0),
                 repaidTotal: Math.max(0, Number(loan.repaidTotal) || 0),
-                withholdingRate: Number.isFinite(Number(loan.withholdingRate)) ? Number(loan.withholdingRate) : defaults.loan.withholdingRate
+                withholdingRate: Number.isFinite(Number(loan.withholdingRate)) ? Number(loan.withholdingRate) : defaults.loan.withholdingRate,
+                startedAt: Math.max(0, Number(loan.startedAt) || 0),
+                lastRealtimeTickAt: Math.max(0, Number(loan.lastRealtimeTickAt) || Date.now())
             },
             staking: {
-                activeContracts: Array.isArray(staking.activeContracts) ? staking.activeContracts : [],
-                availableContracts: Array.isArray(staking.availableContracts) ? staking.availableContracts : [],
-                completedContracts: Math.max(0, Number(staking.completedContracts) || 0),
-                contractSeed: Math.max(0, Number(staking.contractSeed) || 0),
-                maxAvailableContracts: Math.max(1, Math.min(3, Number(staking.maxAvailableContracts) || 3)),
-                nextContractReadyAt: Math.max(0, Number(staking.nextContractReadyAt) || 0)
+                activeSession: this.normalizeRocketStakingSession(staking.activeSession),
+                completedSessions: Math.max(0, Number(staking.completedSessions ?? staking.completedContracts) || 0),
+                stolenSessions: Math.max(0, Number(staking.stolenSessions) || 0),
+                offeredItemKeys: Array.isArray(staking.offeredItemKeys) ? staking.offeredItemKeys.map(v => String(v || '').trim()).filter(Boolean) : [],
+                nextOfferRotateAt: Math.max(0, Number(staking.nextOfferRotateAt) || 0),
+                lastStealFeedback: (staking.lastStealFeedback && typeof staking.lastStealFeedback === 'object')
+                    ? {
+                        at: Math.max(0, Number(staking.lastStealFeedback.at) || 0),
+                        itemName: String(staking.lastStealFeedback.itemName || ''),
+                        lostRJ: Math.max(0, Number(staking.lastStealFeedback.lostRJ) || 0),
+                        riskPercent: Math.max(0, Math.min(100, Number(staking.lastStealFeedback.riskPercent) || 0)),
+                        tier: Math.max(1, Number(staking.lastStealFeedback.tier) || 1)
+                    }
+                    : null
             },
             casino: {
                 stats: {
@@ -1128,14 +1132,28 @@ class Game {
                     rjSpent: Math.max(0, Number(casinoStats.rjSpent) || 0),
                     rjWon: Math.max(0, Number(casinoStats.rjWon) || 0),
                     jackpots: Math.max(0, Number(casinoStats.jackpots) || 0)
-                }
+                },
+                history: Array.isArray(casino.history)
+                    ? casino.history
+                        .filter(e => e && typeof e === 'object')
+                        .map(e => ({
+                            at: Math.max(0, Number(e.at) || 0),
+                            stake: Math.max(0, Math.floor(Number(e.stake) || 0)),
+                            pokedollarsGain: Math.max(0, Math.floor(Number(e.pokedollarsGain) || Number(e.payout) || 0)),
+                            matrix: Array.isArray(e.matrix) ? e.matrix.slice(0, 3).map(col => Array.isArray(col) ? col.slice(0, 3).map(v => String(v || '')) : []) : [],
+                            winningLines: Array.isArray(e.winningLines) ? e.winningLines.slice(0, 5) : [],
+                            rewardMessages: Array.isArray(e.rewardMessages) ? e.rewardMessages.slice(0, 5) : [],
+                            rewards: Array.isArray(e.rewards) ? e.rewards.slice(0, 10).map(r => r && typeof r === 'object' ? { rewardType: r.rewardType, targetId: r.targetId, amount: r.amount } : null).filter(Boolean) : []
+                        }))
+                        .slice(0, 12)
+                    : []
             }
         };
 
         this.teamRocketState = normalized;
         this.syncRocketTrustLevelFromXp();
-        this.refreshRocketContractsIfNeeded();
-        this.cleanupExpiredRocketStakes();
+        this.refreshRocketStakeableOffers(Date.now(), false);
+        this.updateRocketStakingPushSession(Date.now());
         return normalized;
     }
 
@@ -1150,6 +1168,57 @@ class Game {
         }
     }
 
+    /**
+     * Rattrape tous les systèmes qui avancent avec le temps (hors combats / incubateurs déjà gérés ailleurs).
+     * À appeler quand l'onglet revient au premier plan ou au chargement après absence.
+     */
+    catchUpAllSystems(missedTime) {
+        const now = Date.now();
+        if (missedTime <= 0) return;
+
+        // Quêtes : avance le timer
+        this.updateQuestTimer(missedTime);
+
+        // Banque Team Rocket : intérêts (tick par minute)
+        this.tickRocketBank(now);
+
+        // Prêt Team Rocket : temps actif pour achievements
+        this.tickRocketLoanRealtime(now);
+
+        // Staking Team Rocket : session en cours (RJ accumulés, risques)
+        this.updateRocketStakingPushSession(now);
+
+        // Rotation des offres staking (autant de fois qu'il faut)
+        const tr = this.teamRocketState;
+        if (tr && tr.staking) {
+            const rotationMs = this.getRocketOfferRotationMs();
+            let nextAt = Number(tr.staking.nextOfferRotateAt) || 0;
+            while (nextAt > 0 && now >= nextAt) {
+                this.refreshRocketStakeableOffers(nextAt, true);
+                nextAt += rotationMs;
+            }
+            tr.staking.nextOfferRotateAt = nextAt > 0 ? nextAt : now + rotationMs;
+        }
+
+        // Expéditions : timer de génération (nouvelles missions disponibles)
+        if (this.availableExpeditions.length < this.maxAvailableExpeditions) {
+            let remainingTime = missedTime;
+            while (remainingTime > 0 && this.availableExpeditions.length < this.maxAvailableExpeditions) {
+                if (remainingTime >= this.expeditionTimer) {
+                    remainingTime -= this.expeditionTimer;
+                    this.generateRandomExpedition();
+                    this.expeditionTimer = this.EXPEDITION_GEN_TIME;
+                } else {
+                    this.expeditionTimer -= remainingTime;
+                    remainingTime = 0;
+                }
+            }
+        }
+
+        // Boosts temporaires : retirer ceux expirés (now a avancé de missedTime)
+        this.updateStatBoosts();
+    }
+
     // OPTIMISATION : Architecture "Game Loop" découplée (Logic vs Render)
     startGameLoop() {
         console.log("🚀 Moteur de jeu optimisé démarré (60 FPS)");
@@ -1160,8 +1229,15 @@ class Game {
 
         // La fonction de boucle qui s'appelle elle-même
         const loop = (currentTime) => {
+            // 0. Onglet caché : on ne fait pas avancer le jeu pour éviter un doublon avec le rattrapage au retour
+            if (document.hidden) {
+                this.lastFrameTime = currentTime;
+                this.gameLoopId = requestAnimationFrame(loop);
+                return;
+            }
+
             // 1. Calcul du Delta Time (Temps écoulé depuis la dernière image en ms)
-            // SÉCURITÉ : On plafonne à 100ms. Si le jeu lag ou onglet inactif, 
+            // SÉCURITÉ : On plafonne à 100ms. Si le jeu lag ou onglet inactif,
             // on évite de simuler 1 heure d'un coup ici (ça ferait planter le PC).
             const deltaTime = Math.min(currentTime - this.lastFrameTime, 100);
             this.lastFrameTime = currentTime;
@@ -1194,6 +1270,7 @@ class Game {
         // On sort ça de la boucle principale pour ne pas surcharger le processeur graphique
         if (this.secondaryInterval) clearInterval(this.secondaryInterval);
         this.secondaryInterval = setInterval(() => {
+            if (document.hidden) return; // Pas de progression en arrière-plan, le rattrapage s'en charge au retour
             this.updatePlayerStatsDisplay(); // Argent, stats globales...
             this.updateUpgradesDisplay();    // Boutons d'achat
             this.checkCompletedNotifications();
@@ -1264,18 +1341,13 @@ class Game {
 
         this.updateQuestTimer(1000);
         this.tickRocketBank(now);
-        const rocketContractSpawned = this.tickRocketContractBoard(now);
-        this.cleanupExpiredRocketStakes();
-        if (rocketContractSpawned) {
-            if (typeof toast !== 'undefined' && toast && typeof toast.info === 'function') {
-                toast.info("Team Rocket", "Nouveau contrat disponible.");
-            } else {
-                logMessage("🕶️ Nouveau contrat Team Rocket disponible.");
-            }
+        this.tickRocketLoanRealtime(now);
+        this.refreshRocketStakeableOffers(now, false);
+        const rocketStakeTick = this.updateRocketStakingPushSession(now);
+        if (rocketStakeTick && rocketStakeTick.stolen) {
             const rocketTab = document.getElementById('teamrocketTab');
-            if (rocketTab && rocketTab.classList.contains('active')) {
-                this.updateTeamRocketDisplay();
-            }
+            if (rocketTab && rocketTab.classList.contains('active')) this.updateTeamRocketDisplay();
+            this.updateItemsDisplay();
         }
         const rocketMinute = Math.floor(now / 60000);
         if (this._lastRocketUiMinute !== rocketMinute) {
@@ -1362,7 +1434,10 @@ class Game {
         // 1. Rattraper les stats passives (Toujours)
         this.catchUpPassiveStats(missedTime);
 
-        // 2. Vérifier si un mode spécial est actif
+        // 2. Rattraper tous les autres systèmes (banque, prêt, staking, quêtes, boosts)
+        this.catchUpAllSystems(missedTime);
+
+        // 3. Vérifier si un mode spécial est actif
         if (this.towerState.isActive || this.arenaState.active) {
             const mode = this.towerState.isActive ? "de la Tour" : "d'Arène";
             logMessage(`⚡ Le combat ${mode} a été mis en pause pendant votre absence.`);
@@ -1398,6 +1473,10 @@ class Game {
                 incubation: this.createOfflineIncubationStats()
             };
             this.simulateIncubatorsForElapsedOffline(missedTime, stats);
+            if (stats.incubation) {
+                const slotsWithEgg = this.incubators.filter(s => s != null).length;
+                stats.incubation.placedTotal = stats.incubation.hatchedTotal + slotsWithEgg;
+            }
             this.offlineIncubationLastReport = stats.incubation;
             return;
         }
@@ -1415,7 +1494,9 @@ class Game {
             captured: 0,
             capturedPokemonList: [],
             time: missedTime,
-            incubation: this.createOfflineIncubationStats()
+            incubation: this.createOfflineIncubationStats(),
+            offlineMissedTime: missedTime,
+            incubationElapsedApplied: 0
         };
 
         const MIN_OFFLINE_FOR_MODAL_MS = 30000;
@@ -1430,16 +1511,22 @@ class Game {
         window.logMessage = function () { };
 
         // Paramètres pour l'animation Async
-        const durationLimit = 10000; // max 10 secondes d'animation
-        const minDuration = 1000; // min 1 seconde
-        const baseSpeed = 20; // 20 combats par seconde à simuler visuellement
+        const minDuration = 1000; // min 1 seconde d'animation
+        const maxCombatsPerSecond =
+            (this.offlineSimMaxCombatsPerSecond && Number.isFinite(this.offlineSimMaxCombatsPerSecond) && this.offlineSimMaxCombatsPerSecond > 0)
+                ? this.offlineSimMaxCombatsPerSecond
+                : ((GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300);
 
-        // Calcul intelligent de la durée cible
-        let targetDurationMs = (maxPossibleCombats / baseSpeed) * 1000;
-        targetDurationMs = Math.max(minDuration, Math.min(targetDurationMs, durationLimit));
+        // Calcul de la durée cible en respectant un plafond de combats simulés par seconde
+        // targetDurationMs = maxPossibleCombats / maxCombatsPerSecond (au minimum minDuration)
+        let targetDurationMs = Math.max(
+            minDuration,
+            (maxPossibleCombats / maxCombatsPerSecond) * 1000
+        );
 
         let currentCombat = 0;
         let startTime = null;
+        let lastElapsed = 0;
         let isSkipped = false;
 
         // Bouton Skip Modal
@@ -1449,6 +1536,8 @@ class Game {
         const step = (timestamp) => {
             if (!startTime) startTime = timestamp;
             const elapsed = timestamp - startTime;
+            const frameDelta = Math.max(0, elapsed - lastElapsed);
+            lastElapsed = elapsed;
 
             let targetCombats = 0;
             if (isSkipped || elapsed >= targetDurationMs) {
@@ -1457,7 +1546,13 @@ class Game {
                 targetCombats = Math.floor((elapsed / targetDurationMs) * maxPossibleCombats);
             }
 
-            const combatsToRun = targetCombats - currentCombat;
+            let combatsToRun = targetCombats - currentCombat;
+
+            // Limitation stricte du nombre de combats exécutés sur cette frame
+            if (frameDelta > 0 && maxCombatsPerSecond > 0 && Number.isFinite(maxCombatsPerSecond)) {
+                const maxThisFrame = Math.max(1, Math.floor(maxCombatsPerSecond * (frameDelta / 1000)));
+                combatsToRun = Math.min(combatsToRun, maxThisFrame);
+            }
 
             // F. BATCH SIMULATION
             for (let i = 0; i < combatsToRun; i++) {
@@ -1511,16 +1606,24 @@ class Game {
 
             currentCombat = targetCombats;
 
-            // G. RAFRAICHISSEMENT UI PENDANT
+            // G. INCUBATEURS PROGRESSIFS (même proportion que les combats pour fluidité)
+            const progress = maxPossibleCombats > 0 ? currentCombat / maxPossibleCombats : 1;
+            const incubationToApply = missedTime * progress - (stats.incubationElapsedApplied || 0);
+            if (incubationToApply > 0) {
+                this.simulateIncubatorsChunk(incubationToApply, stats);
+                stats.incubationElapsedApplied = (stats.incubationElapsedApplied || 0) + incubationToApply;
+            }
+
+            // H. RAFRAICHISSEMENT UI PENDANT
             if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
                 this.updateOfflineReportUi(stats, currentCombat, maxPossibleCombats);
             }
 
-            // H. CONDITION DE BOUCLE OU FIN
+            // I. CONDITION DE BOUCLE OU FIN
             if (currentCombat < maxPossibleCombats && !isSkipped) {
                 window.requestAnimationFrame(step);
             } else {
-                // I. FINALE NETTOYAGE
+                // I. FINALE NETTOYAGE (partie immédiate : soins, logs)
                 window.logMessage = originalLogFunction; // Remet les logs
 
                 // Soins complets gratuits après l'absence (Qualité de vie)
@@ -1533,18 +1636,28 @@ class Game {
                 this.combatState = 'waiting';
                 this.lastCombatTime = Date.now();
 
-                // Incubateurs auto
-                this.simulateIncubatorsForElapsedOffline(missedTime, stats);
-                this.offlineIncubationLastReport = stats.incubation;
+                // Remettre les slots incubateurs en temps réel (startTime était en temps virtuel pendant la simu)
+                for (let idx = 0; idx < this.getMaxIncubatorSlots(); idx++) {
+                    const slot = this.incubators[idx];
+                    if (slot && slot.durationMs != null) {
+                        slot.startTime = Date.now();
+                    }
+                }
 
+                // Cohérence des stats incubation : "Placé auto" = éclosions + œufs encore en cours (évite placé > éclosions)
+                if (stats.incubation) {
+                    const slotsWithEgg = this.incubators.filter(s => s != null).length;
+                    stats.incubation.placedTotal = stats.incubation.hatchedTotal + slotsWithEgg;
+                }
+
+                this.offlineIncubationLastReport = stats.incubation;
                 this.updateItemsDisplay();
                 this.updateDisplay();
-
                 logMessage(`⚡ Rattrapage terminé : ${stats.simulated} combats simulés.`);
                 console.log(`✅ Fin Simu: ${stats.simulated} combats, ${stats.won} wins, Gain: ${stats.money}$`);
 
-                // Rendu final des Grids d'objets et oeufs
                 if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
+                    this.updateOfflineReportUi(stats, maxPossibleCombats, maxPossibleCombats);
                     this.finalizeOfflineReportUi(stats);
                 }
             }
@@ -2366,10 +2479,7 @@ class Game {
             withheld = Math.min(tr.loan.remainingDebt, Math.floor(raw * ratio));
             tr.loan.remainingDebt = Math.max(0, tr.loan.remainingDebt - withheld);
             tr.loan.repaidTotal = (tr.loan.repaidTotal || 0) + withheld;
-            if (tr.loan.remainingDebt <= 0) {
-                tr.loan.active = false;
-                logMessage("💳 Dette Team Rocket remboursée. Prélèvement arrêté.");
-            }
+            this.handleRocketLoanRepaidIfNeeded(tr.loan);
             this.teamRocketState = tr;
         }
 
@@ -2426,10 +2536,42 @@ class Game {
         tr.loan.totalDebt = debt;
         tr.loan.remainingDebt = debt;
         tr.loan.repaidTotal = 0;
+        tr.loan.startedAt = Date.now();
+        tr.loan.lastRealtimeTickAt = tr.loan.startedAt;
         this.pokedollars += principal;
         logMessage(`💼 Prêt Team Rocket accordé: +${formatNumber(principal)}$ (dette: ${formatNumber(debt)}$).`);
         this.updatePlayerStatsDisplay();
         return true;
+    }
+
+    tickRocketLoanRealtime(now = Date.now()) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.loan) return;
+        const loan = tr.loan;
+        if (!loan.active || loan.remainingDebt <= 0) {
+            loan.lastRealtimeTickAt = now;
+            return;
+        }
+        if (!loan.lastRealtimeTickAt || loan.lastRealtimeTickAt > now) {
+            loan.lastRealtimeTickAt = now;
+            return;
+        }
+        const elapsed = Math.max(0, now - loan.lastRealtimeTickAt);
+        loan.lastRealtimeTickAt = now;
+        if (elapsed <= 0) return;
+        this.stats.rocketLoanActiveRealtimeMs = Math.max(0, Number(this.stats.rocketLoanActiveRealtimeMs) || 0) + elapsed;
+        this.checkAchievements('rocketLoanActiveRealtimeMs');
+    }
+
+    handleRocketLoanRepaidIfNeeded(loan) {
+        if (!loan || !loan.active || loan.remainingDebt > 0) return;
+        loan.active = false;
+        loan.lastRealtimeTickAt = Date.now();
+        if (Number(loan.principal) >= 1000000) {
+            this.stats.rocketLargeLoansRepaid = Math.max(0, Number(this.stats.rocketLargeLoansRepaid) || 0) + 1;
+            this.checkAchievements('rocketLargeLoansRepaid');
+        }
+        logMessage("💳 Dette Team Rocket remboursée. Prélèvement arrêté.");
     }
 
     rocketDeposit(amount) {
@@ -2491,6 +2633,7 @@ class Game {
         bank.accruedUnclaimed += gain;
         bank.totalInterestGenerated += gain;
         this.stats.totalRocketBankInterestGained = (this.stats.totalRocketBankInterestGained || 0) + gain;
+        this.checkAchievements('totalRocketBankInterestGained');
         tr.questProgress.interestsGenerated = (tr.questProgress.interestsGenerated || 0) + gain;
 
         if (loan.active && loan.remainingDebt > 0) {
@@ -2498,7 +2641,7 @@ class Game {
             if (autoDebtPay > 0) {
                 loan.remainingDebt -= autoDebtPay;
                 loan.repaidTotal += autoDebtPay;
-                if (loan.remainingDebt <= 0) loan.active = false;
+                this.handleRocketLoanRepaidIfNeeded(loan);
             }
         }
     }
@@ -2536,6 +2679,13 @@ class Game {
         } else {
             tr.trustLevel = lvl;
         }
+        const prevBest = Math.max(1, Number(this.stats.rocketTrustLevelMax) || 1);
+        if (lvl > prevBest) {
+            this.stats.rocketTrustLevelMax = lvl;
+            this.checkAchievements('rocketTrustLevelMax');
+        } else if (!this.stats.rocketTrustLevelMax) {
+            this.stats.rocketTrustLevelMax = lvl;
+        }
     }
 
     getCreatureRocketSignature(creature) {
@@ -2553,283 +2703,677 @@ class Game {
     }
 
     isCreatureRocketLocked(creature) {
-        const sig = this.getCreatureRocketSignature(creature);
-        if (!sig) return false;
-        const active = (this.teamRocketState && this.teamRocketState.staking && this.teamRocketState.staking.activeContracts) || [];
-        const now = Date.now();
-        return active.some(c => c.status === 'active' && c.endAt > now && Array.isArray(c.lockedCreatureSignatures) && c.lockedCreatureSignatures.includes(sig));
+        return false;
     }
 
-    generateRocketContracts(count = 1) {
-        if (typeof ROCKET_STAKING_CONTRACT_POOLS === 'undefined') return [];
+    normalizeRocketStakingSession(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const itemKey = String(raw.itemKey || '').trim();
+        if (!itemKey) return null;
+        const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[itemKey]) ? ALL_ITEMS[itemKey] : null;
+        const startedAt = Math.max(0, Number(raw.startedAt) || 0);
+        const lastTickAt = Math.max(startedAt || Date.now(), Number(raw.lastTickAt) || Date.now());
+        const tier = Math.max(1, Number(raw.tier) || 1);
+        const multiplier = Math.max(1, Number(raw.multiplier) || Math.pow(2, tier - 1));
+        const baseGps = Math.max(0, Number(raw.baseGps) || this.getRocketStakingBaseGps(itemKey));
+        const currentGps = Math.max(0, Number(raw.currentGps) || (baseGps * multiplier));
+        const cycleMs = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined' && Number(ROCKET_PUSH_STAKING_CONFIG.cycleMs) > 0)
+            ? Number(ROCKET_PUSH_STAKING_CONFIG.cycleMs)
+            : 30000;
+        const nextPhaseEndAt = (raw.nextPhaseEndAt != null && Number(raw.nextPhaseEndAt) > 0)
+            ? Number(raw.nextPhaseEndAt)
+            : (lastTickAt + this.getRocketStakingRandomPhaseDurationMs());
+        const currentPhaseDurationMs = (raw.currentPhaseDurationMs != null && Number(raw.currentPhaseDurationMs) > 0)
+            ? Number(raw.currentPhaseDurationMs)
+            : (nextPhaseEndAt > lastTickAt ? Math.max(1, nextPhaseEndAt - lastTickAt) : 30000);
+        const nextRiskCheckCycle = Math.max(1, Number(raw.nextRiskCheckCycle) || (Math.floor(Math.max(0, Date.now() - startedAt) / cycleMs) + 1));
+        return {
+            itemKey,
+            itemName: String(raw.itemName || (itemDef && itemDef.name) || itemKey),
+            itemImg: String(raw.itemImg || (itemDef && itemDef.img) || ''),
+            itemIcon: String(raw.itemIcon || (itemDef && itemDef.icon) || '📦'),
+            category: this.getRocketStakingCategory(itemKey),
+            baseGps,
+            tier,
+            multiplier,
+            currentGps,
+            startedAt,
+            lastTickAt,
+            accruedRJ: Math.max(0, Number(raw.accruedRJ) || 0),
+            nextPhaseEndAt,
+            currentPhaseDurationMs,
+            nextRiskCheckCycle,
+            tier8AchievementGranted: !!raw.tier8AchievementGranted,
+            itemLocked: !!raw.itemLocked,
+            dynamicRiskByTier: (raw.dynamicRiskByTier && typeof raw.dynamicRiskByTier === 'object')
+                ? { ...raw.dynamicRiskByTier }
+                : { 1: 1 }
+        };
+    }
+
+    isRocketStakingItemLocked(itemKey) {
+        const key = String(itemKey || '').trim();
+        if (!key) return false;
         const tr = this.teamRocketState;
-        const lvl = Math.max(1, tr.trustLevel || 1);
-        const pool = []
-            .concat(ROCKET_STAKING_CONTRACT_POOLS[Math.max(1, lvl - 1)] || [])
-            .concat(ROCKET_STAKING_CONTRACT_POOLS[lvl] || [])
-            .concat(ROCKET_STAKING_CONTRACT_POOLS[Math.min(5, lvl + 1)] || []);
-
-        const picks = [];
-        const localPool = pool.slice();
-        const wanted = Math.max(1, Math.floor(Number(count) || 1));
-        while (localPool.length > 0 && picks.length < wanted) {
-            const idx = Math.floor(Math.random() * localPool.length);
-            const tpl = localPool.splice(idx, 1)[0];
-            picks.push({
-                contractId: `${tpl.id}_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-                requestedType: tpl.requestedType,
-                requestedKey: tpl.requestedKey,
-                amount: tpl.amount,
-                durationMinutes: tpl.durationMinutes,
-                rewardRJ: tpl.rewardRJ,
-                status: 'open'
-            });
-        }
-        return picks;
+        const session = tr && tr.staking ? tr.staking.activeSession : null;
+        return !!(session && String(session.itemKey || '') === key);
     }
 
-    getRocketContractRespawnDelayMs() {
-        return 120000 + Math.floor(Math.random() * 360000); // 2 à 8 min, comme les quêtes
-    }
-
-    startRocketContractRespawnIfNeeded(now = Date.now()) {
-        const tr = this.teamRocketState;
-        if (!tr || !tr.staking) return;
-        const staking = tr.staking;
-        const maxSlots = Math.max(1, Number(staking.maxAvailableContracts) || 3);
-        const availableCount = Array.isArray(staking.availableContracts) ? staking.availableContracts.length : 0;
-        if (availableCount >= maxSlots) {
-            staking.nextContractReadyAt = 0;
-            return;
+    ensureRocketStakingItemLocked(session) {
+        if (!session || !session.itemKey) return false;
+        if (session.itemLocked) return true;
+        const key = String(session.itemKey);
+        const have = Math.max(0, Math.floor(Number(this.items && this.items[key]) || 0));
+        if (have > 0) {
+            this.items[key] = have - 1;
+            if (this.items[key] <= 0) delete this.items[key];
         }
-        if (!staking.nextContractReadyAt || staking.nextContractReadyAt <= now) {
-            staking.nextContractReadyAt = now + this.getRocketContractRespawnDelayMs();
-        }
-    }
-
-    tickRocketContractBoard(now = Date.now()) {
-        const tr = this.teamRocketState;
-        if (!tr || !tr.staking) return false;
-        const staking = tr.staking;
-        const maxSlots = Math.max(1, Number(staking.maxAvailableContracts) || 3);
-        const available = Array.isArray(staking.availableContracts) ? staking.availableContracts : [];
-
-        if (available.length >= maxSlots) {
-            staking.nextContractReadyAt = 0;
-            return false;
-        }
-
-        this.startRocketContractRespawnIfNeeded(now);
-        if (!staking.nextContractReadyAt || now < staking.nextContractReadyAt) return false;
-
-        const missing = Math.max(0, maxSlots - available.length);
-        if (missing <= 0) {
-            staking.nextContractReadyAt = 0;
-            return false;
-        }
-
-        const generated = this.generateRocketContracts(1);
-        let spawned = false;
-        if (generated.length > 0) {
-            staking.availableContracts = available.concat(generated).slice(0, maxSlots);
-            spawned = true;
-        }
-
-        if (staking.availableContracts.length < maxSlots) {
-            staking.nextContractReadyAt = now + this.getRocketContractRespawnDelayMs();
-        } else {
-            staking.nextContractReadyAt = 0;
-        }
-        return spawned;
-    }
-
-    refreshRocketContractsIfNeeded(force = false) {
-        const tr = this.teamRocketState;
-        if (!tr || !tr.staking) return;
-        const staking = tr.staking;
-        const maxSlots = Math.max(1, Number(staking.maxAvailableContracts) || 3);
-        const available = Array.isArray(staking.availableContracts) ? staking.availableContracts : [];
-        const now = Date.now();
-
-        if (force) {
-            const missing = Math.max(0, maxSlots - available.length);
-            if (missing > 0) {
-                staking.availableContracts = available.concat(this.generateRocketContracts(missing)).slice(0, maxSlots);
-            }
-            staking.nextContractReadyAt = (staking.availableContracts.length < maxSlots)
-                ? now + this.getRocketContractRespawnDelayMs()
-                : 0;
-            return;
-        }
-
-        // Sécurité UX: ne jamais laisser le board vide (ex: save ancienne/migration/ordre de chargement)
-        if (available.length === 0) {
-            staking.availableContracts = this.generateRocketContracts(maxSlots).slice(0, maxSlots);
-            staking.nextContractReadyAt = (staking.availableContracts.length < maxSlots)
-                ? now + this.getRocketContractRespawnDelayMs()
-                : 0;
-            return;
-        }
-
-        if (available.length < maxSlots) {
-            this.startRocketContractRespawnIfNeeded(now);
-        } else {
-            staking.nextContractReadyAt = 0;
-        }
-    }
-
-    startRocketStake(contractId, selection = null) {
-        const tr = this.teamRocketState;
-        this.refreshRocketContractsIfNeeded();
-        const list = tr.staking.availableContracts || [];
-        const contract = list.find(c => c.contractId === contractId && c.status === 'open');
-        if (!contract) return false;
-
-        if (contract.requestedType === 'item') {
-            const have = this.items[contract.requestedKey] || 0;
-            if (have < contract.amount) {
-                logMessage("❌ Ressources insuffisantes pour ce contrat.");
-                return false;
-            }
-            this.items[contract.requestedKey] -= contract.amount;
-            if (this.items[contract.requestedKey] <= 0) delete this.items[contract.requestedKey];
-            contract.lockedItem = { key: contract.requestedKey, amount: contract.amount };
-        } else if (contract.requestedType === 'pokemon_rarity') {
-            const needed = contract.amount;
-            const selected = [];
-            const requestedIndexes = selection && Array.isArray(selection.storageIndexes)
-                ? selection.storageIndexes.map(v => Number(v)).filter(Number.isInteger)
-                : null;
-
-            if (requestedIndexes && requestedIndexes.length > 0) {
-                const uniqueIndexes = [...new Set(requestedIndexes)];
-                for (let i = 0; i < uniqueIndexes.length; i++) {
-                    const storageIndex = uniqueIndexes[i];
-                    const c = this.storage[storageIndex];
-                    if (!c) continue;
-                    if (this.isCreatureRocketLocked(c)) continue;
-                    if (c.rarity !== contract.requestedKey) continue;
-                    selected.push(c);
-                    if (selected.length >= needed) break;
-                }
-            } else {
-                for (let i = 0; i < this.storage.length; i++) {
-                    const c = this.storage[i];
-                    if (this.isCreatureRocketLocked(c)) continue;
-                    if (c.rarity === contract.requestedKey) selected.push(c);
-                    if (selected.length >= needed) break;
-                }
-            }
-
-            if (selected.length < needed) {
-                logMessage("❌ Pas assez de Pokémon compatibles (stockage) pour ce contrat.");
-                return false;
-            }
-            contract.lockedCreatureSignatures = selected.map(c => this.getCreatureRocketSignature(c));
-        } else {
-            return false;
-        }
-
-        contract.status = 'active';
-        contract.startAt = Date.now();
-        contract.endAt = contract.startAt + (contract.durationMinutes * 60000);
-        tr.staking.activeContracts.push(contract);
-        tr.staking.availableContracts = list.filter(c => c.contractId !== contractId);
-        this.startRocketContractRespawnIfNeeded();
-        logMessage(`🕶️ Contrat Team Rocket démarré (${contract.durationMinutes} min).`);
-        this.updateStorageDisplay();
+        session.itemLocked = true;
         this.updateItemsDisplay();
         return true;
     }
 
-    refuseRocketContract(contractId) {
+    getRocketStakingCategory(itemKey) {
+        const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[itemKey]) ? ALL_ITEMS[itemKey] : null;
+        const rarity = String((itemDef && itemDef.rarity) || '').toLowerCase();
+        if (rarity === 'legendary') return 'legendary';
+        if (rarity === 'epic') return 'rare';
+        if (rarity === 'rare') return 'uncommon';
+        return 'common';
+    }
+
+    getRocketStakingBaseGps(itemKey) {
+        const cfg = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined') ? ROCKET_PUSH_STAKING_CONFIG : null;
+        const gpsByCategory = (cfg && cfg.gpsByCategory) ? cfg.gpsByCategory : {};
+        const category = this.getRocketStakingCategory(itemKey);
+        return Math.max(1, Number(gpsByCategory[category]) || 1);
+    }
+
+    getRocketStakingRandomPhaseDurationMs() {
+        const cfg = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined') ? ROCKET_PUSH_STAKING_CONFIG : null;
+        const min = (cfg && Number(cfg.phaseDurationMinMs) > 0) ? Number(cfg.phaseDurationMinMs) : 25000;
+        const max = (cfg && Number(cfg.phaseDurationMaxMs) > 0) ? Number(cfg.phaseDurationMaxMs) : 35000;
+        return min + Math.random() * (max - min);
+    }
+
+    getRocketStakingRandomMultiplier() {
+        const cfg = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined') ? ROCKET_PUSH_STAKING_CONFIG : null;
+        const min = (cfg && Number(cfg.multiplierMin) > 0) ? Number(cfg.multiplierMin) : 2;
+        const max = (cfg && Number(cfg.multiplierMax) > 0) ? Number(cfg.multiplierMax) : 3;
+        return min + Math.random() * (max - min);
+    }
+
+    getRocketStealRiskPercent(tier, session = null) {
+        const level = Math.max(1, Math.floor(Number(tier) || 1));
+        const riskCap = 95;
+        if (!session || typeof session !== 'object') {
+            return level === 1 ? 1 : riskCap;
+        }
+        if (!session.dynamicRiskByTier || typeof session.dynamicRiskByTier !== 'object') {
+            session.dynamicRiskByTier = { 1: 1 };
+        }
+        session.dynamicRiskByTier[1] = 1;
+
+        for (let i = 2; i <= level; i++) {
+            if (session.dynamicRiskByTier[i] !== undefined) continue;
+            const prev = Math.max(0.01, Number(session.dynamicRiskByTier[i - 1]) || 1);
+            const randomFactor = 2 + Math.random();
+            const next = Math.min(riskCap, prev * randomFactor);
+            session.dynamicRiskByTier[i] = Math.max(0, Math.round(next * 100) / 100);
+        }
+
+        return Math.max(0, Math.min(100, Number(session.dynamicRiskByTier[level]) || 1));
+    }
+
+    getRocketStakeableItems(limit = 30) {
+        const entries = Object.entries(this.items || {})
+            .filter(([, amount]) => Number(amount) > 0)
+            .map(([key, amount]) => {
+                const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[key]) ? ALL_ITEMS[key] : null;
+                if (!itemDef) return null;
+                const baseGps = this.getRocketStakingBaseGps(key);
+                const category = this.getRocketStakingCategory(key);
+                return {
+                    key,
+                    amount: Math.max(0, Math.floor(Number(amount) || 0)),
+                    name: itemDef.name || key,
+                    img: itemDef.img || '',
+                    icon: itemDef.icon || '📦',
+                    category,
+                    baseGps
+                };
+            })
+            .filter(Boolean);
+        const categoryRank = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+        entries.sort((a, b) => {
+            const byCategory = (categoryRank[a.category] ?? 99) - (categoryRank[b.category] ?? 99);
+            if (byCategory !== 0) return byCategory;
+            return a.name.localeCompare(b.name, 'fr');
+        });
+        return entries.slice(0, Math.max(1, Math.floor(Number(limit) || 30)));
+    }
+
+    getRocketOfferRotationMs() {
+        const cfg = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined') ? ROCKET_PUSH_STAKING_CONFIG : null;
+        return Math.max(600000, Number(cfg && cfg.offerRotationMs) || 600000);
+    }
+
+    refreshRocketStakeableOffers(now = Date.now(), force = false) {
         const tr = this.teamRocketState;
-        if (!tr || !tr.staking || !Array.isArray(tr.staking.availableContracts)) return false;
-        const before = tr.staking.availableContracts.length;
-        tr.staking.availableContracts = tr.staking.availableContracts.filter(c => c.contractId !== contractId);
-        if (tr.staking.availableContracts.length === before) return false;
-        this.startRocketContractRespawnIfNeeded();
-        logMessage("🚫 Contrat Team Rocket refusé.");
+        if (!tr || !tr.staking) return [];
+        const staking = tr.staking;
+        const rotationMs = this.getRocketOfferRotationMs();
+        const candidates = this.getRocketStakeableItems(999);
+        const candidateMap = new Map(candidates.map(e => [e.key, e]));
+        const validOffers = Array.isArray(staking.offeredItemKeys)
+            ? staking.offeredItemKeys.filter(k => candidateMap.has(k)).slice(0, 3)
+            : [];
+        staking.offeredItemKeys = validOffers;
+
+        if (!force && staking.activeSession) {
+            return [];
+        }
+
+        const inCooldown = Number(staking.nextOfferRotateAt) > now;
+        if (!force && validOffers.length === 0 && inCooldown) {
+            return [];
+        }
+
+        const shouldRotate = force ||
+            (validOffers.length === 0 && (!staking.nextOfferRotateAt || now >= staking.nextOfferRotateAt)) ||
+            (validOffers.length > 0 && now >= staking.nextOfferRotateAt);
+        if (shouldRotate) {
+            const shuffled = candidates.slice();
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const tmp = shuffled[i];
+                shuffled[i] = shuffled[j];
+                shuffled[j] = tmp;
+            }
+            staking.offeredItemKeys = shuffled.slice(0, 3).map(e => e.key);
+            staking.nextOfferRotateAt = now + rotationMs;
+        }
+        return staking.offeredItemKeys
+            .map(k => candidateMap.get(k))
+            .filter(Boolean);
+    }
+
+    getRocketStakeableOfferItems(now = Date.now()) {
+        const offers = this.refreshRocketStakeableOffers(now, false);
+        return offers.slice(0, 3);
+    }
+
+    startRocketStake(itemKey) {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking) return false;
+        if (tr.staking.activeSession) {
+            logMessage("❌ Une session de staking est déjà en cours.");
+            return false;
+        }
+        const key = String(itemKey || '').trim();
+        if (!key) return false;
+        const offerKeys = this.getRocketStakeableOfferItems(Date.now()).map(e => e.key);
+        if (!offerKeys.includes(key)) {
+            logMessage("❌ Objet non disponible dans la rotation actuelle.");
+            return false;
+        }
+        const have = Math.max(0, Math.floor(Number(this.items[key]) || 0));
+        if (have < 1) {
+            logMessage("❌ Objet indisponible dans l'inventaire.");
+            return false;
+        }
+        const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[key]) ? ALL_ITEMS[key] : null;
+        if (!itemDef) {
+            logMessage("❌ Objet incompatible avec le staking.");
+            return false;
+        }
+
+        this.items[key] = have - 1;
+        if (this.items[key] <= 0) delete this.items[key];
+
+        const baseGps = this.getRocketStakingBaseGps(key);
+        const now = Date.now();
+        const phaseDurationMs = this.getRocketStakingRandomPhaseDurationMs();
+        tr.staking.activeSession = {
+            itemKey: key,
+            itemName: itemDef.name || key,
+            itemImg: itemDef.img || '',
+            itemIcon: itemDef.icon || '📦',
+            category: this.getRocketStakingCategory(key),
+            baseGps,
+            tier: 1,
+            multiplier: 1,
+            currentGps: baseGps,
+            startedAt: now,
+            lastTickAt: now,
+            accruedRJ: 0,
+            nextPhaseEndAt: now + phaseDurationMs,
+            currentPhaseDurationMs: phaseDurationMs,
+            nextRiskCheckCycle: 1,
+            itemLocked: true,
+            dynamicRiskByTier: { 1: 1 }
+        };
+        tr.staking.offeredItemKeys = [];
+        tr.staking.nextOfferRotateAt = now + this.getRocketOfferRotationMs();
+        logMessage(`🕶️ Staking lancé: ${itemDef.name || key} (${baseGps} RJ/s).`);
+        this.updateItemsDisplay();
         return true;
     }
 
-    claimRocketStake(contractId) {
+    updateRocketStakingPushSession(now = Date.now()) {
         const tr = this.teamRocketState;
-        const idx = tr.staking.activeContracts.findIndex(c => c.contractId === contractId);
-        if (idx < 0) return false;
-        const contract = tr.staking.activeContracts[idx];
-        if (Date.now() < contract.endAt) {
-            logMessage("⏳ Contrat encore en cours.");
+        if (!tr || !tr.staking || !tr.staking.activeSession) return null;
+        const session = tr.staking.activeSession;
+        this.ensureRocketStakingItemLocked(session);
+        const cfg = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined') ? ROCKET_PUSH_STAKING_CONFIG : null;
+        const baseGps = Math.max(0, Number(session.baseGps) || 0);
+
+        const elapsedMs = Math.max(0, now - Math.max(0, Number(session.lastTickAt) || now));
+        if (elapsedMs > 0) {
+            session.accruedRJ = Math.max(0, Number(session.accruedRJ) || 0) + (elapsedMs / 1000) * Math.max(0, Number(session.currentGps) || 0);
+            session.lastTickAt = now;
+        }
+
+        if (session.nextPhaseEndAt == null || session.nextPhaseEndAt <= 0) {
+            const phaseMs = this.getRocketStakingRandomPhaseDurationMs();
+            session.nextPhaseEndAt = (session.startedAt || now) + phaseMs;
+            session.currentPhaseDurationMs = phaseMs;
+        }
+
+        while (now >= session.nextPhaseEndAt) {
+            const cycleTier = session.tier || 1;
+            const riskPercent = this.getRocketStealRiskPercent(cycleTier, session);
+            if (Math.random() < (riskPercent / 100)) {
+                tr.staking.activeSession = null;
+                tr.staking.stolenSessions = (tr.staking.stolenSessions || 0) + 1;
+                const lostRJ = Math.max(0, Math.floor(session.accruedRJ || 0));
+                tr.staking.lastStealFeedback = {
+                    at: now,
+                    itemName: session.itemName || session.itemKey || 'Objet',
+                    lostRJ,
+                    riskPercent,
+                    tier: cycleTier
+                };
+                if (typeof toast !== 'undefined' && toast && typeof toast.error === 'function') {
+                    toast.error("Vol Team Rocket", `${tr.staking.lastStealFeedback.itemName} volé ! ${lostRJ} RJ perdus.`);
+                }
+                if (session.category === 'legendary') {
+                    this.stats.rocketStakingLegendaryStolen = Math.max(0, Number(this.stats.rocketStakingLegendaryStolen) || 0) + 1;
+                    this.checkAchievements('rocketStakingLegendaryStolen');
+                }
+                logMessage(`🚨 Vol Team Rocket ! ${tr.staking.lastStealFeedback.itemName} perdu et ${lostRJ} RJ envolés.`);
+                return { stolen: true, riskPercent, tier: cycleTier };
+            }
+            session.tier = (session.tier || 1) + 1;
+            session.multiplier = Math.round((session.multiplier || 1) * this.getRocketStakingRandomMultiplier() * 100) / 100;
+            session.currentPhaseDurationMs = this.getRocketStakingRandomPhaseDurationMs();
+            session.nextPhaseEndAt += session.currentPhaseDurationMs;
+        }
+
+        const safeTier = Math.max(1, session.tier || 1);
+        session.currentGps = baseGps * (session.multiplier || 1);
+        session.nextRiskCheckCycle = safeTier + 1;
+
+        if (safeTier >= 8 && !session.tier8AchievementGranted) {
+            session.tier8AchievementGranted = true;
+            this.stats.rocketStakingTier8Reached = Math.max(0, Number(this.stats.rocketStakingTier8Reached) || 0) + 1;
+            this.checkAchievements('rocketStakingTier8Reached');
+        }
+
+        return { stolen: false };
+    }
+
+    dismissRocketStealFeedback() {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking) return false;
+        tr.staking.lastStealFeedback = null;
+        return true;
+    }
+
+    recoverRocketStake() {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking || !tr.staking.activeSession) {
+            logMessage("❌ Aucune session de staking active.");
             return false;
         }
-        contract.status = 'completed';
-        tr.rj += contract.rewardRJ;
-        tr.staking.completedContracts = (tr.staking.completedContracts || 0) + 1;
+        this.updateRocketStakingPushSession(Date.now());
+        const session = tr.staking.activeSession;
+        if (!session) return false;
+        this.ensureRocketStakingItemLocked(session);
+        const reward = Math.max(0, Math.floor(Number(session.accruedRJ) || 0));
+        const finalRisk = this.getRocketStealRiskPercent(session.tier || 1, session);
+        tr.rj += reward;
+        if (session.itemLocked) {
+            this.items[session.itemKey] = Math.max(0, Math.floor(Number(this.items[session.itemKey]) || 0)) + 1;
+        }
+        tr.staking.activeSession = null;
+        tr.staking.completedSessions = (tr.staking.completedSessions || 0) + 1;
+        if ((session.tier || 1) >= 9) {
+            this.stats.rocketStakingRecoveredTier9Plus = Math.max(0, Number(this.stats.rocketStakingRecoveredTier9Plus) || 0) + 1;
+            this.checkAchievements('rocketStakingRecoveredTier9Plus');
+        }
+        if (finalRisk >= 50) {
+            this.stats.rocketStakingRecoveredHighRisk = Math.max(0, Number(this.stats.rocketStakingRecoveredHighRisk) || 0) + 1;
+            this.checkAchievements('rocketStakingRecoveredHighRisk');
+        }
+        this.refreshRocketStakeableOffers(Date.now(), false);
         this.addRocketTrustProgress('staking', 1);
         if (typeof this.checkSpecialQuests === 'function') this.checkSpecialQuests('rocket_staking_completed');
-        logMessage(`✅ Contrat terminé: +${contract.rewardRJ} RJ.`);
-        tr.staking.activeContracts.splice(idx, 1);
+        logMessage(`✅ Récupération sécurisée: +${reward} RJ et ${session.itemName} rendu.`);
+        this.updateItemsDisplay();
         return true;
+    }
+
+    // Compatibilité: anciennes entrées sauvegardées / anciens appels.
+    refreshRocketContractsIfNeeded() {
+        const tr = this.teamRocketState;
+        if (!tr || !tr.staking) return;
+        if (!tr.staking.activeSession && Array.isArray(tr.staking.activeContracts) && tr.staking.activeContracts.length > 0) {
+            const legacy = tr.staking.activeContracts[0];
+            const key = legacy && legacy.lockedItem && legacy.lockedItem.key;
+            if (key) {
+                tr.staking.activeSession = this.normalizeRocketStakingSession({
+                    itemKey: key,
+                    itemName: key,
+                    baseGps: this.getRocketStakingBaseGps(key),
+                    startedAt: legacy.startAt || Date.now(),
+                    lastTickAt: Date.now(),
+                    accruedRJ: 0
+                });
+            }
+        }
     }
 
     cleanupExpiredRocketStakes() {
-        const tr = this.teamRocketState;
-        if (!tr || !tr.staking || !Array.isArray(tr.staking.activeContracts)) return;
-        tr.staking.activeContracts = tr.staking.activeContracts.filter(c => c && c.status === 'active');
+        this.updateRocketStakingPushSession(Date.now());
     }
 
-    spinRocketSlot(stakeRJ) {
+    refuseRocketContract() {
+        return false;
+    }
+
+    getRocketCasinoPaylines() {
+        return [
+            { id: 1, coords: [[0, 0], [1, 0], [2, 0]], label: 'Ligne haute' },
+            { id: 2, coords: [[0, 1], [1, 1], [2, 1]], label: 'Ligne centrale' },
+            { id: 3, coords: [[0, 2], [1, 2], [2, 2]], label: 'Ligne basse' },
+            { id: 4, coords: [[0, 0], [1, 1], [2, 2]], label: 'Diagonale descendante' },
+            { id: 5, coords: [[0, 2], [1, 1], [2, 0]], label: 'Diagonale montante' },
+            { id: 6, coords: [[0, 0], [0, 1], [0, 2]], label: 'Verticale gauche' },
+            { id: 7, coords: [[1, 0], [1, 1], [1, 2]], label: 'Verticale centre' },
+            { id: 8, coords: [[2, 0], [2, 1], [2, 2]], label: 'Verticale droite' }
+        ];
+    }
+
+    rollRocketCasinoSymbol() {
+        const cfg = ROCKET_CASINO_CONFIG;
+        const symbols = Array.isArray(cfg && cfg.symbols) ? cfg.symbols : [];
+        if (symbols.length === 0) return null;
+        const totalWeight = symbols.reduce((sum, s) => sum + Math.max(0, Number(s.weight) || 0), 0) || 1;
+        let r = Math.random() * totalWeight;
+        for (const symbol of symbols) {
+            r -= Math.max(0, Number(symbol.weight) || 0);
+            if (r <= 0) return symbol;
+        }
+        return symbols[0];
+    }
+
+    generateRocketCasinoMatrix() {
+        const matrix = [[], [], []];
+        for (let col = 0; col < 3; col++) {
+            for (let row = 0; row < 3; row++) {
+                const symbol = this.rollRocketCasinoSymbol();
+                matrix[col][row] = symbol ? symbol.key : 'zubat';
+            }
+        }
+        return matrix;
+    }
+
+    evaluateRocketCasinoMatrix(matrix, activePaylines = 5) {
+        const cfg = ROCKET_CASINO_CONFIG;
+        const lineCost = Math.max(1, Math.floor(Number(cfg && cfg.lineCostRJ) || 250));
+        const allPaylines = this.getRocketCasinoPaylines();
+        const maxPaylines = allPaylines.length;
+        const paylines = allPaylines.slice(0, Math.max(1, Math.min(maxPaylines, Math.floor(Number(activePaylines) || maxPaylines))));
+        const symbolMap = Object.fromEntries((cfg.symbols || []).map(s => [s.key, s]));
+        const winningLines = [];
+
+        paylines.forEach(line => {
+            const [aPos, bPos, cPos] = line.coords;
+            const a = matrix[aPos[0]] && matrix[aPos[0]][aPos[1]];
+            const b = matrix[bPos[0]] && matrix[bPos[0]][bPos[1]];
+            const c = matrix[cPos[0]] && matrix[cPos[0]][cPos[1]];
+            if (!a || !b || !c) return;
+            if (a !== b || b !== c) return;
+            const sym = symbolMap[a];
+            winningLines.push({
+                lineId: line.id,
+                lineLabel: line.label,
+                symbolKey: a,
+                symbolId: sym && sym.id ? sym.id : null,
+                coords: line.coords
+            });
+        });
+        return { totalPayout: 0, winningLines, lineCost, linesPlayed: paylines.length };
+    }
+
+    pickRocketWeightedReward(pool) {
+        const candidates = Array.isArray(pool) ? pool.filter(Boolean) : [];
+        if (candidates.length === 0) return null;
+        const totalWeight = candidates.reduce((sum, entry) => sum + Math.max(0, Number(entry.weight) || 0), 0) || 1;
+        let r = Math.random() * totalWeight;
+        for (const entry of candidates) {
+            r -= Math.max(0, Number(entry.weight) || 0);
+            if (r <= 0) return entry;
+        }
+        return candidates[0];
+    }
+
+    getRocketSlotRewardPool(symbolId) {
+        if (typeof SLOT_REWARDS === 'undefined' || !Array.isArray(SLOT_REWARDS)) return [];
+        return SLOT_REWARDS.filter(entry => entry && entry.symbolId === symbolId);
+    }
+
+    computeRocketCasinoScaledPokedollars(multiplier = 1) {
+        const totalEarned = Math.max(0, Number(this.stats && this.stats.totalPokedollarsEarned) || 0);
+        const base = Math.max(1800, Math.floor(totalEarned * 0.0018));
+        const amount = Math.floor(base * Math.max(0.2, Number(multiplier) || 1));
+        return Math.max(500, Math.min(5000000, amount));
+    }
+
+    resolveRocketCasinoLineRewards(win) {
+        const symbolId = win && win.symbolId ? win.symbolId : null;
+        if (!symbolId) return [];
+
+        const pickFrom = (id, predicate = null) => {
+            const pool = this.getRocketSlotRewardPool(id).filter(entry => (typeof predicate === 'function' ? predicate(entry) : true));
+            return this.pickRocketWeightedReward(pool);
+        };
+        const rewards = [];
+        const pushIf = (entry) => { if (entry) rewards.push({ ...entry }); };
+        const pushScaledMoney = (id) => {
+            const moneyReward = pickFrom(id, entry => entry.rewardType === 'currency' && entry.targetId === 'pokedollars_scaled');
+            pushIf(moneyReward);
+        };
+
+        if (symbolId === 'ID_1') {
+            pushScaledMoney('ID_1');
+            return rewards;
+        }
+
+        if (symbolId === 'ID_2') {
+            pushScaledMoney('ID_2');
+            pushIf(pickFrom('ID_2', entry => entry.rewardType !== 'currency' || entry.targetId !== 'pokedollars_scaled'));
+            return rewards;
+        }
+
+        if (symbolId === 'ID_3') {
+            pushScaledMoney('ID_3');
+            pushIf(pickFrom('ID_2', entry => entry.rewardType !== 'currency' || entry.targetId !== 'pokedollars_scaled'));
+            pushIf(pickFrom('ID_3', entry => entry.rewardType === 'item'));
+            return rewards;
+        }
+
+        if (symbolId === 'ID_4') {
+            pushScaledMoney('ID_4');
+            pushIf(pickFrom('ID_4', entry => entry.rewardType === 'item'));
+            pushIf(pickFrom('ID_4', entry => entry.rewardType === 'quest_token' || (entry.rewardType === 'currency' && entry.targetId === 'marques_du_triomphe')));
+            return rewards;
+        }
+
+        if (symbolId === 'ID_6') {
+            pushScaledMoney('ID_1');
+            pushScaledMoney('ID_2');
+            pushScaledMoney('ID_4');
+            pushScaledMoney('ID_6');
+            pushIf(pickFrom('ID_2', entry => entry.rewardType !== 'currency' || entry.targetId !== 'pokedollars_scaled'));
+            pushIf(pickFrom('ID_4', entry => entry.rewardType === 'item'));
+            pushIf(pickFrom('ID_4', entry => entry.rewardType === 'quest_token' || (entry.rewardType === 'currency' && entry.targetId === 'marques_du_triomphe')));
+            pushIf(pickFrom('ID_6', entry => entry.rewardType === 'item'));
+            return rewards;
+        }
+
+        if (symbolId === 'ID_5') {
+            // Miaouss jackpot: reprend les gains cumulés + bonus Giovanni + CT.
+            pushScaledMoney('ID_1');
+            pushScaledMoney('ID_2');
+            pushScaledMoney('ID_4');
+            pushScaledMoney('ID_5');
+            pushIf(pickFrom('ID_2', entry => entry.rewardType !== 'currency' || entry.targetId !== 'pokedollars_scaled'));
+            pushIf(pickFrom('ID_4', entry => entry.rewardType === 'item'));
+            pushIf(pickFrom('ID_4', entry => entry.rewardType === 'quest_token' || (entry.rewardType === 'currency' && entry.targetId === 'marques_du_triomphe')));
+            pushIf(pickFrom('ID_6', entry => entry.rewardType === 'item'));
+            pushIf(pickFrom('ID_5', entry => entry.rewardType === 'item' && String(entry.targetId || '').startsWith('ct_')));
+            pushIf(pickFrom('ID_5', entry => entry.rewardType === 'jackpot'));
+            return rewards;
+        }
+
+        pushScaledMoney(symbolId);
+        return rewards;
+    }
+
+    applyRocketCasinoRewards(rawRewards) {
+        const rewards = Array.isArray(rawRewards) ? rawRewards : [];
+        if (!this.items) this.items = {};
+        const aggregated = {};
+
+        rewards.forEach(entry => {
+            if (!entry || !entry.rewardType) return;
+            const rewardType = String(entry.rewardType);
+            const targetId = String(entry.targetId || '');
+            const sourceAmount = Math.max(0, Number(entry.amount) || 0);
+            let amount = sourceAmount;
+            if (rewardType === 'currency' && targetId === 'pokedollars_scaled') {
+                amount = this.computeRocketCasinoScaledPokedollars(sourceAmount || 1);
+            }
+            if (amount <= 0 && rewardType !== 'jackpot') return;
+            const key = `${rewardType}:${targetId || 'none'}`;
+            if (!aggregated[key]) {
+                aggregated[key] = { rewardType, targetId, amount: 0 };
+            }
+            aggregated[key].amount += amount;
+        });
+
+        const finalRewards = Object.values(aggregated);
+        const rewardMessages = [];
+        let jackpotCount = 0;
+
+        finalRewards.forEach(reward => {
+            const amount = Math.floor(Number(reward.amount) || 0);
+            if (reward.rewardType === 'currency') {
+                if (reward.targetId === 'pokedollars_scaled' || reward.targetId === 'pokedollars') {
+                    this.pokedollars += amount;
+                    this.stats.totalPokedollarsEarned = (this.stats.totalPokedollarsEarned || 0) + amount;
+                    rewardMessages.push(`💰 +${formatNumber(amount)} Pokédollars`);
+                } else if (reward.targetId === 'marques_du_triomphe') {
+                    this.marquesDuTriomphe = (this.marquesDuTriomphe || 0) + amount;
+                    rewardMessages.push(`🏅 +${formatNumber(amount)} Marques du Triomphe`);
+                } else if (reward.targetId === 'essence_dust') {
+                    this.essenceDust = (this.essenceDust || 0) + amount;
+                    rewardMessages.push(`✨ +${formatNumber(amount)} Poussière d'essence`);
+                }
+            } else if (reward.rewardType === 'quest_token') {
+                this.questTokens = (this.questTokens || 0) + amount;
+                rewardMessages.push(`🎟️ +${formatNumber(amount)} Jetons de Quête`);
+            } else if (reward.rewardType === 'item') {
+                this.addItem(reward.targetId, amount, false);
+                const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS) ? ALL_ITEMS[reward.targetId] : null;
+                const itemName = itemDef ? (itemDef.name || reward.targetId) : reward.targetId;
+                rewardMessages.push(`🎁 +${formatNumber(amount)} ${itemName}`);
+            } else if (reward.rewardType === 'jackpot') {
+                jackpotCount++;
+                rewardMessages.push("💎 JACKPOT MIAOUSS !");
+            }
+        });
+
+        if (finalRewards.some(r => r.rewardType === 'currency' && (r.targetId === 'pokedollars_scaled' || r.targetId === 'pokedollars'))) {
+            this.checkSpecialQuests('pokedollars_gained');
+            this.checkAchievements('totalPokedollarsEarned');
+        }
+        return { finalRewards, rewardMessages, jackpotCount };
+    }
+
+    spinRocketSlot(linesPlayed = null) {
         if (typeof ROCKET_CASINO_CONFIG === 'undefined') return null;
         const cfg = ROCKET_CASINO_CONFIG;
-        const stake = Math.floor(Number(stakeRJ) || 0);
-        if (stake < cfg.minStakeRJ || stake > cfg.maxStakeRJ) {
-            logMessage(`❌ Mise invalide (${cfg.minStakeRJ}-${cfg.maxStakeRJ} RJ).`);
+        const maxPaylines = this.getRocketCasinoPaylines().length;
+        const defaultLines = Math.max(1, Math.min(maxPaylines, Math.floor(Number(cfg.defaultActivePaylines) || maxPaylines)));
+        const activeLines = Math.max(1, Math.min(maxPaylines, Math.floor(Number(linesPlayed) || defaultLines)));
+        const lineCost = Math.max(1, Math.floor(Number(cfg.lineCostRJ) || 250));
+        const totalStake = lineCost * activeLines;
+        if (this.teamRocketState.rj < totalStake) {
+            logMessage(`❌ Pas assez de RJ (coût: ${formatNumber(totalStake)} RJ).`);
             return null;
         }
-        if (this.teamRocketState.rj < stake) {
-            logMessage("❌ Pas assez de RJ.");
-            return null;
-        }
-        this.teamRocketState.rj -= stake;
+
+        const matrix = this.generateRocketCasinoMatrix();
+        const evaluation = this.evaluateRocketCasinoMatrix(matrix, activeLines);
+        const rewardsToApply = [];
+        evaluation.winningLines.forEach(win => {
+            rewardsToApply.push(...this.resolveRocketCasinoLineRewards(win));
+        });
+
+        this.teamRocketState.rj -= totalStake;
         this.teamRocketState.casino.stats.spins++;
-        this.teamRocketState.casino.stats.rjSpent += stake;
+        this.teamRocketState.casino.stats.rjSpent += totalStake;
 
-        const rollSymbol = () => {
-            const total = cfg.symbols.reduce((s, e) => s + e.weight, 0);
-            let r = Math.random() * total;
-            for (const sym of cfg.symbols) {
-                r -= sym.weight;
-                if (r <= 0) return sym;
-            }
-            return cfg.symbols[0];
-        };
-        const a = rollSymbol();
-        const b = rollSymbol();
-        const c = rollSymbol();
-        let payout = 0;
-        if (a.key === b.key && b.key === c.key) {
-            payout = Math.floor(stake * (a.payout || 0));
-            if (a.key === 'rocket_jackpot') this.teamRocketState.casino.stats.jackpots++;
-        } else if (a.key === b.key || b.key === c.key || a.key === c.key) {
-            const mid = Math.max(a.payout || 0, b.payout || 0, c.payout || 0);
-            payout = Math.floor(stake * Math.max(0.2, mid * 0.2));
+        const appliedRewards = this.applyRocketCasinoRewards(rewardsToApply);
+        if (appliedRewards.jackpotCount > 0) {
+            this.teamRocketState.casino.stats.jackpots += appliedRewards.jackpotCount;
         }
 
-        if (payout > 0) {
-            this.teamRocketState.rj += payout;
-            this.teamRocketState.casino.stats.rjWon += payout;
-            logMessage(`🎰 Casino Rocket: +${payout} RJ`);
+        const pokedollarsGain = (appliedRewards.finalRewards || [])
+            .filter(r => r.rewardType === 'currency' && (r.targetId === 'pokedollars_scaled' || r.targetId === 'pokedollars'))
+            .reduce((sum, r) => sum + (Math.floor(Number(r.amount)) || 0), 0);
+
+        if (appliedRewards.rewardMessages.length > 0) {
+            logMessage(`🎰 Casino Rocket: ${appliedRewards.rewardMessages.join(' • ')}`);
         } else {
             logMessage("🎰 Casino Rocket: perdu.");
         }
 
-        if (cfg.rewards && Math.random() < (cfg.rewards.rare.chance || 0)) {
-            this.addItem(cfg.rewards.rare.itemKey, cfg.rewards.rare.amount || 1);
-        }
-        if (cfg.rewards && Math.random() < (cfg.rewards.legendary.chance || 0)) {
-            this.addItem(cfg.rewards.legendary.itemKey, cfg.rewards.legendary.amount || 1);
-        }
-        return { reels: [a.key, b.key, c.key], payout };
+        if (!this.teamRocketState.casino.history) this.teamRocketState.casino.history = [];
+        this.teamRocketState.casino.history.unshift({
+            at: Date.now(),
+            stake: totalStake,
+            pokedollarsGain,
+            matrix: matrix.map(col => col.slice()),
+            winningLines: evaluation.winningLines.map(w => ({ ...w })),
+            rewards: appliedRewards.finalRewards.map(r => ({ ...r })),
+            rewardMessages: appliedRewards.rewardMessages.slice()
+        });
+        this.teamRocketState.casino.history = this.teamRocketState.casino.history.slice(0, 12);
+
+        return {
+            matrix,
+            winningLines: evaluation.winningLines,
+            stake: totalStake,
+            pokedollarsGain,
+            rewards: appliedRewards.finalRewards,
+            rewardMessages: appliedRewards.rewardMessages,
+            lineCost,
+            linesPlayed: activeLines
+        };
     }
 
     getNumericInputValue(inputId, fallback = 0) {
@@ -2909,81 +3453,58 @@ class Game {
     }
 
     handleRocketStartContract(contractId) {
-        this.openRocketContractSelection(contractId);
+        this.startRocketStake(contractId);
         this.updateTeamRocketDisplay();
     }
 
-    handleRocketRefuseContract(contractId) {
-        this.refuseRocketContract(contractId);
+    handleRocketRefuseContract() {
         this.updateTeamRocketDisplay();
     }
 
     openRocketContractSelection(contractId) {
-        const tr = this.teamRocketState;
-        const list = (tr && tr.staking && Array.isArray(tr.staking.availableContracts)) ? tr.staking.availableContracts : [];
-        const contract = list.find(c => c.contractId === contractId && c.status === 'open');
-        if (!contract) {
-            logMessage("❌ Contrat introuvable.");
-            return false;
-        }
-
-        if (contract.requestedType === 'item') {
-            const itemDef = (typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS[contract.requestedKey]) ? ALL_ITEMS[contract.requestedKey] : null;
-            const options = [{
-                key: contract.requestedKey,
-                name: itemDef ? itemDef.name : contract.requestedKey,
-                img: itemDef ? itemDef.img : null,
-                icon: itemDef ? itemDef.icon : null,
-                have: this.items[contract.requestedKey] || 0,
-                needed: contract.amount
-            }];
-            if (typeof showRocketContractSelectModalUI === 'function') {
-                showRocketContractSelectModalUI(this, contract, options);
-                return true;
-            }
-            return this.startRocketStake(contractId);
-        }
-
-        if (contract.requestedType === 'pokemon_rarity') {
-            const options = [];
-            for (let i = 0; i < this.storage.length; i++) {
-                const c = this.storage[i];
-                if (!c) continue;
-                if (this.isCreatureRocketLocked(c)) continue;
-                if (c.rarity !== contract.requestedKey) continue;
-                options.push({
-                    storageIndex: i,
-                    name: c.name,
-                    level: c.level || 1,
-                    rarity: c.rarity || 'common',
-                    isShiny: !!c.isShiny
-                });
-            }
-            if (typeof showRocketContractSelectModalUI === 'function') {
-                showRocketContractSelectModalUI(this, contract, options);
-                return true;
-            }
-        }
-
         return this.startRocketStake(contractId);
     }
 
-    handleRocketConfirmContractSelection(contractId, storageIndexes) {
-        const selection = Array.isArray(storageIndexes) ? { storageIndexes } : null;
-        const ok = this.startRocketStake(contractId, selection);
+    handleRocketConfirmContractSelection(contractId) {
+        const ok = this.startRocketStake(contractId);
         if (ok) this.updateTeamRocketDisplay();
         return ok;
     }
 
-    handleRocketClaimContract(contractId) {
-        this.claimRocketStake(contractId);
+    handleRocketClaimContract() {
+        this.recoverRocketStake();
         this.updateTeamRocketDisplay();
     }
 
-    handleRocketCasinoSpin() {
-        const amount = this.getNumericInputValue('rocketCasinoStakeInput', 0);
-        this.spinRocketSlot(amount);
+    handleRocketRecoverStake() {
+        this.recoverRocketStake();
         this.updateTeamRocketDisplay();
+    }
+
+    handleRocketDismissStealFeedback() {
+        this.dismissRocketStealFeedback();
+        this.updateTeamRocketDisplay();
+    }
+
+    handleRocketOpenCasinoModal() {
+        if (typeof showRocketCasinoModalUI === 'function') {
+            showRocketCasinoModalUI(this);
+        }
+    }
+
+    handleRocketCasinoSpin() {
+        const cfg = typeof ROCKET_CASINO_CONFIG !== 'undefined' ? ROCKET_CASINO_CONFIG : {};
+        const maxPaylines = this.getRocketCasinoPaylines().length;
+        const lines = Math.max(1, Math.min(maxPaylines, Math.floor(Number(cfg.defaultActivePaylines) || maxPaylines)));
+        return this.handleRocketCasinoSpinAmount(lines);
+    }
+
+    handleRocketCasinoSpinAmount(linesPlayed = null) {
+        const result = this.spinRocketSlot(linesPlayed);
+        if (!document.getElementById('rocketCasinoOverlay')) {
+            this.updateTeamRocketDisplay();
+        }
+        return result;
     }
 
 
@@ -5762,6 +6283,57 @@ class Game {
         });
     }
 
+    /**
+     * Avance les incubateurs d'un chunk de temps (pour simulation progressive pendant le rattrapage).
+     * Utilise stats.incubationVirtualTs et stats.offlineMissedTime ; met à jour slot.startTime en temps virtuel.
+     */
+    simulateIncubatorsChunk(chunkMs, statsContainer) {
+        if (!chunkMs || chunkMs <= 0 || !statsContainer) return;
+        const incubationStats = statsContainer.incubation || this.createOfflineIncubationStats();
+        if (!statsContainer.incubation) statsContainer.incubation = incubationStats;
+        if (statsContainer.incubationVirtualTs == null) {
+            statsContainer.incubationVirtualTs = Date.now() - (statsContainer.offlineMissedTime || 0);
+        }
+        const virtualTs = statsContainer.incubationVirtualTs;
+
+        for (let i = 0; i < this.getMaxIncubatorSlots(); i++) {
+            if (!this.isAutoIncubationUnlockedForSlot(i)) continue;
+            const settings = this.getAutoIncubationSettings(i);
+            if (!settings.enabled) continue;
+
+            let remainingMs = chunkMs;
+            while (remainingMs > 0) {
+                if (!this.incubators[i]) {
+                    const placed = this.tryAutoRefillIncubator(i, { silent: true, stats: statsContainer });
+                    if (!placed) break;
+                    if (this.incubators[i]) this.incubators[i].startTime = virtualTs;
+                }
+
+                const slot = this.incubators[i];
+                if (!slot) break;
+                let slotRemaining = Math.max(0, Number(slot.durationMs) || 0);
+                if (slot.startTime != null && slot.startTime < virtualTs) {
+                    const elapsedBefore = virtualTs - slot.startTime;
+                    slotRemaining = Math.max(0, slotRemaining - elapsedBefore);
+                }
+                if (slotRemaining <= remainingMs) {
+                    remainingMs -= slotRemaining;
+                    const result = this.openIncubatorEgg(i, { silent: true, offline: true, forceReady: true });
+                    if (!result || !result.ok) break;
+                    incubationStats.hatchedTotal++;
+                    incubationStats.byRarity[result.rarity] = (incubationStats.byRarity[result.rarity] || 0) + 1;
+                    incubationStats.bySlot[i] = (incubationStats.bySlot[i] || 0) + 1;
+                    this.pushOfflineIncubationPreview(incubationStats, result);
+                } else {
+                    slot.durationMs = slotRemaining - remainingMs;
+                    slot.startTime = virtualTs + remainingMs;
+                    remainingMs = 0;
+                }
+            }
+        }
+        statsContainer.incubationVirtualTs = virtualTs + chunkMs;
+    }
+
     simulateIncubatorsForElapsedOffline(elapsedMs, statsContainer) {
         if (!elapsedMs || elapsedMs <= 0) return;
         const incubationStats = statsContainer && statsContainer.incubation
@@ -6159,7 +6731,8 @@ class Game {
         }
 
         // 6. Affichage final
-        if (!silent) {
+        // ⚠️ Pas de modale d'éclosion en mode offline (rattrapage)
+        if (!offline && !silent) {
             this.showEggHatchModal(creature, rarity);
         } else {
             if (!offline && source === 'incubator') {
@@ -7015,6 +7588,14 @@ class Game {
          */
     equipItem(itemKey, creatureIndex, location) {
         try {
+            if (this.isRocketStakingItemLocked(itemKey)) {
+                if (typeof toast !== 'undefined' && toast && typeof toast.error === 'function') {
+                    toast.error("Objet bloqué", "Cet objet est immobilisé en staking Team Rocket.");
+                } else {
+                    logMessage("❌ Cet objet est immobilisé en staking Team Rocket.");
+                }
+                return;
+            }
             let creature;
             if (location === 'team') creature = this.playerTeam[creatureIndex];
             else if (location === 'storage') creature = this.storage[creatureIndex];
@@ -8014,15 +8595,14 @@ class Game {
 
         const tr = this.teamRocketState || {};
         const staking = tr.staking || {};
-        const availableContracts = Array.isArray(staking.availableContracts) ? staking.availableContracts.filter(c => c && c.status === 'open') : [];
-        const activeContracts = Array.isArray(staking.activeContracts) ? staking.activeContracts : [];
-        const rocketToClaim = activeContracts.filter(c => c && c.status === 'active' && Date.now() >= (c.endAt || 0)).length;
-        const rocketToAccept = availableContracts.length;
+        const hasActiveSession = !!staking.activeSession;
+        const rocketToClaim = hasActiveSession ? 1 : 0;
+        const rocketToAccept = hasActiveSession ? 0 : this.getRocketStakeableOfferItems(Date.now()).length;
         const teamRocketBadge = document.getElementById('teamRocketTabBadge');
         if (teamRocketBadge) {
             const parts = [];
-            if (rocketToClaim > 0) parts.push(`<span class="tab-badge tab-badge-claim" title="Contrat(s) Team Rocket à réclamer">${rocketToClaim}</span>`);
-            if (rocketToAccept > 0) parts.push(`<span class="tab-badge tab-badge-accept" title="Contrat(s) Team Rocket disponible(s)">${rocketToAccept}</span>`);
+            if (rocketToClaim > 0) parts.push(`<span class="tab-badge tab-badge-claim" title="Session Push Your Luck active">${rocketToClaim}</span>`);
+            if (rocketToAccept > 0) parts.push(`<span class="tab-badge tab-badge-accept" title="Objet(s) stakeables">${rocketToAccept}</span>`);
             teamRocketBadge.innerHTML = parts.join('');
             teamRocketBadge.style.display = parts.length ? '' : 'none';
         }
@@ -8262,10 +8842,30 @@ class Game {
         }
     }
 
+    updateOfflineSimSliderLabel(rawValue) {
+        const value = Number(rawValue) || 300;
+        const offlineValue = document.getElementById('optOfflineSimValue');
+        if (offlineValue) {
+            offlineValue.textContent = `${value} combats/s`;
+        }
+    }
+
+    updateOfflineSimFromSlider(rawValue) {
+        const value = Number(rawValue) || 300;
+        // Clamp de sécurité
+        const clamped = Math.min(1000, Math.max(1, value));
+        this.offlineSimMaxCombatsPerSecond = clamped;
+        this.updateOfflineSimSliderLabel(clamped);
+        // Rafraîchit tout le bloc Options pour refléter immédiatement la nouvelle valeur
+        this.updateOptionButtons();
+    }
+
     // Nouvelle fonction pour gérer les couleurs des boutons
     updateOptionButtons() {
         const btnFusion = document.getElementById('optSmartFusion');
         const btnPause = document.getElementById('optPauseRare');
+        const offlineValue = document.getElementById('optOfflineSimValue');
+        const offlineSlider = document.getElementById('optOfflineSimSlider');
 
         if (btnFusion) {
             btnFusion.textContent = this.smartFusion ? "ON" : "OFF";
@@ -8277,6 +8877,16 @@ class Game {
             btnPause.textContent = this.pauseOnRare ? "PAUSE" : "KILL";
             btnPause.style.background = this.pauseOnRare ? "#22c55e" : "#ef4444"; // Vert ou Rouge (Danger)
             btnPause.style.color = "white";
+        }
+
+        if (offlineValue) {
+            const v = this.offlineSimMaxCombatsPerSecond || ((GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300);
+            offlineValue.textContent = `${v} combats/s`;
+        }
+
+        if (offlineSlider) {
+            const v = this.offlineSimMaxCombatsPerSecond || ((GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300);
+            offlineSlider.value = v;
         }
     }
 
@@ -8818,6 +9428,7 @@ class Game {
 
     updateTeamRocketDisplay() {
         this.refreshRocketContractsIfNeeded();
+        this.refreshRocketStakeableOffers(Date.now(), false);
         if (typeof updateTeamRocketDisplayUI === 'function') updateTeamRocketDisplayUI(this);
     }
 

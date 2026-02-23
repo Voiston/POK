@@ -80,6 +80,7 @@ function saveGameLogic(game) {
         autoSwitchDisadvantage: game.autoSwitchDisadvantage,
         autoSwitchStamina: game.autoSwitchStamina,
         autoUltimate: game.autoUltimate,
+        offlineSimMaxCombatsPerSecond: game.offlineSimMaxCombatsPerSecond,
         isPensionCollapsed: game.isPensionCollapsed,
         captureMode: game.captureMode,
         captureTargets: game.captureTargets,
@@ -303,6 +304,9 @@ function loadGameLogic(game) {
         };
 
         if (gameData.pauseOnRare !== undefined) game.pauseOnRare = gameData.pauseOnRare;
+        if (typeof gameData.offlineSimMaxCombatsPerSecond === 'number' && gameData.offlineSimMaxCombatsPerSecond > 0) {
+            game.offlineSimMaxCombatsPerSecond = gameData.offlineSimMaxCombatsPerSecond;
+        }
 
         game.hasAutoCatcher = gameData.hasAutoCatcher || false;
         if (gameData.autoCatcherSettings) {
@@ -442,7 +446,7 @@ function loadGameLogic(game) {
             if (gameData.narrative) {
                 narrativeManager.loadSaveData(gameData.narrative);
             } else if (gameData.playerTeam && gameData.playerTeam.length > 0) {
-                narrativeManager.loadSaveData({ introComplete: true, starterChoice: null, milestonesSeen: [], billionComplete: false });
+                narrativeManager.loadSaveData({ introComplete: true, starterChoice: null, milestonesSeen: [] });
             }
         }
 

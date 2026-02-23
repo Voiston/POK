@@ -1,6 +1,6 @@
 /**
 * @file narrativeManager.js
-* Professor Chen Narrative Engine — intro, milestones, billion finale, tutorials.
+* Professor Chen Narrative Engine — intro, milestones, tutorials.
 * Handles dialogue triggers, fake/real starter choice, and achievement unlock.
 * Depends: narrativeData.js, toastManager (toast), game (Game), Creature, TYPES, RARITY.
 */
@@ -11,7 +11,6 @@ class NarrativeManager {
             introComplete: false,
             starterChoice: null,
             milestonesSeen: [],
-            billionComplete: false,
             ultimateTutorialSeen: false,
             phase: 'idle'
         };
@@ -45,7 +44,6 @@ class NarrativeManager {
             introComplete: this.state.introComplete,
             starterChoice: this.state.starterChoice,
             milestonesSeen: [...this.state.milestonesSeen],
-            billionComplete: this.state.billionComplete,
             ultimateTutorialSeen: this.state.ultimateTutorialSeen
         };
     }
@@ -55,7 +53,6 @@ class NarrativeManager {
         this.state.introComplete = data.introComplete === true;
         this.state.starterChoice = data.starterChoice || null;
         this.state.milestonesSeen = Array.isArray(data.milestonesSeen) ? data.milestonesSeen : [];
-        this.state.billionComplete = data.billionComplete === true;
         this.state.ultimateTutorialSeen = data.ultimateTutorialSeen === true;
     }
 
@@ -450,9 +447,6 @@ class NarrativeManager {
                 if (game.saveGame) game.saveGame();
             }
         }
-
-        const billion = typeof NARRATIVE_BILLION !== 'undefined' ? NARRATIVE_BILLION : 1e9;
-        if (total >= billion && !this.state.billionComplete) this.startBillionFinale(game);
     }
 
     showInfoModal(game, title, message) {

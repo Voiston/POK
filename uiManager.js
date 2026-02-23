@@ -57,15 +57,17 @@ function showFloatingText(text, targetContainer, type = '', isCritical = false) 
 
     textElement.textContent = content;
 
-    // POSITIONNEMENT RESSERRÉ (Moins éparpillé)
-
-    // On réduit la zone horizontale : entre -20% et +20% (au lieu de -40/+40)
-    const randomOffset = (Math.random() * 40) - 20;
-    textElement.style.left = `calc(50% + ${randomOffset}%)`;
-
-    // On réduit la variation verticale : entre 40px et 60px (au lieu de 40 à 80)
-    const randomBottom = 40 + (Math.random() * 20);
-    textElement.style.bottom = `${randomBottom}px`;
+    // Positionnement : si ft-from-rj, partir du bas du conteneur (ex. bloc Jeton Rocket)
+    if (type.includes('ft-from-rj')) {
+        textElement.style.left = '22%';
+        textElement.style.bottom = '0';
+        textElement.style.transform = 'translateX(-50%)';
+    } else {
+        const randomOffset = (Math.random() * 40) - 20;
+        textElement.style.left = `calc(50% + ${randomOffset}%)`;
+        const randomBottom = 40 + (Math.random() * 20);
+        textElement.style.bottom = `${randomBottom}px`;
+    }
 
     targetContainer.appendChild(textElement);
 
@@ -1371,44 +1373,109 @@ function updateTeamRocketDisplayUI(game) {
     const loanCap = game.getRocketLoanCap ? game.getRocketLoanCap() : 0;
 
     const fmt = (v) => typeof formatNumber === 'function' ? formatNumber(v) : v;
+    const fmtFloat = (v) => {
+        const n = Number(v) || 0;
+        if (typeof formatFloatingNumber === 'function') return formatFloatingNumber(n);
+        return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
     const fmtMoneyPrecise = (v) => {
         const n = Number(v) || 0;
         return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
     const totalInterestRaw = Math.max(0, Number(bank.totalInterestGenerated) || 0) + Math.max(0, Number(bank.interestCarry) || 0);
     const totalInterestDisplay = Math.max(0, totalInterestRaw - Math.max(0, Number(bank.interestDisplayOffset) || 0));
-    const activeContracts = Array.isArray(staking.activeContracts) ? staking.activeContracts : [];
-    const availableContracts = Array.isArray(staking.availableContracts) ? staking.availableContracts : [];
-    const maxContracts = Math.max(1, Number(staking.maxAvailableContracts) || 3);
-    const nextReadyAt = Math.max(0, Number(staking.nextContractReadyAt) || 0);
-    const nextLeftMs = Math.max(0, nextReadyAt - now);
-    const nextLeftText = (typeof formatTimeString === 'function') ? formatTimeString(nextLeftMs) : `${Math.ceil(nextLeftMs / 1000)}s`;
+    const activeSession = staking.activeSession || null;
+    const cycleMs = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined' && Number(ROCKET_PUSH_STAKING_CONFIG.cycleMs) > 0)
+        ? Number(ROCKET_PUSH_STAKING_CONFIG.cycleMs)
+        : 30000;
+    let cycleProgressMs = 0;
+    let cycleLeftMs = cycleMs;
+    if (activeSession && activeSession.nextPhaseEndAt != null && activeSession.currentPhaseDurationMs != null) {
+        cycleLeftMs = Math.max(0, Number(activeSession.nextPhaseEndAt) - now);
+        cycleProgressMs = Math.max(0, Number(activeSession.currentPhaseDurationMs) - cycleLeftMs);
+    } else if (activeSession) {
+        cycleProgressMs = Math.max(0, (now - (activeSession.startedAt || now)) % cycleMs);
+        cycleLeftMs = Math.max(0, cycleMs - cycleProgressMs);
+    }
+    const cycleLeftText = (typeof formatTimeString === 'function') ? formatTimeString(cycleLeftMs) : `${Math.ceil(cycleLeftMs / 1000)}s`;
+    const stakeableItems = (typeof game.getRocketStakeableOfferItems === 'function') ? game.getRocketStakeableOfferItems(now) : [];
+    const nextRotateAt = Math.max(0, Number(staking.nextOfferRotateAt) || 0);
+    const rotateLeftMs = Math.max(0, nextRotateAt - now);
+    const rotateLeftText = (typeof formatTimeString === 'function') ? formatTimeString(rotateLeftMs) : `${Math.ceil(rotateLeftMs / 1000)}s`;
+    const stealFeedback = (staking.lastStealFeedback && typeof staking.lastStealFeedback === 'object')
+        ? staking.lastStealFeedback
+        : null;
+    const waitingNextSelection = !activeSession && stakeableItems.length === 0 && rotateLeftMs > 0;
 
-    const activeHtml = activeContracts.map(c => {
-        const left = Math.max(0, c.endAt - now);
-        const min = Math.ceil(left / 60000);
-        const canClaim = left <= 0;
+    const categoryLabel = (c) => {
+        if (c === 'legendary') return 'Légendaire';
+        if (c === 'rare') return 'Rare';
+        if (c === 'uncommon') return 'Peu commun';
+        return 'Commun';
+    };
+
+    const riskPct = activeSession && typeof game.getRocketStealRiskPercent === 'function'
+        ? game.getRocketStealRiskPercent(activeSession.tier || 1, activeSession)
+        : 0;
+    const isHighRisk = riskPct > 20;
+    const stakeableHtml = stakeableItems.map(item => {
+        const canStake = !activeSession;
+        const iconHtml = (typeof getItemIconHTML === 'function')
+            ? getItemIconHTML({ name: item.name, img: item.img, icon: item.icon })
+            : (item.icon || '📦');
         return `
-            <div class="shop-item ${canClaim ? '' : 'not-affordable'}">
-                <div class="shop-item-name">Contrat actif</div>
-                <div class="shop-item-description">Exigence: ${c.requestedType} ${c.requestedKey} x${c.amount}</div>
-                <div class="shop-item-cost">${canClaim ? 'Prêt à réclamer' : `Temps restant: ${min} min`}</div>
-                <button class="shop-buy-btn" onclick="game.handleRocketClaimContract('${c.contractId}')" ${!canClaim ? 'disabled' : ''}>Réclamer ${c.rewardRJ} RJ</button>
+            <div class="shop-item ${canStake ? '' : 'not-affordable'}">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div style="min-width:34px; display:flex; align-items:center; justify-content:center;">${iconHtml}</div>
+                    <div class="shop-item-name">${item.name}</div>
+                </div>
+                <div class="shop-item-description">Catégorie: ${categoryLabel(item.category)} • Possédé: ${fmt(item.amount)}</div>
+                <div class="shop-item-cost">Base: ${fmt(item.baseGps)} RJ/s</div>
+                <button class="shop-buy-btn" onclick="game.handleRocketStartContract('${item.key}')" ${!canStake ? 'disabled' : ''}>Staker x1</button>
             </div>
         `;
-    }).join('') || '<p style="color:#94a3b8;">Aucun contrat actif.</p>';
+    }).join('') || (
+            waitingNextSelection
+                ? `<p style="color:#94a3b8;">Sélection verrouillée. Prochaine sélection dans ${rotateLeftText}.</p>`
+                : '<p style="color:#94a3b8;">Aucun objet stakeable dans l\'inventaire.</p>'
+        );
 
-    const availableHtml = availableContracts.map(c => `
-        <div class="shop-item">
-            <div class="shop-item-name">Contrat Rocket</div>
-            <div class="shop-item-description">Exigence: ${c.requestedType} ${c.requestedKey} x${c.amount}</div>
-            <div class="shop-item-cost">Durée ${c.durationMinutes} min • Récompense ${c.rewardRJ} RJ</div>
-            <div class="tr-input-row">
-                <button class="shop-buy-btn" onclick="game.handleRocketStartContract('${c.contractId}')">Sélectionner</button>
-                <button class="shop-buy-btn" onclick="game.handleRocketRefuseContract('${c.contractId}')" style="background:#7f1d1d;">Refuser</button>
+    const activeSessionHtml = activeSession ? `
+        <div class="shop-item ${isHighRisk ? 'rocket-risk-shake' : ''}">
+            <div class="shop-item-name">Session Push Your Luck</div>
+            <div class="shop-item-description" id="rocketPushSessionItemText">
+                Objet: ${activeSession.itemName} • Catégorie: ${categoryLabel(activeSession.category)}
             </div>
+            <div class="rocket-push-live-wrap">
+                <div id="rocketPushTimerCircle" class="rocket-push-timer-circle" style="--progress:${activeSession && activeSession.currentPhaseDurationMs
+            ? Math.max(0, Math.min(100, (cycleProgressMs / activeSession.currentPhaseDurationMs) * 100)).toFixed(2)
+            : Math.max(0, Math.min(100, (cycleProgressMs / cycleMs) * 100)).toFixed(2)};">
+                    <div id="rocketPushTimerText" class="rocket-push-timer-text">${cycleLeftText}</div>
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div class="shop-item-cost" id="rocketPushRjLive">RJ accumulés: ${fmt(Math.floor(activeSession.accruedRJ || 0))}</div>
+                    <div class="shop-item-description" id="rocketPushGpsLive">
+                        GPS: ${fmtFloat(activeSession.currentGps || 0)} RJ/s (x${fmtFloat(activeSession.multiplier || 1)})
+                    </div>
+                    <div class="shop-item-description" id="rocketPushRiskLive" style="color:${isHighRisk ? '#ef4444' : '#f59e0b'};">
+                        Risque de vol fin de cycle: ${riskPct}%
+                    </div>
+                </div>
+            </div>
+            <button class="shop-buy-btn" onclick="game.handleRocketRecoverStake()">RÉCUPÉRER</button>
         </div>
-    `).join('') || '<p style="color:#94a3b8;">Aucun contrat disponible.</p>';
+    ` : '<p style="color:#94a3b8;">Aucune session active. Lancez un objet pour commencer.</p>';
+
+    const stealFeedbackHtml = stealFeedback ? `
+        <div class="shop-item rocket-steal-feedback">
+            <div class="shop-item-name">🚨 Objet volé par la Team Rocket</div>
+            <div class="shop-item-description">
+                ${stealFeedback.itemName || 'Objet'} a été volé au palier ${stealFeedback.tier || 1} (risque ${stealFeedback.riskPercent || 0}%).
+            </div>
+            <div class="shop-item-cost" style="color:#fecaca;">Perte session: ${fmt(stealFeedback.lostRJ || 0)} RJ</div>
+            <button class="shop-buy-btn" style="background:#7f1d1d;" onclick="game.handleRocketDismissStealFeedback()">Compris</button>
+        </div>
+    ` : '';
 
     panel.innerHTML = `
         <div class="quest-stats" style="margin-bottom: 12px;">
@@ -1467,25 +1534,20 @@ function updateTeamRocketDisplayUI(game) {
             </div>
         </div>
 
-        <h4 style="margin:16px 0 8px 0;">Marché de Staking</h4>
+        <h4 style="margin:16px 0 8px 0;">Staking Push Your Luck</h4>
+        ${stealFeedbackHtml}
         <div id="rocketStakingContractTimerText" style="font-size:12px; color:#cbd5e1; margin-bottom:8px;">
-            Contrats disponibles: ${availableContracts.length}/${maxContracts}
-            ${availableContracts.length < maxContracts ? `• Prochain contrat dans ${nextLeftText}` : '• Slots pleins'}
+            Rotation aléatoire: 3 objets • Après un choix, nouvelle sélection dans 10 min minimum • ${rotateLeftText}
         </div>
-        <div class="team-rocket-grid">${availableHtml}</div>
-
-        <h4 style="margin:16px 0 8px 0;">Contrats en cours</h4>
-        <div class="team-rocket-grid">${activeHtml}</div>
+        <div class="team-rocket-grid" style="margin-bottom:8px;">${activeSessionHtml}</div>
+        <div class="team-rocket-grid">${stakeableHtml}</div>
 
         <h4 style="margin:16px 0 8px 0;">Casino Rocket</h4>
         <div class="shop-item">
             <div class="shop-item-name">Machine à Sous Rocket</div>
-            <div class="shop-item-description">Misez des RJ pour tenter des multiplicateurs et récompenses rares.</div>
+            <div class="shop-item-description">Rouleaux animés, mises RJ, historique local des spins et table des gains.</div>
             <div class="shop-item-cost">Niveau: ${trust ? trust.label : 'Recrue'} • XP confiance: ${fmt(tr.trustXp || 0)}</div>
-            <div class="tr-input-row" style="margin-top:8px;">
-                <input id="rocketCasinoStakeInput" type="number" min="1" placeholder="Mise RJ" style="padding:8px;">
-                <button class="shop-buy-btn" onclick="game.handleRocketCasinoSpin()">Lancer</button>
-            </div>
+            <button class="shop-buy-btn" style="margin-top:8px;" onclick="game.handleRocketOpenCasinoModal()">Ouvrir la machine à sous</button>
         </div>
     `;
 }
@@ -1988,6 +2050,327 @@ function closeRocketContractSelectModalUI() {
     if (existing) existing.remove();
 }
 
+let rocketCasinoSpinLock = false;
+
+function closeRocketCasinoModalUI() {
+    const existing = document.getElementById('rocketCasinoOverlay');
+    if (existing) existing.remove();
+    rocketCasinoSpinLock = false;
+}
+
+function getRocketCasinoSymbolMeta(symbolKey) {
+    const cfg = (typeof ROCKET_CASINO_CONFIG !== 'undefined' && Array.isArray(ROCKET_CASINO_CONFIG.symbols))
+        ? ROCKET_CASINO_CONFIG.symbols
+        : [];
+    const symbol = cfg.find(s => s.key === symbolKey);
+    if (!symbol) return { key: symbolKey || 'unknown', id: 'N/A', label: symbolKey || 'Inconnu', sprite: '', payMultiplier: 0 };
+    return {
+        key: symbol.key,
+        id: symbol.id || symbol.key,
+        label: symbol.label || symbol.key,
+        sprite: symbol.sprite || '',
+        payMultiplier: Number(symbol.payMultiplier) || 0
+    };
+}
+
+function getRocketCasinoRewardSprite(reward) {
+    if (!reward || !reward.rewardType) return { src: '', alt: '', label: '' };
+    const t = String(reward.rewardType);
+    const id = String(reward.targetId || '');
+    if (t === 'currency') {
+        if (id === 'marques_du_triomphe') return { src: 'img/marque-triomphe.png', alt: 'Marques du Triomphe', label: 'Marques' };
+        if (id === 'essence_dust') return { src: 'img/essence-dust.png', alt: "Poussière d'essence", label: "Poussière" };
+        if (id === 'pokedollars_scaled' || id === 'pokedollars') return { src: 'img/pokedollars.png', alt: 'Pokédollars', label: '$' };
+    }
+    if (t === 'quest_token') return { src: 'img/quest-token.png', alt: 'Jetons de Quête', label: 'Jetons' };
+    if (t === 'jackpot') {
+        const symbols = (typeof ROCKET_CASINO_CONFIG !== 'undefined' && ROCKET_CASINO_CONFIG.symbols) ? ROCKET_CASINO_CONFIG.symbols : [];
+        const meowth = symbols.find(s => (s.key || '').toString() === 'meowth');
+        return { src: (meowth && meowth.sprite) ? meowth.sprite : 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png', alt: 'Jackpot Miaouss', label: 'Jackpot' };
+    }
+    if (t === 'item' && typeof ALL_ITEMS !== 'undefined' && ALL_ITEMS) {
+        const item = ALL_ITEMS[id] || (id.startsWith('ct_') ? { name: 'CT ' + id.replace('ct_', ''), img: null, icon: '📿' } : null);
+        if (item) return { src: item.img || '', alt: item.name || id, label: item.name || id, icon: item.icon };
+    }
+    return { src: '', alt: id || t, label: id || t, icon: '📦' };
+}
+
+function rollRocketCasinoSymbolKey() {
+    const cfg = (typeof ROCKET_CASINO_CONFIG !== 'undefined' && Array.isArray(ROCKET_CASINO_CONFIG.symbols))
+        ? ROCKET_CASINO_CONFIG.symbols
+        : [];
+    if (cfg.length === 0) return null;
+    const totalWeight = cfg.reduce((sum, s) => sum + Math.max(0, Number(s.weight) || 0), 0) || 1;
+    let r = Math.random() * totalWeight;
+    for (const s of cfg) {
+        const w = Math.max(0, Number(s.weight) || 0);
+        if (r < w) return s.key;
+        r -= w;
+    }
+    return cfg[0].key;
+}
+
+function renderRocketCasinoHistoryUI(game) {
+    const list = document.getElementById('rocketCasinoHistoryList');
+    if (!list) return;
+    const history = (game && game.teamRocketState && game.teamRocketState.casino && Array.isArray(game.teamRocketState.casino.history))
+        ? game.teamRocketState.casino.history
+        : [];
+    if (history.length === 0) {
+        list.innerHTML = '<div style="font-size:12px; color:#94a3b8;">Aucun spin pour le moment.</div>';
+        return;
+    }
+    list.innerHTML = history.slice(0, 10).map(entry => {
+        const centerLine = (entry.matrix && entry.matrix.length === 3)
+            ? [entry.matrix[0][1], entry.matrix[1][1], entry.matrix[2][1]]
+            : [];
+        const reels = centerLine.map(k => {
+            const meta = getRocketCasinoSymbolMeta(k);
+            return `<img src="${meta.sprite}" alt="${meta.label}" class="rocket-casino-mini-symbol">`;
+        }).join('');
+        const pokedollarsGain = Number(entry.pokedollarsGain) || 0;
+        const color = pokedollarsGain > 0 ? '#22c55e' : '#94a3b8';
+        const formatFull = (n) => (Number(n) || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+        const gainsHtml = pokedollarsGain > 0
+            ? `<span style="color:${color}; font-weight:600;">+${formatFull(pokedollarsGain)} <img src="img/pokedollars.png" alt="" class="rocket-casino-reward-sprite rocket-casino-gain-pokedollar"></span>`
+            : '—';
+        const rewardsList = Array.isArray(entry.rewards) ? entry.rewards : [];
+        const otherRewards = rewardsList.filter(r => !(r.rewardType === 'currency' && (r.targetId === 'pokedollars_scaled' || r.targetId === 'pokedollars')));
+        const rewardParts = otherRewards.map(r => {
+            const meta = getRocketCasinoRewardSprite(r);
+            const amount = Math.floor(Number(r.amount) || 0);
+            const amountStr = amount > 0 ? formatFull(amount) : '';
+            if (meta.src) {
+                return `<span class="rocket-casino-history-reward" title="${meta.alt}"><img src="${meta.src}" alt="${meta.alt}" class="rocket-casino-reward-sprite">${amountStr ? ` ×${amountStr}` : ''}</span>`;
+            }
+            return `<span class="rocket-casino-history-reward" title="${meta.alt}">${meta.icon || '📦'}${amountStr ? ` ×${amountStr}` : ''}</span>`;
+        });
+        const rewardHtml = rewardParts.length ? rewardParts.join(' ') : '';
+        return `
+            <div class="rocket-casino-history-row">
+                <div class="rocket-casino-history-reels">${reels}</div>
+                <div class="rocket-casino-history-gains">${gainsHtml}</div>
+                ${rewardHtml ? `<div class="rocket-casino-history-rewards">${rewardHtml}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function getRocketCasinoGridCellEl(col, row) {
+    return document.getElementById(`rocketCasinoCell_${col}_${row}`);
+}
+
+function setRocketCasinoGridColumn(columnIndex, matrix, revealedClass = 'revealed') {
+    for (let row = 0; row < 3; row++) {
+        const key = matrix[columnIndex] && matrix[columnIndex][row];
+        const meta = getRocketCasinoSymbolMeta(key);
+        const cell = getRocketCasinoGridCellEl(columnIndex, row);
+        if (!cell) continue;
+        cell.innerHTML = `<img src="${meta.sprite}" alt="${meta.label}" class="rocket-casino-symbol-img">`;
+        cell.classList.add(revealedClass);
+    }
+}
+
+function clearRocketCasinoGridHighlights() {
+    for (let col = 0; col < 3; col++) {
+        for (let row = 0; row < 3; row++) {
+            const cell = getRocketCasinoGridCellEl(col, row);
+            if (!cell) continue;
+            cell.classList.remove('win-highlight');
+        }
+    }
+}
+
+function animateRocketCasinoCounter(startValue, endValue, durationMs, onUpdate, onDone) {
+    const start = performance.now();
+    const delta = endValue - startValue;
+    const tick = (now) => {
+        const t = Math.min(1, (now - start) / Math.max(1, durationMs));
+        const eased = 1 - Math.pow(1 - t, 3);
+        const value = Math.floor(startValue + (delta * eased));
+        if (typeof onUpdate === 'function') onUpdate(value);
+        if (t < 1) {
+            requestAnimationFrame(tick);
+        } else if (typeof onDone === 'function') {
+            onDone();
+        }
+    };
+    requestAnimationFrame(tick);
+}
+
+function animateRocketCasinoGridReveal(result, onDone) {
+    const matrix = result.matrix || [[], [], []];
+    const gridEl = document.getElementById('rocketCasinoGrid3x3');
+    if (!gridEl) {
+        if (typeof onDone === 'function') onDone();
+        return;
+    }
+    clearRocketCasinoGridHighlights();
+
+    const REEL_EXTRA_SYMBOLS = 12;
+    const REEL_DURATION_MS = 2200;
+    const REEL_STAGGER_MS = 180;
+    const REEL_EASE = 'cubic-bezier(0.25, 0.1, 0.25, 1)';
+
+    function buildReelStripHtml(colIndex) {
+        const finalSymbols = [matrix[colIndex][0], matrix[colIndex][1], matrix[colIndex][2]].filter(Boolean);
+        const keys = [];
+        for (let i = 0; i < REEL_EXTRA_SYMBOLS; i++) keys.push(rollRocketCasinoSymbolKey());
+        keys.push(...finalSymbols);
+        return keys.map(key => {
+            const meta = getRocketCasinoSymbolMeta(key || 'unknown');
+            return `<div class="rocket-casino-reel-symbol"><img src="${meta.sprite}" alt="${meta.label}" class="rocket-casino-symbol-img"></div>`;
+        }).join('');
+    }
+
+    gridEl.classList.add('rocket-casino-reels-mode');
+    gridEl.innerHTML = [0, 1, 2].map(col => `
+        <div class="rocket-casino-reel" id="rocketCasinoReel_${col}" data-col="${col}">
+            <div class="rocket-casino-reel-strip">${buildReelStripHtml(col)}</div>
+        </div>
+    `).join('');
+
+    gridEl.offsetHeight;
+
+    [0, 1, 2].forEach((col, idx) => {
+        const strip = document.querySelector(`#rocketCasinoReel_${col} .rocket-casino-reel-strip`);
+        if (!strip) return;
+        strip.style.transform = 'translateY(0)';
+        strip.style.transition = `transform ${REEL_DURATION_MS}ms ${REEL_EASE}`;
+        setTimeout(() => {
+            strip.style.transform = 'translateY(-80%)';
+        }, idx * REEL_STAGGER_MS);
+    });
+
+    const totalAnimMs = REEL_STAGGER_MS * 2 + REEL_DURATION_MS + 300;
+    setTimeout(() => {
+        gridEl.classList.remove('rocket-casino-reels-mode');
+        gridEl.innerHTML = [0, 1, 2].map(row => [0, 1, 2].map(col => {
+            const key = matrix[col] && matrix[col][row];
+            const meta = getRocketCasinoSymbolMeta(key);
+            return `<div class="rocket-casino-cell revealed" id="rocketCasinoCell_${col}_${row}"><img src="${meta.sprite}" alt="${meta.label}" class="rocket-casino-symbol-img"></div>`;
+        }).join('')).join('');
+
+        const wins = Array.isArray(result.winningLines) ? result.winningLines : [];
+        let delay = 0;
+        wins.forEach(win => {
+            setTimeout(() => {
+                (win.coords || []).forEach(([c, r]) => {
+                    const cell = getRocketCasinoGridCellEl(c, r);
+                    if (cell) cell.classList.add('win-highlight');
+                });
+            }, delay);
+            delay += 260;
+        });
+        setTimeout(() => {
+            if (typeof onDone === 'function') onDone();
+        }, Math.max(0, delay));
+    }, totalAnimMs);
+}
+
+function showRocketCasinoModalUI(game) {
+    closeRocketCasinoModalUI();
+    const tr = game && game.teamRocketState ? game.teamRocketState : {};
+    const cfg = (typeof ROCKET_CASINO_CONFIG !== 'undefined') ? ROCKET_CASINO_CONFIG : { lineCostRJ: 250, defaultActivePaylines: 8 };
+    const lineCost = Math.max(1, Math.floor(Number(cfg.lineCostRJ) || 250));
+    const maxPaylines = 8;
+    const defaultLines = Math.max(1, Math.min(maxPaylines, Math.floor(Number(cfg.defaultActivePaylines) || maxPaylines)));
+
+    const overlay = document.createElement('div');
+    overlay.id = 'rocketCasinoOverlay';
+    overlay.className = 'stats-modal js-modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.onclick = function (e) { if (e.target === overlay) closeRocketCasinoModalUI(); };
+
+    overlay.innerHTML = `
+        <div class="stats-content js-modal-content rocket-casino-modal-content">
+            <div class="stats-header">
+                <h2>🎰 Machine à Sous Rocket</h2>
+                <button class="stats-close js-close-modal" type="button" onclick="closeRocketCasinoModalUI()">&times;</button>
+            </div>
+            <div class="rocket-casino-modal-grid">
+                <div class="rocket-casino-main">
+                    <div class="slots-machine">
+                        <div class="slots-machine-screen" aria-hidden="false">
+                            <div class="rocket-casino-grid3x3" id="rocketCasinoGrid3x3">
+                                ${[0, 1, 2].map(row => [0, 1, 2].map(col => `<div class="rocket-casino-cell" id="rocketCasinoCell_${col}_${row}"><div class="rocket-casino-cell-mask">?</div></div>`).join('')).join('')}
+                            </div>
+                        </div>
+                        <div class="slots-machine-scanlines" aria-hidden="true"></div>
+                        <img src="img/slots-machine.png" class="slots-machine-frame" alt="">
+                        <button class="spin-btn" id="rocketCasinoSpinBtn" aria-label="Lancer la machine"></button>
+                    </div>
+                </div>
+                <div class="rocket-casino-side">
+                    <div id="rocketCasinoModalRjText" class="shop-item-cost rocket-casino-rj-display" style="margin-bottom:12px; position:relative;">Jeton Rocket : ${typeof formatNumber === 'function' ? formatNumber(tr.rj || 0) : (tr.rj || 0)}</div>
+                    <h4>Historique (10 derniers)</h4>
+                    <div id="rocketCasinoHistoryList" class="rocket-casino-history"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    renderRocketCasinoHistoryUI(game);
+
+    const rjText = document.getElementById('rocketCasinoModalRjText');
+    const spinBtn = document.getElementById('rocketCasinoSpinBtn');
+
+    const refreshRjLabel = () => {
+        if (rjText && game && game.teamRocketState) {
+            rjText.textContent = `Jeton Rocket : ${typeof formatNumber === 'function' ? formatNumber(game.teamRocketState.rj || 0) : (game.teamRocketState.rj || 0)}`;
+        }
+    };
+
+    const runCasinoSpin = () => {
+        if (!game || rocketCasinoSpinLock) return null;
+        const linesPlayed = defaultLines;
+        const stakeCost = lineCost * linesPlayed;
+        const beforeRJ = Math.max(0, Math.floor(Number(game.teamRocketState.rj) || 0));
+        const result = (typeof game.handleRocketCasinoSpinAmount === 'function')
+            ? game.handleRocketCasinoSpinAmount(linesPlayed)
+            : null;
+        if (!result) return null;
+        const afterRJ = Math.max(0, Math.floor(Number(game.teamRocketState.rj) || 0));
+
+        rocketCasinoSpinLock = true;
+        if (spinBtn) spinBtn.disabled = true;
+
+        if (rjText && typeof showFloatingText === 'function') {
+            showFloatingText(`-${typeof formatNumber === 'function' ? formatNumber(stakeCost) : stakeCost}`, rjText, 'ft-debt ft-from-rj');
+        }
+
+        animateRocketCasinoGridReveal(result, () => {
+            renderRocketCasinoHistoryUI(game);
+
+            animateRocketCasinoCounter(beforeRJ, afterRJ, 550, (value) => {
+                if (rjText) rjText.textContent = `Jeton Rocket : ${typeof formatNumber === 'function' ? formatNumber(value) : value}`;
+            }, () => {
+                if (rjText) rjText.textContent = `Jeton Rocket : ${typeof formatNumber === 'function' ? formatNumber(afterRJ) : afterRJ}`;
+            });
+
+            rocketCasinoSpinLock = false;
+            if (spinBtn) spinBtn.disabled = false;
+            refreshRjLabel();
+        });
+        return result;
+    };
+
+    if (spinBtn) {
+        spinBtn.onclick = function () {
+            runCasinoSpin();
+        };
+        spinBtn.onmousedown = function () {
+            spinBtn.classList.add('spin-pressed-btn');
+        };
+        const releaseSpin = function () {
+            spinBtn.classList.remove('spin-pressed-btn');
+        };
+        spinBtn.onmouseup = releaseSpin;
+        spinBtn.onmouseleave = releaseSpin;
+    }
+    refreshRjLabel();
+}
+
 function updateTeamRocketLoanRealtimeUI(game) {
     if (!game || !game.teamRocketState) return;
     const tr = game.teamRocketState;
@@ -2042,16 +2425,73 @@ function updateTeamRocketBankRealtimeUI(game) {
 function updateTeamRocketStakingRealtimeUI(game) {
     if (!game || !game.teamRocketState || !game.teamRocketState.staking) return;
     const staking = game.teamRocketState.staking;
-    const maxContracts = Math.max(1, Number(staking.maxAvailableContracts) || 3);
-    const available = Array.isArray(staking.availableContracts) ? staking.availableContracts.length : 0;
+    if (typeof game.updateRocketStakingPushSession === 'function') game.updateRocketStakingPushSession(Date.now());
+    const session = staking.activeSession;
     const now = Date.now();
-    const nextReadyAt = Math.max(0, Number(staking.nextContractReadyAt) || 0);
-    const nextLeftMs = Math.max(0, nextReadyAt - now);
-    const nextLeftText = (typeof formatTimeString === 'function') ? formatTimeString(nextLeftMs) : `${Math.ceil(nextLeftMs / 1000)}s`;
+    const cycleMs = (typeof ROCKET_PUSH_STAKING_CONFIG !== 'undefined' && Number(ROCKET_PUSH_STAKING_CONFIG.cycleMs) > 0)
+        ? Number(ROCKET_PUSH_STAKING_CONFIG.cycleMs)
+        : 30000;
+    const nextRotateAt = Math.max(0, Number(staking.nextOfferRotateAt) || 0);
+    const rotateLeftMs = Math.max(0, nextRotateAt - now);
+    const rotateLeftText = (typeof formatTimeString === 'function') ? formatTimeString(rotateLeftMs) : `${Math.ceil(rotateLeftMs / 1000)}s`;
 
     const timerText = document.getElementById('rocketStakingContractTimerText');
-    if (!timerText) return;
-    timerText.textContent = `Contrats disponibles: ${available}/${maxContracts}${available < maxContracts ? ` • Prochain contrat dans ${nextLeftText}` : ' • Slots pleins'}`;
+    if (timerText) {
+        timerText.textContent = session
+            ? `Session active: risque testé à chaque phase (25–35 s) • Prochaine sélection possible dans ${rotateLeftText}`
+            : `Rotation aléatoire: 3 objets • Nouvelle sélection dans ${rotateLeftText}`;
+    }
+    if (!session) {
+        if (document.getElementById('rocketPushTimerCircle') && typeof game.updateTeamRocketDisplay === 'function') {
+            game.updateTeamRocketDisplay();
+        }
+        return;
+    }
+
+    let cycleLeftMs = cycleMs;
+    let cycleProgressPct = 0;
+    if (session.nextPhaseEndAt != null && session.currentPhaseDurationMs != null) {
+        cycleLeftMs = Math.max(0, Number(session.nextPhaseEndAt) - now);
+        const phaseDuration = Math.max(1, Number(session.currentPhaseDurationMs) || 1);
+        const progressInPhase = Math.max(0, phaseDuration - cycleLeftMs);
+        cycleProgressPct = Math.max(0, Math.min(100, (progressInPhase / phaseDuration) * 100));
+    } else {
+        const elapsedMs = Math.max(0, now - (session.startedAt || now));
+        const cycleProgress = elapsedMs % cycleMs;
+        cycleLeftMs = Math.max(0, cycleMs - cycleProgress);
+        cycleProgressPct = Math.max(0, Math.min(100, (cycleProgress / cycleMs) * 100));
+    }
+    const cycleLeftText = (typeof formatTimeString === 'function') ? formatTimeString(cycleLeftMs) : `${Math.ceil(cycleLeftMs / 1000)}s`;
+    const riskPct = (typeof game.getRocketStealRiskPercent === 'function') ? game.getRocketStealRiskPercent(session.tier || 1, session) : 0;
+    const isHighRisk = riskPct > 20;
+
+    const circle = document.getElementById('rocketPushTimerCircle');
+    if (circle) circle.style.setProperty('--progress', `${cycleProgressPct.toFixed(2)}`);
+
+    const timer = document.getElementById('rocketPushTimerText');
+    if (timer) timer.textContent = cycleLeftText;
+
+    const rjLive = document.getElementById('rocketPushRjLive');
+    if (rjLive) rjLive.textContent = `RJ accumulés: ${typeof formatNumber === 'function' ? formatNumber(Math.floor(session.accruedRJ || 0)) : Math.floor(session.accruedRJ || 0)}`;
+
+    const gpsLive = document.getElementById('rocketPushGpsLive');
+    if (gpsLive) {
+        const gpsVal = Number(session.currentGps || 0);
+        const multVal = Number(session.multiplier || 1);
+        const gpsStr = (typeof formatFloatingNumber === 'function')
+            ? formatFloatingNumber(gpsVal)
+            : gpsVal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const multStr = (typeof formatFloatingNumber === 'function')
+            ? formatFloatingNumber(multVal)
+            : multVal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        gpsLive.textContent = `GPS: ${gpsStr} RJ/s (x${multStr})`;
+    }
+
+    const riskLive = document.getElementById('rocketPushRiskLive');
+    if (riskLive) {
+        riskLive.textContent = `Risque de vol fin de phase: ${riskPct}%`;
+        riskLive.style.color = isHighRisk ? '#ef4444' : '#f59e0b';
+    }
 }
 
 function showRocketContractSelectModalUI(game, contract, options) {
@@ -2189,6 +2629,86 @@ window.renderCreatureModalContent = renderCreatureModalContent;
 window.closeCreatureModalUI = closeCreatureModalUI;
 window.showRocketContractSelectModalUI = showRocketContractSelectModalUI;
 window.closeRocketContractSelectModalUI = closeRocketContractSelectModalUI;
+window.showRocketCasinoModalUI = showRocketCasinoModalUI;
+window.closeRocketCasinoModalUI = closeRocketCasinoModalUI;
 window.updateTeamRocketBankRealtimeUI = updateTeamRocketBankRealtimeUI;
 window.updateTeamRocketLoanRealtimeUI = updateTeamRocketLoanRealtimeUI;
 window.updateTeamRocketStakingRealtimeUI = updateTeamRocketStakingRealtimeUI;
+
+// ============================================================
+// MOBILE NAVIGATION
+// ============================================================
+
+/**
+ * Bascule entre les 3 panneaux principaux sur mobile.
+ * @param {'combat'|'team'|'extras'} panelName
+ */
+function switchMobilePanel(panelName) {
+    // Only act on mobile viewports
+    if (window.innerWidth > 768) return;
+
+    const combatArea = document.querySelector('.combat-area');
+    const teamArea = document.querySelector('.team-area');
+    const secondaryContent = document.getElementById('secondaryContent');
+
+    // Remove active class from all panels
+    [combatArea, teamArea, secondaryContent].forEach(el => {
+        if (el) el.classList.remove('mobile-active');
+    });
+
+    // Show the selected panel
+    switch (panelName) {
+        case 'combat':
+            if (combatArea) combatArea.classList.add('mobile-active');
+            break;
+        case 'team':
+            if (teamArea) teamArea.classList.add('mobile-active');
+            break;
+        case 'extras':
+            if (secondaryContent) secondaryContent.classList.add('mobile-active');
+            break;
+    }
+
+    // Update nav buttons
+    const navBtns = document.querySelectorAll('.mobile-nav-btn');
+    navBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.panel === panelName);
+    });
+}
+
+/**
+ * Initialize mobile layout on load (set combat as default active panel).
+ */
+function initMobileLayout() {
+    if (window.innerWidth <= 768) {
+        switchMobilePanel('combat');
+    }
+}
+
+// Run on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileLayout);
+} else {
+    initMobileLayout();
+}
+
+// Re-init when resizing between mobile/desktop
+window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth <= 768;
+    const combatArea = document.querySelector('.combat-area');
+    const teamArea = document.querySelector('.team-area');
+    const secondaryContent = document.getElementById('secondaryContent');
+
+    if (!isMobile) {
+        // Desktop: remove mobile classes
+        [combatArea, teamArea, secondaryContent].forEach(el => {
+            if (el) el.classList.remove('mobile-active');
+        });
+    } else {
+        // Mobile: ensure one panel is active
+        const anyActive = document.querySelector('.combat-area.mobile-active, .team-area.mobile-active, .secondary-content.mobile-active');
+        if (!anyActive) switchMobilePanel('combat');
+    }
+});
+
+window.switchMobilePanel = switchMobilePanel;

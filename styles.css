@@ -5429,6 +5429,543 @@ h3 {
     text-overflow: ellipsis;
 }
 
+#teamrocketTab .rocket-push-live-wrap {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 10px 0;
+}
+
+#teamrocketTab .rocket-push-timer-circle {
+    --progress: 0;
+    width: 86px;
+    height: 86px;
+    border-radius: 999px;
+    background: conic-gradient(#ef4444 calc(var(--progress) * 1%), #1f2937 0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex: 0 0 86px;
+}
+
+#teamrocketTab .rocket-push-timer-circle::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: 999px;
+    background: #0f172a;
+    border: 1px solid #334155;
+}
+
+#teamrocketTab .rocket-push-timer-text {
+    position: relative;
+    z-index: 1;
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+#teamrocketTab .rocket-risk-shake {
+    animation: rocketRiskShake 0.35s linear infinite;
+    border-color: #ef4444 !important;
+}
+
+#teamrocketTab .rocket-steal-feedback {
+    border-color: #ef4444 !important;
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.55), rgba(15, 23, 42, 0.92)) !important;
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35), 0 8px 20px rgba(127, 29, 29, 0.35);
+}
+
+.rocket-casino-modal-content {
+    width: min(92vw, 1080px);
+    max-width: 1080px;
+    position: relative;
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+.rocket-casino-modal-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+}
+
+.rocket-casino-main,
+.rocket-casino-side {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+/* Affichage Jeton Rocket : plus grand, ancrage pour le floating text */
+.rocket-casino-rj-display {
+    font-size: 1.35rem;
+    font-weight: 700;
+    min-height: 2.5em;
+    display: flex;
+    align-items: center;
+}
+
+/* Floating text du casino : part du bloc Jeton Rocket */
+/* Floating text du casino : part du bloc Jeton Rocket (left géré en JS) */
+.floating-text.ft-from-rj {
+    bottom: 0 !important;
+}
+
+/* Pas de cadre autour de la borne : seule l'image de la machine est visible */
+.rocket-casino-main:has(.slots-machine) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+}
+
+.rocket-casino-grid3x3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.rocket-casino-cell {
+    height: 96px;
+    border-radius: 1px;
+    border: 2px solid #334155;
+    background: linear-gradient(180deg, #1f2937, #111827);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.35);
+}
+
+.rocket-casino-cell.revealed {
+    border-color: #64748b;
+}
+
+.rocket-casino-cell.win-highlight {
+
+    box-shadow: inset 0 0 20px rgba(22, 163, 74, 0.55);
+    animation: rocketLineWinPulse 0.28s ease-in-out 2;
+}
+
+.rocket-casino-symbol-img {
+    width: 68px;
+    height: 68px;
+    image-rendering: pixelated;
+    object-fit: contain;
+}
+
+.rocket-casino-cell-mask {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.rocket-casino-mini-symbol {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+/* --- Machine à sous Team Rocket : incrustation (masking) + scanlines --- */
+/* Conteneur principal = dimensions de la borne (aspect de slots-machine.png) */
+.slots-machine {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    aspect-ratio: 960 / 1030;
+    background: #0f172a;
+    display: block;
+}
+
+/* Cadre de la borne au premier plan (z-index 15), ne bloque pas les clics */
+.slots-machine-frame {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    object-position: center;
+    z-index: 15;
+    pointer-events: none;
+}
+
+/* Écran (grille 3x3) DERRIÈRE le cadre — positionnée dans la zone transparente du PNG */
+.slots-machine-screen {
+    position: absolute;
+    top: 27.3%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 75%;
+    height: 47.2%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    overflow: hidden;
+}
+
+.slots-machine-screen .rocket-casino-grid3x3 {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    gap: 0px;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+}
+
+/* Mode bandes défilantes : 3 colonnes = 3 rouleaux, hauteur garantie pour rester visible */
+.slots-machine-screen .rocket-casino-grid3x3.rocket-casino-reels-mode {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 1fr;
+    min-height: 120px;
+}
+
+.rocket-casino-reel {
+    overflow: hidden;
+    height: 100%;
+    min-height: 100px;
+    position: relative;
+}
+
+.rocket-casino-reel-strip {
+    display: flex;
+    flex-direction: column;
+    height: 500%;
+    transform: translateY(0);
+    will-change: transform;
+    flex-shrink: 0;
+}
+
+.rocket-casino-reel-symbol {
+    flex: 0 0 6.6667%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    background: linear-gradient(180deg, #1f2937, #111827);
+}
+
+.rocket-casino-reel-symbol .rocket-casino-symbol-img {
+    width: 85%;
+    height: 85%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.slots-machine-screen .rocket-casino-cell {
+    height: auto;
+    border-radius: 0;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    min-height: 0;
+}
+
+/* Scanlines (entre grille et cadre) — effet écran cathodique */
+.slots-machine-scanlines {
+    position: absolute;
+    top: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 72%;
+    height: 46%;
+    z-index: 10;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg,
+            transparent 0px,
+            transparent 2px,
+            rgba(0, 0, 0, 0.12) 2px,
+            rgba(0, 0, 0, 0.12) 4px);
+}
+
+/* Bouton spin au-dessus du cadre pour rester cliquable */
+.slots-machine .spin-btn {
+    position: absolute;
+    bottom: 9.5%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+}
+
+.rocket-casino-ui-under-machine {
+    margin-top: 10px;
+}
+
+.spin-btn {
+    position: relative;
+    width: 254px;
+    height: 114px;
+    border: none;
+    padding: 0;
+    margin-top: 8px;
+    background: url("img/spin-btn.png") center center no-repeat;
+    background-size: contain;
+    cursor: pointer;
+    outline: none;
+}
+
+.spin-btn.spin-pressed-btn,
+.spin-btn:active {
+    background-image: url("img/spin-pressed-btn.png");
+    transform: translateY(1px);
+}
+
+.slots-machine .spin-btn.spin-pressed-btn,
+.slots-machine .spin-btn:active {
+    transform: translateX(-50%) translateY(1px);
+}
+
+.spin-btn:disabled {
+    filter: grayscale(0.3) brightness(0.7);
+    cursor: default;
+}
+
+.rocket-casino-modal-content.rocket-casino-modal-shake {
+    animation: rocketCasinoModalShake 420ms ease-in-out;
+}
+
+.rocket-casino-modal-content.rocket-casino-jackpot-flash::before,
+.rocket-casino-modal-content.rocket-casino-bigwin-flash::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    pointer-events: none;
+}
+
+.rocket-casino-modal-content.rocket-casino-jackpot-flash::before {
+    animation: rocketCasinoJackpotFlash 700ms ease-out;
+}
+
+.rocket-casino-modal-content.rocket-casino-bigwin-flash::before {
+    animation: rocketCasinoBigWinFlash 500ms ease-out;
+}
+
+@keyframes rocketCasinoModalShake {
+    0% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-5px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(3px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+@keyframes rocketCasinoJackpotFlash {
+    0% {
+        background: rgba(250, 204, 21, 0.0);
+        box-shadow: 0 0 0 rgba(250, 204, 21, 0);
+    }
+
+    30% {
+        background: rgba(250, 204, 21, 0.22);
+        box-shadow: 0 0 22px rgba(250, 204, 21, 0.65);
+    }
+
+    100% {
+        background: rgba(250, 204, 21, 0);
+        box-shadow: 0 0 0 rgba(250, 204, 21, 0);
+    }
+}
+
+@keyframes rocketCasinoBigWinFlash {
+    0% {
+        background: rgba(34, 197, 94, 0.0);
+        box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+    }
+
+    35% {
+        background: rgba(34, 197, 94, 0.16);
+        box-shadow: 0 0 16px rgba(34, 197, 94, 0.45);
+    }
+
+    100% {
+        background: rgba(34, 197, 94, 0);
+        box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+    }
+}
+
+.rocket-casino-stake-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.rocket-casino-stake-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.rocket-casino-stake-input-row input {
+    min-width: 0;
+    width: 100%;
+    padding: 8px;
+}
+
+.rocket-casino-result {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+    min-height: 18px;
+}
+
+.rocket-casino-table {
+    font-size: 12px;
+    color: #cbd5e1;
+}
+
+.rocket-casino-table-head,
+.rocket-casino-table-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #1f2937;
+}
+
+.rocket-casino-table-head {
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.rocket-casino-history {
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid #1f2937;
+    border-radius: 8px;
+    padding: 6px;
+}
+
+.rocket-casino-history-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 2px;
+    border-bottom: 1px solid #1f2937;
+    font-size: 13px;
+}
+
+.rocket-casino-history-row:last-child {
+    border-bottom: 0;
+}
+
+.rocket-casino-history-reels {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.rocket-casino-history-gains {
+    font-size: 14px;
+}
+
+.rocket-casino-history-rewards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    font-size: 11px;
+    color: #cbd5e1;
+}
+
+.rocket-casino-history-reward {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.rocket-casino-reward-sprite {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.rocket-casino-gain-pokedollar {
+    vertical-align: middle;
+    margin-left: 2px;
+}
+
+.rocket-casino-table-symbol {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+@keyframes rocketLineWinPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.04);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media (max-width: 900px) {
+    .rocket-casino-modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@keyframes rocketRiskShake {
+    0% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-1px);
+    }
+
+    40% {
+        transform: translateX(2px);
+    }
+
+    60% {
+        transform: translateX(-2px);
+    }
+
+    80% {
+        transform: translateX(1px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
 @media (max-width: 640px) {
     #teamrocketTab .tr-input-row {
         grid-template-columns: 1fr;
@@ -9751,4 +10288,479 @@ body.narrative-stats-visible .header {
     100% {
         background-position: 0 0;
     }
+}
+
+/* ================================================================
+   RESPONSIVE SMARTPHONE (max-width: 768px)
+   ================================================================ */
+
+@media (max-width: 768px) {
+
+    /* --- BODY & GLOBAL --- */
+    body {
+        overflow: auto;
+        height: auto;
+        min-height: 100vh;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* --- LAYOUT PRINCIPAL : COLONNE UNIQUE --- */
+    .game-container {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: unset !important;
+        grid-template-rows: unset !important;
+        width: 100vw !important;
+        min-height: 100vh;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        padding-bottom: 64px !important;
+        /* espace pour la nav fixe */
+    }
+
+    /* Désactiver le vignette overlay sur mobile */
+    .game-container::before {
+        display: none !important;
+    }
+
+    /* --- HEADER COMPACT --- */
+    .header {
+        grid-column: unset !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-top: none !important;
+        padding: 8px 8px 6px 8px !important;
+        position: sticky;
+        top: 0;
+        z-index: 200;
+    }
+
+    .header::before {
+        display: none !important;
+        /* Masquer les 3 boutons fenêtre */
+    }
+
+    .header::after {
+        display: none !important;
+        /* Masquer le titre POKETIME HUD */
+    }
+
+    .header-unified-row {
+        padding: 6px 8px !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+        justify-content: space-between !important;
+    }
+
+    /* Masquer les stats de combat dans le header sur mobile */
+    .combat-stats-group {
+        display: none !important;
+    }
+
+    /* Masquer les séparateurs */
+    .header-separator {
+        display: none !important;
+    }
+
+    /* Ressources compactes */
+    .resources-group {
+        gap: 4px !important;
+        flex: 1;
+    }
+
+    .resource-chip {
+        padding: 4px 8px !important;
+        height: 38px !important;
+        gap: 6px !important;
+        min-width: 0 !important;
+        flex: 1;
+    }
+
+    .resource-val {
+        font-size: 12px !important;
+    }
+
+    .resource-name {
+        font-size: 7px !important;
+    }
+
+    .resource-icon.resource-icon-img {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    /* Bouton menu compact */
+    .header-buttons .btn {
+        padding: 4px 10px !important;
+        font-size: 10px !important;
+    }
+
+    /* --- PANNEAUX : AFFICHAGE CONDITIONNEL --- */
+    .combat-area,
+    .team-area,
+    .secondary-content {
+        display: none !important;
+        grid-column: unset !important;
+        grid-row: unset !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        overflow-y: auto !important;
+        flex: 1;
+    }
+
+    .combat-area.mobile-active,
+    .team-area.mobile-active,
+    .secondary-content.mobile-active {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* --- COMBAT AREA MOBILE --- */
+    .combat-area {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 8px !important;
+    }
+
+    /* Zone selector compact */
+    .combat-area .zone-selector {
+        padding: 8px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .zone-selector select {
+        width: 100%;
+        font-size: 13px !important;
+    }
+
+    .zone-info {
+        font-size: 11px !important;
+    }
+
+    /* Écran de combat */
+    .battle-screen {
+        margin-bottom: 10px !important;
+        border-width: 3px !important;
+        border-radius: 10px !important;
+    }
+
+    .battle-display {
+        padding: 10px !important;
+    }
+
+    /* Sprites plus petits */
+    .battle-sprite {
+        width: 72px !important;
+        height: 72px !important;
+    }
+
+    /* HUD empilé verticalement */
+    .battle-screen .battle-hud {
+        grid-template-columns: 1fr !important;
+        padding: 6px 10px !important;
+        gap: 8px !important;
+    }
+
+    .creature-name {
+        font-size: 13px !important;
+    }
+
+    .creature-level {
+        font-size: 11px !important;
+    }
+
+    /* Barres de vie compactes */
+    .health-bar {
+        height: 14px !important;
+    }
+
+    .health-text {
+        font-size: 9px !important;
+    }
+
+    /* HUD stats mini */
+    .hud-stats {
+        gap: 3px !important;
+    }
+
+    .hud-stat-pill {
+        font-size: 8px !important;
+        padding: 1px 4px !important;
+    }
+
+    .hud-stat-value {
+        font-size: 10px !important;
+    }
+
+    /* Contrôles de combat */
+    .combat-controls-wrapper {
+        padding: 6px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .menu-angle-gauche {
+        transform: scale(0.85) !important;
+        transform-origin: bottom left !important;
+    }
+
+    /* --- TEAM AREA MOBILE --- */
+    .team-area {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 10px !important;
+    }
+
+    /* --- SECONDARY CONTENT (EXTRAS) MOBILE --- */
+    .secondary-content {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 10px 8px !important;
+    }
+
+    /* Tabs plus compactes */
+    .tabs-container {
+        gap: 4px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .tab-btn {
+        padding: 6px 8px !important;
+        font-size: 9px !important;
+        gap: 2px !important;
+    }
+
+    .sub-tabs-container {
+        gap: 4px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .sub-tab-btn {
+        padding: 6px 8px !important;
+        font-size: 10px !important;
+    }
+
+    /* Tab content */
+    .tab-content {
+        padding: 10px !important;
+    }
+
+    /* Storage controls empilés */
+    .storage-controls {
+        padding: 10px !important;
+    }
+
+    .storage-controls>div {
+        flex-direction: column !important;
+    }
+
+    .storage-controls input,
+    .storage-controls select {
+        width: 100% !important;
+    }
+
+    /* Sort buttons wrap */
+    .sort-btn {
+        font-size: 9px !important;
+        padding: 5px 8px !important;
+    }
+
+    /* --- MODALS PLEIN ÉCRAN --- */
+    .stats-modal .stats-content,
+    .modal-content {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+        border-radius: 10px !important;
+        margin: auto !important;
+    }
+
+    .quest-completion-content {
+        width: 92vw !important;
+        max-width: 92vw !important;
+    }
+
+    /* Compact popup plein écran */
+    .compact-popup {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        left: 2.5vw !important;
+        right: 2.5vw !important;
+    }
+
+    /* Creature modal grid stacked */
+    .creature-modal-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Starter cards stacked */
+    .starter-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* --- TOASTS ADAPTÉS --- */
+    .toastContainer {
+        right: 5px !important;
+        left: 5px !important;
+        top: auto !important;
+        bottom: 72px !important;
+        z-index: 10000;
+    }
+
+    .toast {
+        min-width: unset !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 10px 14px !important;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(40px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateY(40px);
+            opacity: 0;
+        }
+    }
+
+    /* --- BOUTON EXTRAS CACHÉ (redondant avec nav mobile) --- */
+    button[onclick="toggleSecondaryContent()"],
+    #toggleIcon {
+        display: none !important;
+    }
+
+    /* --- CIBLES TACTILES --- */
+    .btn,
+    .cmd-btn,
+    .tab-btn,
+    .sub-tab-btn,
+    .sort-btn,
+    .zone-details-btn,
+    .shop-buy-btn,
+    button {
+        min-height: 36px;
+    }
+
+    /* --- NAVIGATION MOBILE FIXE --- */
+    .mobile-nav {
+        display: flex !important;
+    }
+
+    /* Pokedex controls compact */
+    .pokedex-controls {
+        gap: 4px !important;
+        padding: 8px !important;
+    }
+
+    /* Quest stats compact */
+    .quest-stats {
+        flex-direction: row !important;
+        gap: 8px !important;
+    }
+
+    /* Upgrade container, shop items */
+    .upgrades-container,
+    .shop-container {
+        gap: 8px !important;
+    }
+
+    /* Recycler stacked */
+    .recycler-container {
+        flex-direction: column !important;
+    }
+
+    /* Auto/Capture tooltip position fix */
+    .auto-tooltip,
+    .capture-tooltip,
+    .forfeit-tooltip {
+        position: fixed !important;
+        bottom: 72px !important;
+        left: 10px !important;
+        right: 10px !important;
+        top: auto !important;
+    }
+
+    /* Custom tooltip fix */
+    .custom-tooltip {
+        max-width: 90vw !important;
+    }
+
+    /* Incubators responsive */
+    .incubators-container {
+        flex-direction: column !important;
+    }
+
+}
+
+/* --- NAVIGATION MOBILE (PAR DÉFAUT CACHÉE) --- */
+.mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(180deg, #4a3f35 0%, #3b3228 100%);
+    border-top: 3px solid #5d4a3e;
+    z-index: 9999;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 8px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #a89888 !important;
+    cursor: pointer;
+    padding: 6px 16px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease;
+    min-height: 48px;
+}
+
+.mobile-nav-btn.active {
+    color: #fbbf24 !important;
+    background: rgba(251, 191, 36, 0.12) !important;
+}
+
+.mobile-nav-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.mobile-nav-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Outfit', sans-serif;
 }

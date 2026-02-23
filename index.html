@@ -365,7 +365,8 @@
                 <button class="tab-btn" onclick="switchTab('tower')">Tour de Combat</button>
                 <button class="tab-btn" onclick="switchTab('expeditions')">🗺️ Expéditions<span
                         id="expeditionsTabBadge"></span></button>
-                <button class="tab-btn" onclick="switchTab('teamrocket')">🚀 Team Rocket<span id="teamRocketTabBadge"></span></button>
+                <button class="tab-btn" onclick="switchTab('teamrocket')">🚀 Team Rocket<span
+                        id="teamRocketTabBadge"></span></button>
 
             </div>
 
@@ -511,8 +512,8 @@
                     <h3>Bonus de collection</h3>
                     <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Bonus "Maillon Faible" : évolution
                         finale requise, niveau = min(prestige). Manquant ou prestige 0 = bonus 0.</p>
-                    <div id="collectionBonusesTabs"
-                        style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px;"></div>
+                    <div id="collectionBonusesTabs" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px;">
+                    </div>
                     <div id="collectionBonusesContainer"></div>
                 </div>
             </div>
@@ -613,7 +614,7 @@
             <div class="tab-content" id="teamrocketTab">
                 <h3>🚀 Onglet Team Rocket</h3>
                 <p style="font-size:12px; color:#64748b; margin:0 0 10px 0;">
-                    Banque à intérêts, Prêt, Staking et Casino Rocket autour des Jetons Rocket (RJ).
+                    Banque à intérêts, Prêt, Staking Push Your Luck et Casino Rocket autour des Jetons Rocket (RJ).
                 </p>
                 <div id="teamRocketPanel"></div>
             </div>
@@ -628,6 +629,22 @@
             onclick="toggleSecondaryContent()">
             <span id="toggleIcon">▲<span id="extrasBadge"></span></span> Extras
         </button>
+
+        <!-- Navigation mobile (visible uniquement sur smartphone) -->
+        <nav class="mobile-nav" id="mobileNav">
+            <button class="mobile-nav-btn active" data-panel="combat" onclick="switchMobilePanel('combat')">
+                <span class="mobile-nav-icon">⚔️</span>
+                <span class="mobile-nav-label">Combat</span>
+            </button>
+            <button class="mobile-nav-btn" data-panel="team" onclick="switchMobilePanel('team')">
+                <span class="mobile-nav-icon">👥</span>
+                <span class="mobile-nav-label">Équipe</span>
+            </button>
+            <button class="mobile-nav-btn" data-panel="extras" onclick="switchMobilePanel('extras')">
+                <span class="mobile-nav-icon">📦</span>
+                <span class="mobile-nav-label">Extras</span>
+            </button>
+        </nav>
 
     </div> <!-- ✅ FERMETURE DE game-container -->
 
@@ -953,10 +970,19 @@
                     <button id="optSmartFusion" onclick="game.toggleSmartFusion()" class="btn"
                         style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px; background: #5d4a3e; border: 2px solid #1a1a1a;">?</button>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <span style="font-size: 13px; font-weight:bold;">🛑 Pause Rare</span>
                     <button id="optPauseRare" onclick="game.toggleRarePause()" class="btn"
                         style="padding: 4px 10px; font-size: 11px; border-radius: 20px; min-width: 50px; background: #5d4a3e; border: 2px solid #1a1a1a;">?</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 13px; font-weight:bold;">💤 Vitesse simu hors-ligne</span>
+                        <span id="optOfflineSimValue" style="font-size: 11px; color:#e2e8f0;">300 combats/s</span>
+                    </div>
+                    <input id="optOfflineSimSlider" type="range" min="1" max="1000" step="1" value="300"
+                        oninput="if(game){ game.updateOfflineSimSliderLabel(this.value); }"
+                        onchange="if(game){ game.updateOfflineSimFromSlider(this.value); }" style="width:100%;">
                 </div>
             </div>
             <div class="menu-danger-zone">
@@ -1055,6 +1081,7 @@
 
         window.addEventListener('load', () => {
             game = new Game();
+            window.game = game; // garde window.game en sync pour les handlers (ex. slider options)
             updateZoneInfo();
         });
     </script>

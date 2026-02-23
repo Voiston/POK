@@ -25,7 +25,7 @@ class Creature {
         this.heldItem = null;
         this.berserkStacks = 0;
         this.prestigeTokens = 0; // Jetons à dépenser
-        this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, spattack: 0, spdefense: 0, speed: 0 }; // Jetons dépensés (1 = +10%)
+        this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, spattack: 0, spdefense: 0, speed: 0 }; // Jetons dépensés (1 = +5% plat)
 
 
         const generateWeightedIV = () => {
@@ -849,56 +849,48 @@ class Creature {
         const shinyMultiplier = this.isShiny ? 1.1 : 1;
         const zoneMultiplier = this.zoneMultiplier || 1;
 
-        // 3️⃣ Bonus Jetons Prestige (Stats perso)
+        // 3️⃣ Bonus Jetons Prestige (Stats perso) — % plat : ajouté au multiplicateur global, pas multiplié
         if (!this.prestigeBonuses) this.prestigeBonuses = { hp: 0, attack: 0, defense: 0, spattack: 0, spdefense: 0, speed: 0 };
-        const pBonusHP = 1 + (this.prestigeBonuses.hp * 0.05);
-        const pBonusATK = 1 + (this.prestigeBonuses.attack * 0.05);
-        const pBonusSpATK = 1 + (this.prestigeBonuses.spattack * 0.05);
-        const pBonusDEF = 1 + (this.prestigeBonuses.defense * 0.05);
-        const pBonusSpDEF = 1 + (this.prestigeBonuses.spdefense * 0.05);
-        const pBonusSPD = 1 + (this.prestigeBonuses.speed * 0.05);
+        const PRESTIGE_TOKEN_PCT = 0.05; // +5% par jeton, appliqué en additif sur le mult global
+        const pFlatHP    = this.prestigeBonuses.hp      * PRESTIGE_TOKEN_PCT;
+        const pFlatATK   = this.prestigeBonuses.attack * PRESTIGE_TOKEN_PCT;
+        const pFlatSpATK = this.prestigeBonuses.spattack * PRESTIGE_TOKEN_PCT;
+        const pFlatDEF   = this.prestigeBonuses.defense * PRESTIGE_TOKEN_PCT;
+        const pFlatSpDEF = this.prestigeBonuses.spdefense * PRESTIGE_TOKEN_PCT;
+        const pFlatSPD   = this.prestigeBonuses.speed  * PRESTIGE_TOKEN_PCT;
 
         // 4️⃣ RÉCUPÉRATION DES SYNERGIES (C'est ici que la magie opère !)
-        // On va chercher les bonus d'équipe actuels dans le GameManager
         let syn = { attack_mult: 1, defense_mult: 1, max_hp_mult: 1, speed_mult: 1 };
-
-        // On s'assure que ce n'est pas un ennemi et que le jeu est chargé
         if (!this.isEnemy && typeof game !== 'undefined' && game?.getActiveSynergies) {
             syn = game.getActiveSynergies();
         }
 
-        // 5️⃣ Calcul Final (Tout est multiplié ici)
+        // 5️⃣ Calcul Final : mult global = (rarity * prestige * ... * syn) + bonus jetons en % plat
         const attackBonus = this.passiveTalent === 'muraille' ? Math.floor(baseStats.hp * 0.10) : 0;
+        const multBase = rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier * zoneMultiplier;
 
-        // Note : On multiplie par syn.max_hp_mult, syn.attack_mult, etc.
         this.maxHp = Math.floor(
-            baseStats.hp * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
-            zoneMultiplier * pBonusHP * syn.max_hp_mult
+            baseStats.hp * (multBase * syn.max_hp_mult + pFlatHP)
         );
 
         this.attack = Math.floor(
-            (baseStats.attack * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
-                zoneMultiplier * pBonusATK * syn.attack_mult) + attackBonus
+            baseStats.attack * (multBase * syn.attack_mult + pFlatATK) + attackBonus
         );
 
         this.spattack = Math.floor(
-            (baseStats.spattack * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
-                zoneMultiplier * pBonusSpATK * syn.attack_mult) + attackBonus
+            baseStats.spattack * (multBase * syn.attack_mult + pFlatSpATK) + attackBonus
         );
 
         this.defense = Math.floor(
-            baseStats.defense * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
-            zoneMultiplier * pBonusDEF * syn.defense_mult
+            baseStats.defense * (multBase * syn.defense_mult + pFlatDEF)
         );
 
         this.spdefense = Math.floor(
-            baseStats.spdefense * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
-            zoneMultiplier * pBonusSpDEF * syn.defense_mult
+            baseStats.spdefense * (multBase * syn.defense_mult + pFlatSpDEF)
         );
 
         this.speed = Math.floor(
-            baseStats.speed * rarityMultiplier * prestigeMultiplier * tierMultiplier * shinyMultiplier *
-            zoneMultiplier * pBonusSPD * syn.speed_mult
+            baseStats.speed * (multBase * syn.speed_mult + pFlatSPD)
         );
 
         // 6️⃣ Sécurité HP

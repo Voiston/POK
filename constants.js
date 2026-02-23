@@ -4284,6 +4284,68 @@ const ACHIEVEMENTS = {
     'moneyMaker_2': { title: "Millionnaire II", desc: "Gagner 1M Pokédollars (Total)", target: 1000000, trackingKey: 'totalPokedollarsEarned', rewards: { questTokens: 100 } },
     'moneyMaker_3': { title: "Milliardaire I", desc: "Gagner 10M Pokédollars (Total)", target: 10000000, trackingKey: 'totalPokedollarsEarned', rewards: { questTokens: 500 } },
     'moneyMaker_4': { title: "Milliardaire II", desc: "Gagner 100M Pokédollars (Total)", target: 100000000, trackingKey: 'totalPokedollarsEarned', rewards: { questTokens: 2000 } },
+
+    // --- TEAM ROCKET : BANQUE & CONFIANCE ---
+    'rocket_vip_client_1': {
+        title: "Client VIP",
+        desc: "Atteindre le niveau de confiance 5 avec la Team Rocket.",
+        target: 5,
+        trackingKey: 'rocketTrustLevelMax',
+        rewards: { questTokens: 300, items: { 'masterball': 1 } }
+    },
+    'rocket_shadow_rentier_1': {
+        title: "Rentier de l'Ombre",
+        desc: "Générer un total cumulé de 1 000 000$ en intérêts Team Rocket.",
+        target: 1000000,
+        trackingKey: 'totalRocketBankInterestGained',
+        rewards: { questTokens: 750, items: { 'time_dust_1h': 2 } }
+    },
+
+    // --- TEAM ROCKET : PRÊTS & DETTES ---
+    'rocket_bad_payer_1': {
+        title: "Mauvais Payeur",
+        desc: "Avoir une dette Team Rocket active pendant plus de 24h de temps réel.",
+        target: 86400000,
+        trackingKey: 'rocketLoanActiveRealtimeMs',
+        rewards: { questTokens: 350 }
+    },
+    'rocket_debt_free_1': {
+        title: "Libre de Dettes",
+        desc: "Rembourser intégralement un prêt Team Rocket d'au moins 1 000 000$.",
+        target: 1,
+        trackingKey: 'rocketLargeLoansRepaid',
+        rewards: { questTokens: 500, items: { 'talent_reroll': 2 } }
+    },
+
+    // --- TEAM ROCKET : STAKING ---
+    'rocket_call_void_1': {
+        title: "Appel du Vide",
+        desc: "Atteindre le palier 8 de staking sans cliquer sur récupérer.",
+        target: 1,
+        trackingKey: 'rocketStakingTier8Reached',
+        rewards: { questTokens: 250 }
+    },
+    'rocket_hold_up_century_1': {
+        title: "Hold-up du Siècle",
+        desc: "Récupérer avec succès ses gains au palier 9 ou plus.",
+        target: 1,
+        trackingKey: 'rocketStakingRecoveredTier9Plus',
+        rewards: { questTokens: 500, items: { 'time_dust_3h': 1 } }
+    },
+    'rocket_miracle_survivor_1': {
+        title: "Miraculé",
+        desc: "Réussir une session de staking avec un risque final de 50% ou plus.",
+        target: 1,
+        trackingKey: 'rocketStakingRecoveredHighRisk',
+        rewards: { questTokens: 450 }
+    },
+    'rocket_lesson_learned_1': {
+        title: "Leçon Apprise",
+        desc: "Se faire voler un objet de rareté Légendaire par la Team Rocket.",
+        target: 1,
+        trackingKey: 'rocketStakingLegendaryStolen',
+        rewards: { questTokens: 200 }
+    },
 };
 
 
@@ -4991,14 +5053,14 @@ const STORY_QUEST_GUIDES = {
         where: "Combat → capture ciblée sur Persian → capture réussie."
     },
     rocket_first_stake: {
-        title: "Team Rocket — Premier contrat staking",
+        title: "Team Rocket — Premier staking Push Your Luck",
         steps: [
-            "Ouvrez l'onglet Team Rocket puis Marché de Staking.",
-            "Cliquez sur Sélectionner et fournissez les ressources demandées.",
-            "Attendez la fin du timer du contrat.",
-            "Réclamez le contrat pour valider la quête."
+            "Ouvrez l'onglet Team Rocket puis la section Staking Push Your Luck.",
+            "Stakez un objet depuis votre inventaire pour démarrer une session.",
+            "Laissez monter les paliers (x2 par cycle de 30s) en surveillant le risque de vol.",
+            "Cliquez sur RÉCUPÉRER pour sécuriser l'objet et vos RJ."
         ],
-        where: "Team Rocket → Marché de Staking → Contrats en cours → Réclamer."
+        where: "Team Rocket → Staking Push Your Luck → Session active → RÉCUPÉRER."
     },
     story_exploration: {
         title: "Exploration — Passer en Zone 2 (changer de zone)",
@@ -5947,8 +6009,8 @@ const TEAM_ROCKET_QUESTS = {
     'rocket_first_stake': {
         id: 'rocket_first_stake',
         title: "Blanchiment Organisé",
-        description: "Terminez 1 contrat de staking Team Rocket.",
-        dialogue: "Le vrai business, c'est le contrat. Lance-en un et reviens quand il est clôturé.",
+        description: "Terminez 1 session de staking Push Your Luck Team Rocket.",
+        dialogue: "Le vrai business, c'est le risque contrôlé. Lance une session et récupère avant le vol.",
         target: 1,
         trackingKey: 'rocket_staking_completed',
         difficulty: 'MEDIUM',
@@ -5965,115 +6027,124 @@ const ROCKET_TRUST_LEVELS = {
     5: { requiredXp: 900, label: "Exécutif" }
 };
 
-const ROCKET_STAKING_CONTRACT_POOLS = {
-    1: [
-        {
-            id: 'rk_c1_item_pokeball',
-            requestedType: 'item',
-            requestedKey: 'pokeball',
-            amount: 40,
-            durationMinutes: 60,
-            rewardRJ: 6
-        },
-        {
-            id: 'rk_c1_poke_common',
-            requestedType: 'pokemon_rarity',
-            requestedKey: RARITY.COMMON,
-            amount: 2,
-            durationMinutes: 90,
-            rewardRJ: 9
-        }
-    ],
-    2: [
-        {
-            id: 'rk_c2_item_greatball',
-            requestedType: 'item',
-            requestedKey: 'greatball',
-            amount: 18,
-            durationMinutes: 120,
-            rewardRJ: 18
-        },
-        {
-            id: 'rk_c2_poke_rare',
-            requestedType: 'pokemon_rarity',
-            requestedKey: RARITY.RARE,
-            amount: 2,
-            durationMinutes: 180,
-            rewardRJ: 24
-        }
-    ],
-    3: [
-        {
-            id: 'rk_c3_item_hyperball',
-            requestedType: 'item',
-            requestedKey: 'hyperball',
-            amount: 12,
-            durationMinutes: 240,
-            rewardRJ: 40
-        },
-        {
-            id: 'rk_c3_poke_epic',
-            requestedType: 'pokemon_rarity',
-            requestedKey: RARITY.EPIC,
-            amount: 1,
-            durationMinutes: 240,
-            rewardRJ: 55
-        }
-    ],
-    4: [
-        {
-            id: 'rk_c4_item_masterball',
-            requestedType: 'item',
-            requestedKey: 'masterball',
-            amount: 1,
-            durationMinutes: 360,
-            rewardRJ: 95
-        },
-        {
-            id: 'rk_c4_poke_legend',
-            requestedType: 'pokemon_rarity',
-            requestedKey: RARITY.LEGENDARY,
-            amount: 1,
-            durationMinutes: 480,
-            rewardRJ: 120
-        }
-    ],
-    5: [
-        {
-            id: 'rk_c5_item_timedust',
-            requestedType: 'item',
-            requestedKey: 'time_dust_1h',
-            amount: 1,
-            durationMinutes: 720,
-            rewardRJ: 190
-        },
-        {
-            id: 'rk_c5_poke_legend_duo',
-            requestedType: 'pokemon_rarity',
-            requestedKey: RARITY.LEGENDARY,
-            amount: 2,
-            durationMinutes: 720,
-            rewardRJ: 230
-        }
-    ]
-};
-
-const ROCKET_CASINO_CONFIG = {
-    minStakeRJ: 5,
-    maxStakeRJ: 500,
-    symbols: [
-        { key: 'grimer', weight: 32, payout: 0 },
-        { key: 'koffing', weight: 28, payout: 0.5 },
-        { key: 'zubat', weight: 20, payout: 1.2 },
-        { key: 'persian', weight: 12, payout: 2.5 },
-        { key: 'giovanni', weight: 6, payout: 8 },
-        { key: 'rocket_jackpot', weight: 2, payout: 25 }
-    ],
-    rewards: {
-        rare: { itemKey: 'masterball', chance: 0.01, amount: 1 },
-        legendary: { itemKey: 'time_dust_3h', chance: 0.003, amount: 1 }
+const ROCKET_PUSH_STAKING_CONFIG = {
+    cycleMs: 30000, // fallback / affichage (~30s)
+    phaseDurationMinMs: 25000,
+    phaseDurationMaxMs: 35000,
+    multiplierMin: 2,
+    multiplierMax: 3,
+    offerRotationMs: 600000,
+    // GPS = Gains Par Seconde (RJ/sec) de base avant multiplicateur de palier.
+    gpsByCategory: {
+        common: 1,
+        uncommon: 5,
+        rare: 20,
+        legendary: 100
+    },
+    // Courbe de risque "Push Your Luck" : test effectué à la fin de chaque cycle de 30s.
+    stealRiskByTierPercent: {
+        1: 1,
+        2: 2,
+        3: 5,
+        4: 10,
+        5: 20,
+        6: 40,
+        7: 50,
+        8: 65,
+        9: 80,
+        10: 95
     }
 };
+
+const ROCKET_CASINO_BALANCE_PRESETS = {
+    // Variance faible: plus de petits gains, moins de jackpots.
+    safe: {
+        symbols: [
+            { id: 'ID_1', key: 'zubat', label: 'Nosferapti', weight: 56, payMultiplier: 2, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
+            { id: 'ID_2', key: 'koffing', label: 'Smogo', weight: 30, payMultiplier: 4, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
+            { id: 'ID_3', key: 'arbok', label: 'Arbok', weight: 10, payMultiplier: 12, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
+            { id: 'ID_4', key: 'logo_r', label: 'Logo R', weight: 3.6, payMultiplier: 35, sprite: 'img/rocket-menu.png' },
+            { id: 'ID_5', key: 'meowth', label: 'Miaouss', weight: 0.4, payMultiplier: 350, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' }
+        ]
+    },
+    // Équilibrage actuel (référence).
+    medium: {
+        symbols: [
+            { id: 'ID_1', key: 'zubat', label: 'Nosferapti', weight: 50, payMultiplier: 2, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
+            { id: 'ID_2', key: 'koffing', label: 'Smogo', weight: 30, payMultiplier: 5, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
+            { id: 'ID_3', key: 'arbok', label: 'Arbok', weight: 12, payMultiplier: 15, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
+            { id: 'ID_4', key: 'logo_r', label: 'Logo R', weight: 7, payMultiplier: 50, sprite: 'img/rocket-menu.png' },
+            { id: 'ID_5', key: 'meowth', label: 'Miaouss', weight: 1, payMultiplier: 500, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' }
+        ]
+    },
+    // Variance élevée: jackpots plus rares mais plus puissants.
+    highVariance: {
+        symbols: [
+            { id: 'ID_1', key: 'zubat', label: 'Nosferapti', weight: 58, payMultiplier: 1.5, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
+            { id: 'ID_2', key: 'koffing', label: 'Smogo', weight: 26, payMultiplier: 4, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
+            { id: 'ID_3', key: 'arbok', label: 'Arbok', weight: 10, payMultiplier: 18, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
+            { id: 'ID_4', key: 'logo_r', label: 'Logo R', weight: 5.4, payMultiplier: 70, sprite: 'img/rocket-menu.png' },
+            { id: 'ID_5', key: 'meowth', label: 'Miaouss', weight: 0.6, payMultiplier: 900, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' }
+        ]
+    }
+};
+
+const ROCKET_CASINO_ACTIVE_PRESET = 'medium';
+const ROCKET_CASINO_CONFIG = {
+    lineCostRJ: 250,
+    defaultActivePaylines: 8,
+    ...(ROCKET_CASINO_BALANCE_PRESETS[ROCKET_CASINO_ACTIVE_PRESET] || ROCKET_CASINO_BALANCE_PRESETS.medium)
+};
+
+// Paytable multi-récompenses pour les triples symboles de la machine Team Rocket.
+// rewardType supportés: currency, item, quest_token, jackpot.
+const SLOT_REWARDS = [
+    // --- ID_1 / Nosferapti ---
+    { symbolId: 'ID_1', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 1 },
+
+    // --- ID_2 / Smogo ---
+    { symbolId: 'ID_2', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 1.15 },
+    { symbolId: 'ID_2', weight: 45, rewardType: 'quest_token', targetId: 'quest_token', amount: 8 },
+    { symbolId: 'ID_2', weight: 30, rewardType: 'currency', targetId: 'marques_du_triomphe', amount: 5 },
+    { symbolId: 'ID_2', weight: 25, rewardType: 'currency', targetId: 'essence_dust', amount: 60 },
+
+    // --- ID_3 / Arbok ---
+    { symbolId: 'ID_3', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 1.5 },
+    { symbolId: 'ID_3', weight: 40, rewardType: 'quest_token', targetId: 'quest_token', amount: 16 },
+    { symbolId: 'ID_3', weight: 35, rewardType: 'item', targetId: 'hyperball', amount: 4 },
+    { symbolId: 'ID_3', weight: 25, rewardType: 'item', targetId: 'greatball', amount: 8 },
+
+    // --- ID_4 / Logo Rocket ---
+    { symbolId: 'ID_4', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 2.0 },
+    { symbolId: 'ID_4', weight: 25, rewardType: 'item', targetId: 'hyperball', amount: 8 },
+    { symbolId: 'ID_4', weight: 22, rewardType: 'item', targetId: 'time_dust_1h', amount: 1 },
+    { symbolId: 'ID_4', weight: 20, rewardType: 'item', targetId: 'leftovers', amount: 1 },
+    { symbolId: 'ID_4', weight: 18, rewardType: 'quest_token', targetId: 'quest_token', amount: 25 },
+    { symbolId: 'ID_4', weight: 15, rewardType: 'currency', targetId: 'marques_du_triomphe', amount: 18 },
+
+    // --- ID_6 / Giovanni (optionnel si symbole présent dans la grille) ---
+    { symbolId: 'ID_6', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 2.2 },
+    { symbolId: 'ID_6', weight: 24, rewardType: 'item', targetId: 'masterball', amount: 1 },
+    { symbolId: 'ID_6', weight: 22, rewardType: 'item', targetId: 'prism_iv', amount: 1 },
+    { symbolId: 'ID_6', weight: 20, rewardType: 'item', targetId: 'time_dust_1h', amount: 2 },
+    { symbolId: 'ID_6', weight: 18, rewardType: 'item', targetId: 'time_dust_3h', amount: 1 },
+    { symbolId: 'ID_6', weight: 16, rewardType: 'item', targetId: 'choice_band', amount: 1 },
+    { symbolId: 'ID_6', weight: 12, rewardType: 'item', targetId: 'leftovers', amount: 1 },
+
+    // --- ID_5 / Miaouss Jackpot ---
+    { symbolId: 'ID_5', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 2.5 },
+    { symbolId: 'ID_5', weight: 18, rewardType: 'item', targetId: 'masterball', amount: 1 },
+    { symbolId: 'ID_5', weight: 18, rewardType: 'item', targetId: 'prism_iv', amount: 1 },
+    { symbolId: 'ID_5', weight: 18, rewardType: 'item', targetId: 'time_dust_1h', amount: 2 },
+    { symbolId: 'ID_5', weight: 16, rewardType: 'item', targetId: 'time_dust_3h', amount: 1 },
+    { symbolId: 'ID_5', weight: 12, rewardType: 'item', targetId: 'choice_band', amount: 1 },
+    { symbolId: 'ID_5', weight: 18, rewardType: 'item', targetId: 'ct_Surf', amount: 1 },
+    { symbolId: 'ID_5', weight: 18, rewardType: 'item', targetId: 'ct_Tonnerre', amount: 1 },
+    { symbolId: 'ID_5', weight: 14, rewardType: 'item', targetId: 'ct_Psyko', amount: 1 },
+    { symbolId: 'ID_5', weight: 12, rewardType: 'item', targetId: 'ct_Lance-Flammes', amount: 1 },
+    { symbolId: 'ID_5', weight: 10, rewardType: 'item', targetId: 'ct_Laser Glace', amount: 1 },
+    { symbolId: 'ID_5', weight: 100, rewardType: 'jackpot', targetId: 'miaouss_jackpot', amount: 1 }
+];
 
 // --- DÉFINITION DES ZONES (Noms, Niveaux, Difficulté) ---
 const ZONES = {
@@ -6284,5 +6355,9 @@ const GAME_SPEEDS = {
     HEALTH_BAR_TRANSITION: '0.2s',
 
     // Temps entre la mort d'un ennemi et l'apparition du suivant
-    RESPAWN_DELAY: 1000
+    RESPAWN_DELAY: 1000,
+
+    // Limite par défaut de combats simulés par seconde pendant le rattrapage hors-ligne.
+    // Utilisé pour éviter de surcharger le CPU si le joueur est resté absent très longtemps.
+    OFFLINE_SIM_MAX_COMBATS_PER_SECOND: 300
 };
