@@ -128,24 +128,21 @@ function ensureStoryQuestProgress(game) {
 }
 
 function ensureTeamRocketQuestProgress(game) {
-    if (typeof TEAM_ROCKET_QUEST_ORDER === 'undefined' || typeof TEAM_ROCKET_QUESTS === 'undefined') return;
+    if (typeof TEAM_ROCKET_QUESTS === 'undefined') return;
     if (game.quests.length >= 10) return;
 
-    const order = TEAM_ROCKET_QUEST_ORDER;
-    for (let i = 0; i < order.length; i++) {
-        const key = order[i];
+    const allKeys = Object.keys(TEAM_ROCKET_QUESTS);
+    const available = allKeys.filter(key => {
         const def = TEAM_ROCKET_QUESTS[key];
-        if (!def) continue;
-        const alreadyInList = game.quests.some(q => q.id === def.id);
-        if (alreadyInList) continue;
-        const completed = game.completedTeamRocketQuests && game.completedTeamRocketQuests.includes(def.id);
-        if (completed) continue;
-        const prevCompleted = i === 0 || (game.completedTeamRocketQuests && game.completedTeamRocketQuests.includes(TEAM_ROCKET_QUESTS[order[i - 1]].id));
-        const prevInListCompleted = i === 0 || game.quests.some(q => q.id === TEAM_ROCKET_QUESTS[order[i - 1]].id && q.completed);
-        if (i > 0 && !prevCompleted && !prevInListCompleted) return;
-        addTeamRocketQuestLogic(game, def);
-        return;
-    }
+        if (!def) return false;
+        if (game.quests.some(q => q.id === def.id)) return false;
+        if (game.completedTeamRocketQuests && game.completedTeamRocketQuests.includes(def.id)) return false;
+        return true;
+    });
+    if (available.length === 0) return;
+
+    const key = available[Math.floor(Math.random() * available.length)];
+    addTeamRocketQuestLogic(game, TEAM_ROCKET_QUESTS[key]);
 }
 
 function generateQuestLogic(game) {
@@ -505,8 +502,12 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
                 break;
             case 'towerFloor':
                 if (eventType === 'towerFloor') {
-                    const floor = game.towerRecord !== undefined ? game.towerRecord : 0;
-                    quest.updateProgress(Math.min(floor, quest.target));
+                    const totalFloors = (game.stats && typeof game.stats.towerFloorsClimbed === 'number')
+                        ? game.stats.towerFloorsClimbed
+                        : 0;
+                    const baseline = quest.startValue || 0;
+                    const progress = Math.max(0, totalFloors - baseline);
+                    quest.updateProgress(Math.min(progress, quest.target));
                 }
                 break;
             case 'incubator_hatched':
@@ -551,6 +552,14 @@ function checkSpecialQuestsLogic(game, eventType, params = {}) {
                 if (eventType === 'evolution_fusion') {
                     quest.current = 1;
                     quest.updateProgress(1);
+                }
+                break;
+            case 'rocket_spins':
+                if (eventType === 'rocket_spins') {
+                    const tr = game.teamRocketState;
+                    const spins = (tr && tr.questProgress && typeof tr.questProgress.spins === 'number') ? tr.questProgress.spins : (tr && tr.casino && tr.casino.stats && typeof tr.casino.stats.spins === 'number') ? tr.casino.stats.spins : 0;
+                    quest.current = Math.min(spins, quest.target || 999999);
+                    quest.updateProgress(quest.current);
                 }
                 break;
         }
@@ -702,11 +711,19 @@ function acceptQuestLogic(game, questId) {
             quest.current = 0;
             break;
         case 'towerFloor':
-            quest.current = game.towerRecord !== undefined ? Math.min(game.towerRecord, quest.target || 5) : 0;
+            quest.startValue = (game.stats && typeof game.stats.towerFloorsClimbed === 'number')
+                ? game.stats.towerFloorsClimbed
+                : 0;
+            quest.current = 0;
             break;
         case 'ultimateUsed':
             quest.current = 0;
             break;
+        case 'rocket_spins': {
+            const tr = game.teamRocketState;
+            quest.current = (tr && tr.questProgress && typeof tr.questProgress.spins === 'number') ? tr.questProgress.spins : (tr && tr.casino && tr.casino.stats && typeof tr.casino.stats.spins === 'number') ? tr.casino.stats.spins : 0;
+            break;
+        }
         default:
             quest.current = 0;
             break;

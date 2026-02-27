@@ -427,8 +427,6 @@ function winCombatLogic(game) {
         const isJackpot = enemy.isShiny || enemy.isRoaming;
         if (isJackpot) {
             if (game.pauseOnRare) shouldTriggerCapture = true;
-        } else if (game.captureMode === 1) {
-            shouldTriggerCapture = true;
         } else if (game.captureMode === 2) {
             if (game.captureTargets && game.captureTargets.includes(enemy.name)) shouldTriggerCapture = true;
             else if (game.captureTarget === enemy.name) shouldTriggerCapture = true;
@@ -529,16 +527,17 @@ function triggerAutoCatchLogic(game) {
     if (game.towerState.isActive || game.arenaState.active) return false;
 
     const enemy = game.currentEnemy;
-    const s = game.autoCatcherSettings;
-    let shouldCatch = false;
+    const s = game.autoCatcherSettings || {};
+    const autoTargetsEnabled = s.enabled !== false;
+    const autoShinyEnabled = s.catchShiny !== false;
+    const shinyOrRoamer = !!enemy.isShiny || !!enemy.isRoaming;
 
-    if (s.catchShiny && enemy.isShiny) shouldCatch = true;
-    if (!shouldCatch && s.catchNew) {
-        const alreadyCaughtSpecies = Object.values(game.pokedex).some(entry => entry.name === enemy.name && entry.count > 0);
-        if (!alreadyCaughtSpecies) shouldCatch = true;
-    }
-    if (!shouldCatch && s.catchDupe && !enemy.isBoss) shouldCatch = true;
-    if (!shouldCatch) return false;
+    const targets = [];
+    if (Array.isArray(game.captureTargets)) targets.push(...game.captureTargets);
+    if (game.captureTarget && !targets.includes(game.captureTarget)) targets.push(game.captureTarget);
+    const shouldCatchTarget = autoTargetsEnabled && game.captureMode === 2 && targets.includes(enemy.name);
+    const shouldCatchShiny = autoShinyEnabled && shinyOrRoamer;
+    if (!shouldCatchTarget && !shouldCatchShiny) return false;
 
     const ballToUse = 'pokeball';
     if ((game.items[ballToUse] || 0) <= 0) return false;

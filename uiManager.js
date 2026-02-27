@@ -654,7 +654,7 @@ function getHeldItemBadgeHTML(creature) {
  * Affiche le contenu du Sac à Dos (Inventaire).
  */
 // Filtre actif pour l'inventaire (sac à dos)
-// 'all' | 'combat' | 'permanent' | 'held' | 'key'
+// 'all' | 'combat' | 'permanent' | 'held' | 'key' | 'evolution_stones' | 'ct' | 'misc'
 let currentInventoryFilter = 'all';
 
 function setInventoryFilter(filter) {
@@ -677,7 +677,8 @@ function updateItemsDisplayUI(game) {
     if (!grid) {
         container.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="margin:0; color:#334155; font-size:18px;">🎒 Sac à dos</h3>
+                <h3 style="margin:0; color:#334155; font-size:18px; display:flex; align-items:center; gap:6px;"><img src="img/sac.png" alt="Sac" style="width:22px; height:22px; object-fit:contain; image-rendering:pixelated;"> Sac à dos</h3>
+
                 <span id="inventory-total-count" style="font-size:11px; color:#64748b; font-weight:700; background:#f1f5f9; padding:4px 8px; border-radius:12px;">0 OBJETS</span>
             </div>
             <div class="inventory-filters" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
@@ -686,6 +687,7 @@ function updateItemsDisplayUI(game) {
                 <button class="sort-btn inventory-tab-btn" data-filter="permanent" onclick="setInventoryFilter('permanent')">Permanents</button>
                 <button class="sort-btn inventory-tab-btn" data-filter="held" onclick="setInventoryFilter('held')">Objets tenus</button>
                 <button class="sort-btn inventory-tab-btn" data-filter="key" onclick="setInventoryFilter('key')">Objets clés</button>
+                <button class="sort-btn inventory-tab-btn" data-filter="evolution_stones" onclick="setInventoryFilter('evolution_stones')">Pierres d'évolution</button>
                 <button class="sort-btn inventory-tab-btn" data-filter="ct" onclick="setInventoryFilter('ct')">CT</button>
                 <button class="sort-btn inventory-tab-btn" data-filter="misc" onclick="setInventoryFilter('misc')">Divers</button>
             </div>
@@ -705,6 +707,17 @@ function updateItemsDisplayUI(game) {
         else btn.classList.remove('active');
     });
 
+    const evolutionStoneKeysSet = new Set(
+        (typeof EVOLUTION_CONDITION_ITEM_MAP !== 'undefined')
+            ? Object.values(EVOLUTION_CONDITION_ITEM_MAP)
+            : []
+    );
+    const evolutionSpecialKeysSet = new Set(
+        (typeof EVOLUTION_SPECIAL_ITEM_IDS !== 'undefined' && Array.isArray(EVOLUTION_SPECIAL_ITEM_IDS))
+            ? EVOLUTION_SPECIAL_ITEM_IDS
+            : []
+    );
+
     // Filtrage par type
     const filteredKeys = allItemKeys.filter(key => {
         if (currentInventoryFilter === 'all') return true;
@@ -715,14 +728,19 @@ function updateItemsDisplayUI(game) {
         const isPermanent = !!(effect && effect.duration === null);
         const isCombat = !!(effect && effect.duration !== null);
         const isCT = typeof key === 'string' && key.startsWith('ct_');
+        const isEvolutionStone = key === 'evolution_stone'
+            || evolutionStoneKeysSet.has(key)
+            || evolutionSpecialKeysSet.has(key)
+            || item.evolutionItem === true;
 
         switch (currentInventoryFilter) {
             case 'key': return isKeyItem;
             case 'held': return isHeldItem;
             case 'permanent': return isPermanent;
             case 'combat': return isCombat && !isKeyItem && !isHeldItem;
+            case 'evolution_stones': return isEvolutionStone;
             case 'ct': return isCT;
-            case 'misc': return !isKeyItem && !isHeldItem && !isPermanent && !isCombat && !isCT;
+            case 'misc': return !isKeyItem && !isHeldItem && !isPermanent && !isCombat && !isCT && !isEvolutionStone;
             default: return true;
         }
     });
@@ -804,11 +822,6 @@ function updateItemsDisplayUI(game) {
                     <div style="font-size: 9px; color: #94a3b8; margin-top: 2px; opacity: 1; min-height:11px;">${isVitamin ? 'Ctrl: Tout' : ''}</div>
                 </div>
             `;
-            grid.appendChild(card);
-            // 🛑 OPTIMISATION : Actions liées aux objets sont hors thread
-            card.addEventListener('click', (e) => {
-                requestAnimationFrame(() => game.useItem(key, 1, e));
-            });
             grid.appendChild(card);
         }
     });
@@ -1284,10 +1297,22 @@ function updateRecyclerDisplayUI(game) {
     const shardListDiv = document.getElementById('recyclerShardList');
     const shopDiv = document.getElementById('recyclerDustShop');
     const dustCountSpan = document.getElementById('essenceDustCount');
+    const searchInput = document.getElementById('recyclerSearchInput');
+    const sortRarityBtn = document.getElementById('recyclerSort-rarity');
+    const sortCountBtn = document.getElementById('recyclerSort-count');
 
     if (!shardListDiv || !shopDiv || !dustCountSpan) return;
 
     dustCountSpan.textContent = typeof formatNumber === 'function' ? formatNumber(game.essenceDust) : game.essenceDust;
+
+    const query = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
+    const sortMode = game.recyclerSortMode || 'rarity';
+    const sortDir = game.recyclerSortDir === 'asc' ? 'asc' : 'desc';
+
+    if (sortRarityBtn && sortCountBtn) {
+        sortRarityBtn.classList.toggle('active', sortMode === 'rarity');
+        sortCountBtn.classList.toggle('active', sortMode === 'count');
+    }
 
     const getFamilyRarity = (familyName) => {
         try {
@@ -1308,33 +1333,79 @@ function updateRecyclerDisplayUI(game) {
         return 'common';
     };
 
-    let shardHtml = '<div class="recycler-header">Vos Shards</div>';
-    let shardsFound = 0;
+    const rarityOrder = {
+        [RARITY.COMMON]: 0,
+        [RARITY.RARE]: 1,
+        [RARITY.EPIC]: 2,
+        [RARITY.LEGENDARY]: 3
+    };
+
+    const shardsArray = [];
 
     Object.entries(game.shards || {}).forEach(([shardKey, count]) => {
         if (count > 0) {
-            shardsFound++;
             const familyName = shardKey;
+            if (query && !familyName.toLowerCase().includes(query)) return;
+
             const rarity = getFamilyRarity(familyName);
             const dustValue = count * (typeof DUST_CONVERSION_RATES !== 'undefined' ? (DUST_CONVERSION_RATES[rarity] || 1) : 1);
 
-            const formattedCount = typeof formatNumber === 'function' ? formatNumber(count) : count;
-            const formattedDustValue = typeof formatNumber === 'function' ? formatNumber(dustValue) : dustValue;
+            shardsArray.push({
+                shardKey,
+                familyName,
+                rarity,
+                count,
+                dustValue
+            });
+        }
+    });
+
+    if (sortMode === 'count') {
+        shardsArray.sort((a, b) => {
+            if (b.count !== a.count) {
+                const base = b.count - a.count; // desc naturel
+                return sortDir === 'asc' ? -base : base;
+            }
+            const ra = rarityOrder[a.rarity] ?? 0;
+            const rb = rarityOrder[b.rarity] ?? 0;
+            if (rb !== ra) {
+                const baseR = rb - ra; // LEGENDARY > ...
+                return sortDir === 'asc' ? -baseR : baseR;
+            }
+            return a.familyName.localeCompare(b.familyName);
+        });
+    } else {
+        // Tri par rareté (LEGENDARY > EPIC > RARE > COMMON), puis nom
+        shardsArray.sort((a, b) => {
+            const ra = rarityOrder[a.rarity] ?? 0;
+            const rb = rarityOrder[b.rarity] ?? 0;
+            if (rb !== ra) {
+                const baseR = rb - ra; // LEGENDARY > ...
+                return sortDir === 'asc' ? -baseR : baseR;
+            }
+            return a.familyName.localeCompare(b.familyName);
+        });
+    }
+
+    let shardHtml = '<div class="recycler-header">Vos Shards</div>';
+
+    if (shardsArray.length === 0) {
+        shardHtml += '<p style="font-size: 12px; color: #666;">Aucun shard à recycler.</p>';
+    } else {
+        shardsArray.forEach(entry => {
+            const formattedCount = typeof formatNumber === 'function' ? formatNumber(entry.count) : entry.count;
+            const formattedDustValue = typeof formatNumber === 'function' ? formatNumber(entry.dustValue) : entry.dustValue;
 
             shardHtml += `
                 <div class="recycler-item">
                     <div>
-                        <span class="recycler-item-name">${familyName}<span class="rarity-label ${rarity}">${rarity}</span></span>
+                        <span class="recycler-item-name">${entry.familyName}<span class="rarity-label ${entry.rarity}">${entry.rarity}</span></span>
                         <div style="font-size: 12px; color: #666;">x${formattedCount} ➜ <img src="img/essence-dust.png" class="essence-dust-inline" alt=""> ${formattedDustValue}</div>
                     </div>
-                    <button class="recycler-btn" onclick="game.recycleShards('${shardKey}', '${rarity}')">Recycler</button>
+                    <button class="recycler-btn" onclick="game.recycleShards('${entry.shardKey}', '${entry.rarity}')">Recycler</button>
                 </div>
             `;
-        }
-    });
-
-    if (shardsFound === 0) {
-        shardHtml += '<p style="font-size: 12px; color: #666;">Aucun shard à recycler.</p>';
+        });
     }
     shardListDiv.innerHTML = shardHtml;
 
@@ -1992,6 +2063,62 @@ function showItemSelectModalUI(itemsData, creatureIndex, location) {
     document.body.appendChild(modal);
 }
 
+function closeEvolutionChoiceModalUI() {
+    const modal = document.getElementById('evolutionChoiceOverlay');
+    if (modal) modal.remove();
+}
+
+function showEvolutionChoiceModalUI(payload) {
+    closeEvolutionChoiceModalUI();
+    if (!payload || !Array.isArray(payload.options) || payload.options.length === 0) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'evolutionChoiceOverlay';
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85); z-index: 10001;
+        display: flex; justify-content: center; align-items: center;
+        backdrop-filter: blur(4px);
+    `;
+    modal.onclick = function (e) { if (e.target === modal) closeEvolutionChoiceModalUI(); };
+
+    let optionsHTML = '';
+    payload.options.forEach(function (opt, idx) {
+        const evoName = String(opt.evolves_to || 'Inconnu');
+        const itemKey = String(opt.requiredItem || '');
+        const itemDef = (typeof ALL_ITEMS !== 'undefined' && itemKey && ALL_ITEMS[itemKey]) ? ALL_ITEMS[itemKey] : null;
+        const reqLabel = itemKey
+            ? `${(itemDef && itemDef.icon) ? itemDef.icon + ' ' : ''}${(itemDef && itemDef.name) ? itemDef.name : itemKey}`
+            : `Niveau ${opt.requiredLevel || 1}`;
+        const spriteId = (typeof POKEMON_SPRITE_IDS !== 'undefined' && POKEMON_SPRITE_IDS[evoName]) ? POKEMON_SPRITE_IDS[evoName] : null;
+        const sprite = spriteId
+            ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${spriteId}.png`
+            : "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png";
+
+        optionsHTML += `
+            <button class="shop-buy-btn" style="display:flex; align-items:center; gap:10px; width:100%; justify-content:flex-start;" onclick="game.evolveCreatureWithOption(${payload.creatureIndex}, '${payload.location}', ${idx}); closeEvolutionChoiceModalUI(); game.closeCreatureModal();">
+                <img src="${sprite}" alt="${evoName}" style="width:36px; height:36px; object-fit:contain; image-rendering: pixelated;">
+                <span style="font-weight:700;">${evoName}</span>
+                <span style="margin-left:auto; font-size:12px; opacity:0.9;">Requis: ${reqLabel}</span>
+            </button>
+        `;
+    });
+
+    modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 15px; max-width: 560px; width: 92%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <h3 style="margin:0; color:#111827;">Choisir l'évolution (${payload.creatureName || 'Pokémon'})</h3>
+                <button onclick="closeEvolutionChoiceModalUI()" style="background:#ef4444; color:white; border:none; width:24px; height:24px; border-radius:50%; cursor:pointer; font-weight:bold;">×</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                ${optionsHTML}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
 /**
  * Génère le HTML du contenu du modal créature (détail).
  * @param {Object} data - { titleLine, spriteUrl, type, secondaryType, rarity, maxLevel, tokenDisplay, statsBoxTitle, statsRowsHTML, moveHTML, talentHTML, ultimateHTML, itemHTML, actionsHTML }
@@ -2058,12 +2185,18 @@ function closeRocketCasinoModalUI() {
     rocketCasinoSpinLock = false;
 }
 
+// Anciennes clés de symboles → clés actuelles (pour l'historique)
+var ROCKET_CASINO_SYMBOL_KEY_LEGACY = { 'logo_r': 'red_gyarados' };
+
 function getRocketCasinoSymbolMeta(symbolKey) {
+    const resolvedKey = (typeof ROCKET_CASINO_SYMBOL_KEY_LEGACY !== 'undefined' && ROCKET_CASINO_SYMBOL_KEY_LEGACY[symbolKey])
+        ? ROCKET_CASINO_SYMBOL_KEY_LEGACY[symbolKey]
+        : symbolKey;
     const cfg = (typeof ROCKET_CASINO_CONFIG !== 'undefined' && Array.isArray(ROCKET_CASINO_CONFIG.symbols))
         ? ROCKET_CASINO_CONFIG.symbols
         : [];
-    const symbol = cfg.find(s => s.key === symbolKey);
-    if (!symbol) return { key: symbolKey || 'unknown', id: 'N/A', label: symbolKey || 'Inconnu', sprite: '', payMultiplier: 0 };
+    const symbol = cfg.find(s => s.key === resolvedKey);
+    if (!symbol) return { key: resolvedKey || symbolKey || 'unknown', id: 'N/A', label: resolvedKey || symbolKey || 'Inconnu', sprite: '', payMultiplier: 0 };
     return {
         key: symbol.key,
         id: symbol.id || symbol.key,
@@ -2324,7 +2457,14 @@ function showRocketCasinoModalUI(game) {
     const runCasinoSpin = () => {
         if (!game || rocketCasinoSpinLock) return null;
         const linesPlayed = defaultLines;
-        const stakeCost = lineCost * linesPlayed;
+        let stakeCost = lineCost * linesPlayed;
+
+        // Calculate discounted cost for the UI
+        if (game.upgrades && game.upgrades.casinoRoyal) {
+            const reduction = game.upgrades.casinoRoyal.level * 0.05;
+            stakeCost = Math.floor(stakeCost * (1 - reduction));
+        }
+
         const beforeRJ = Math.max(0, Math.floor(Number(game.teamRocketState.rj) || 0));
         const result = (typeof game.handleRocketCasinoSpinAmount === 'function')
             ? game.handleRocketCasinoSpinAmount(linesPlayed)
@@ -2625,6 +2765,8 @@ window.renderEggHatchModalContent = renderEggHatchModalContent;
 window.showEggHatchModalUI = showEggHatchModalUI;
 window.closeEggHatchModalUI = closeEggHatchModalUI;
 window.showItemSelectModalUI = showItemSelectModalUI;
+window.showEvolutionChoiceModalUI = showEvolutionChoiceModalUI;
+window.closeEvolutionChoiceModalUI = closeEvolutionChoiceModalUI;
 window.renderCreatureModalContent = renderCreatureModalContent;
 window.closeCreatureModalUI = closeCreatureModalUI;
 window.showRocketContractSelectModalUI = showRocketContractSelectModalUI;

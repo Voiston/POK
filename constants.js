@@ -2216,34 +2216,40 @@ const EVOLUTIONS = {
     'Rattata': { level: 20, evolves_to: 'Raticate', new_type: TYPES.NORMAL },
     'Spearow': { level: 20, evolves_to: 'Fearow', new_type: TYPES.FLYING },
     'Ekans': { level: 22, evolves_to: 'Arbok', new_type: TYPES.POISON },
-    'Pikachu': { level: null, condition: 'Thunder Stone', evolves_to: 'Raichu', new_type: TYPES.ELECTRIC },
+    'Pikachu': { level: null, condition: 'thunder_stone', evolves_to: 'Raichu', new_type: TYPES.ELECTRIC },
     'Sandshrew': { level: 22, evolves_to: 'Sandslash', new_type: TYPES.GROUND },
     'Nidoran♀': { level: 16, evolves_to: 'Nidorina', new_type: TYPES.POISON },
-    'Nidorina': { level: 32, condition: 'Moon Stone', evolves_to: 'Nidoqueen', new_type: TYPES.POISON },
+    'Nidorina': { level: 32, condition: 'moon_stone', evolves_to: 'Nidoqueen', new_type: TYPES.POISON },
     'Nidoran♂': { level: 16, evolves_to: 'Nidorino', new_type: TYPES.POISON },
     'Nidorino': { level: 32, evolves_to: 'Nidoking', new_type: TYPES.POISON },
-    'Clefairy': { level: 32, condition: 'Moon Stone', evolves_to: 'Clefable', new_type: TYPES.NORMAL },
-    'Vulpix': { level: null, condition: 'Fire Stone', evolves_to: 'Ninetales', new_type: TYPES.FIRE },
-    'Jigglypuff': { level: null, condition: 'Moon Stone', evolves_to: 'Wigglytuff', new_type: TYPES.NORMAL },
+    'Clefairy': { level: 32, condition: 'moon_stone', evolves_to: 'Clefable', new_type: TYPES.NORMAL },
+    'Vulpix': { level: null, condition: 'fire_stone', evolves_to: 'Ninetales', new_type: TYPES.FIRE },
+    'Jigglypuff': { level: null, condition: 'moon_stone', evolves_to: 'Wigglytuff', new_type: TYPES.NORMAL },
     'Zubat': { level: 22, evolves_to: 'Golbat', new_type: TYPES.FLYING },
     'Golbat': { level: 32, evolves_to: 'Crobat', new_type: TYPES.FLYING },
     'Oddish': { level: 21, evolves_to: 'Gloom', new_type: TYPES.GRASS },
-    'Gloom': { level: null, condition: 'Leaf Stone', evolves_to: 'Vileplume', new_type: TYPES.GRASS }, // Branching: Sun Stone -> Bellossom
+    'Gloom': {
+        level: null,
+        options: [
+            { conditionItem: 'leaf_stone', evolves_to: 'Vileplume', new_type: TYPES.GRASS },
+            { conditionItem: 'sun_stone', evolves_to: 'Bellossom', new_type: TYPES.GRASS }
+        ]
+    },
     'Paras': { level: 24, evolves_to: 'Parasect', new_type: TYPES.BUG },
     'Venonat': { level: 31, evolves_to: 'Venomoth', new_type: TYPES.BUG },
     'Diglett': { level: 26, evolves_to: 'Dugtrio', new_type: TYPES.GROUND },
     'Meowth': { level: 28, evolves_to: 'Persian', new_type: TYPES.NORMAL },
     'Psyduck': { level: 33, evolves_to: 'Golduck', new_type: TYPES.WATER },
     'Mankey': { level: 28, evolves_to: 'Primeape', new_type: TYPES.FIGHTING },
-    'Growlithe': { level: null, condition: 'Fire Stone', evolves_to: 'Arcanine', new_type: TYPES.FIRE },
+    'Growlithe': { level: null, condition: 'fire_stone', evolves_to: 'Arcanine', new_type: TYPES.FIRE },
     'Poliwag': { level: 25, evolves_to: 'Poliwhirl', new_type: TYPES.WATER },
-    'Poliwhirl': { level: null, condition: 'Water Stone', evolves_to: 'Poliwrath', new_type: TYPES.FIGHTING }, // Branching: King's Rock -> Politoed
+    'Poliwhirl': { level: null, condition: 'water_stone', evolves_to: 'Poliwrath', new_type: TYPES.FIGHTING }, // Branching: King's Rock -> Politoed
     'Abra': { level: 16, evolves_to: 'Kadabra', new_type: TYPES.PSYCHIC },
     'Kadabra': { level: 36, evolves_to: 'Alakazam', new_type: TYPES.PSYCHIC },
     'Machop': { level: 28, evolves_to: 'Machoke', new_type: TYPES.FIGHTING },
     'Machoke': { level: null, condition: 'Trade', evolves_to: 'Machamp', new_type: TYPES.FIGHTING },
     'Bellsprout': { level: 21, evolves_to: 'Weepinbell', new_type: TYPES.GRASS },
-    'Weepinbell': { level: null, condition: 'Leaf Stone', evolves_to: 'Victreebel', new_type: TYPES.GRASS },
+    'Weepinbell': { level: null, condition: 'leaf_stone', evolves_to: 'Victreebel', new_type: TYPES.GRASS },
     'Tentacool': { level: 30, evolves_to: 'Tentacruel', new_type: TYPES.WATER },
     'Geodude': { level: 25, evolves_to: 'Graveler', new_type: TYPES.ROCK },
     'Graveler': { level: null, condition: 'Trade', evolves_to: 'Golem', new_type: TYPES.ROCK },
@@ -2254,14 +2260,14 @@ const EVOLUTIONS = {
     'Doduo': { level: 31, evolves_to: 'Dodrio', new_type: TYPES.FLYING },
     'Seel': { level: 34, evolves_to: 'Dewgong', new_type: TYPES.ICE },
     'Grimer': { level: 38, evolves_to: 'Muk', new_type: TYPES.POISON },
-    'Shellder': { level: null, condition: 'Water Stone', evolves_to: 'Cloyster', new_type: TYPES.ICE },
+    'Shellder': { level: null, condition: 'water_stone', evolves_to: 'Cloyster', new_type: TYPES.ICE },
     'Gastly': { level: 25, evolves_to: 'Haunter', new_type: TYPES.GHOST },
     'Haunter': { level: null, condition: 'Trade', evolves_to: 'Gengar', new_type: TYPES.GHOST },
     'Onix': { level: null, condition: 'Metal Coat', evolves_to: 'Steelix', new_type: TYPES.STEEL },
     'Drowzee': { level: 26, evolves_to: 'Hypno', new_type: TYPES.PSYCHIC },
     'Krabby': { level: 28, evolves_to: 'Kingler', new_type: TYPES.WATER },
     'Voltorb': { level: 30, evolves_to: 'Electrode', new_type: TYPES.ELECTRIC },
-    'Exeggcute': { level: null, condition: 'Leaf Stone', evolves_to: 'Exeggutor', new_type: TYPES.GRASS },
+    'Exeggcute': { level: null, condition: 'leaf_stone', evolves_to: 'Exeggutor', new_type: TYPES.GRASS },
     'Cubone': { level: 28, evolves_to: 'Marowak', new_type: TYPES.GROUND },
     'Lickitung': { level: 33, condition: 'Rollout', evolves_to: 'Lickilicky', new_type: TYPES.NORMAL }, // New Gen 4
     'Koffing': { level: 35, evolves_to: 'Weezing', new_type: TYPES.POISON },
@@ -2272,12 +2278,19 @@ const EVOLUTIONS = {
     'Horsea': { level: 32, evolves_to: 'Seadra', new_type: TYPES.WATER },
     'Seadra': { level: null, condition: 'Dragon Scale', evolves_to: 'Kingdra', new_type: TYPES.DRAGON },
     'Goldeen': { level: 33, evolves_to: 'Seaking', new_type: TYPES.WATER },
-    'Staryu': { level: null, condition: 'Water Stone', evolves_to: 'Starmie', new_type: TYPES.PSYCHIC },
+    'Staryu': { level: null, condition: 'water_stone', evolves_to: 'Starmie', new_type: TYPES.PSYCHIC },
     'Scyther': { level: null, condition: 'Metal Coat', evolves_to: 'Scizor', new_type: TYPES.BUG },
     'Electabuzz': { level: null, condition: 'Electirizer', evolves_to: 'Electivire', new_type: TYPES.ELECTRIC }, // New Gen 4
     'Magmar': { level: null, condition: 'Magmarizer', evolves_to: 'Magmortar', new_type: TYPES.FIRE }, // New Gen 4
     'Magikarp': { level: 20, evolves_to: 'Gyarados', new_type: TYPES.WATER },
-    'Eevee': { level: null, condition: 'Thunder Stone', evolves_to: 'Jolteon', new_type: TYPES.ELECTRIC }, // Branching: Water, Fire, Friendship(Day/Night), Mossy/Icy Rock
+    'Eevee': {
+        level: null,
+        options: [
+            { conditionItem: 'thunder_stone', evolves_to: 'Jolteon', new_type: TYPES.ELECTRIC },
+            { conditionItem: 'water_stone', evolves_to: 'Vaporeon', new_type: TYPES.WATER },
+            { conditionItem: 'fire_stone', evolves_to: 'Flareon', new_type: TYPES.FIRE }
+        ]
+    },
     'Porygon': { level: null, condition: 'Upgrade', evolves_to: 'Porygon2', new_type: TYPES.NORMAL },
     'Porygon2': { level: null, condition: 'Dubious Disc', evolves_to: 'Porygon-Z', new_type: TYPES.NORMAL }, // New Gen 4
     'Omanyte': { level: 40, evolves_to: 'Omastar', new_type: TYPES.WATER },
@@ -2301,7 +2314,7 @@ const EVOLUTIONS = {
     'Cleffa': { level: null, condition: 'Friendship', evolves_to: 'Clefairy', new_type: TYPES.NORMAL },
     'Igglybuff': { level: null, condition: 'Friendship', evolves_to: 'Jigglypuff', new_type: TYPES.NORMAL },
     'Togepi': { level: null, condition: 'Friendship', evolves_to: 'Togetic', new_type: TYPES.FAIRY },
-    'Togetic': { level: null, condition: 'Shiny Stone', evolves_to: 'Togekiss', new_type: TYPES.FAIRY }, // New Gen 4
+    'Togetic': { level: null, condition: 'shiny_stone', evolves_to: 'Togekiss', new_type: TYPES.FAIRY }, // New Gen 4
     'Natu': { level: 25, evolves_to: 'Xatu', new_type: TYPES.PSYCHIC },
     'Mareep': { level: 15, evolves_to: 'Flaaffy', new_type: TYPES.ELECTRIC },
     'Flaaffy': { level: 30, evolves_to: 'Ampharos', new_type: TYPES.ELECTRIC },
@@ -2309,11 +2322,11 @@ const EVOLUTIONS = {
     'Hoppip': { level: 18, evolves_to: 'Skiploom', new_type: TYPES.GRASS },
     'Skiploom': { level: 27, evolves_to: 'Jumpluff', new_type: TYPES.GRASS },
     'Aipom': { level: 32, condition: 'Double Hit', evolves_to: 'Ambipom', new_type: TYPES.NORMAL }, // New Gen 4
-    'Sunkern': { level: null, condition: 'Sun Stone', evolves_to: 'Sunflora', new_type: TYPES.GRASS },
+    'Sunkern': { level: null, condition: 'sun_stone', evolves_to: 'Sunflora', new_type: TYPES.GRASS },
     'Yanma': { level: 33, condition: 'Ancient Power', evolves_to: 'Yanmega', new_type: TYPES.BUG }, // New Gen 4
     'Wooper': { level: 20, evolves_to: 'Quagsire', new_type: TYPES.GROUND },
-    'Murkrow': { level: null, condition: 'Dusk Stone', evolves_to: 'Honchkrow', new_type: TYPES.DARK }, // New Gen 4
-    'Misdreavus': { level: null, condition: 'Dusk Stone', evolves_to: 'Mismagius', new_type: TYPES.GHOST }, // New Gen 4
+    'Murkrow': { level: null, condition: 'dusk_stone', evolves_to: 'Honchkrow', new_type: TYPES.DARK }, // New Gen 4
+    'Misdreavus': { level: null, condition: 'dusk_stone', evolves_to: 'Mismagius', new_type: TYPES.GHOST }, // New Gen 4
     'Pineco': { level: 31, evolves_to: 'Forretress', new_type: TYPES.STEEL },
     'Gligar': { level: null, condition: 'Razor Fang (Night)', evolves_to: 'Gliscor', new_type: TYPES.GROUND }, // New Gen 4
     'Snubbull': { level: 23, evolves_to: 'Granbull', new_type: TYPES.NORMAL },
@@ -2345,13 +2358,21 @@ const EVOLUTIONS = {
     'Silcoon': { level: 10, evolves_to: 'Beautifly', new_type: TYPES.BUG },
     'Cascoon': { level: 10, evolves_to: 'Dustox', new_type: TYPES.BUG },
     'Lotad': { level: 14, evolves_to: 'Lombre', new_type: TYPES.WATER },
-    'Lombre': { level: null, condition: 'Water Stone', evolves_to: 'Ludicolo', new_type: TYPES.WATER },
+    'Lombre': { level: null, condition: 'water_stone', evolves_to: 'Ludicolo', new_type: TYPES.WATER },
     'Seedot': { level: 14, evolves_to: 'Nuzleaf', new_type: TYPES.GRASS },
-    'Nuzleaf': { level: null, condition: 'Leaf Stone', evolves_to: 'Shiftry', new_type: TYPES.GRASS },
+    'Nuzleaf': { level: null, condition: 'leaf_stone', evolves_to: 'Shiftry', new_type: TYPES.GRASS },
     'Taillow': { level: 22, evolves_to: 'Swellow', new_type: TYPES.FLYING },
     'Wingull': { level: 25, evolves_to: 'Pelipper', new_type: TYPES.FLYING },
     'Ralts': { level: 20, evolves_to: 'Kirlia', new_type: TYPES.PSYCHIC },
-    'Kirlia': { level: 30, evolves_to: 'Gardevoir', new_type: TYPES.PSYCHIC }, // Branching: Dawn Stone (Male) -> Gallade
+    'Kirlia': {
+        level: 30,
+        evolves_to: 'Gardevoir',
+        new_type: TYPES.PSYCHIC,
+        options: [
+            { level: 30, evolves_to: 'Gardevoir', new_type: TYPES.PSYCHIC },
+            { conditionItem: 'dawn_stone', evolves_to: 'Gallade', new_type: TYPES.FIGHTING }
+        ]
+    },
     'Surskit': { level: 22, evolves_to: 'Masquerain', new_type: TYPES.FLYING },
     'Shroomish': { level: 23, evolves_to: 'Breloom', new_type: TYPES.FIGHTING },
     'Slakoth': { level: 18, evolves_to: 'Vigoroth', new_type: TYPES.NORMAL },
@@ -2362,12 +2383,12 @@ const EVOLUTIONS = {
     'Makuhita': { level: 24, evolves_to: 'Hariyama', new_type: TYPES.FIGHTING },
     'Azurill': { level: null, condition: 'Friendship', evolves_to: 'Marill', new_type: TYPES.WATER },
     'Nosepass': { level: null, condition: 'Magnetic Field', evolves_to: 'Probopass', new_type: TYPES.ROCK }, // New Gen 4
-    'Skitty': { level: null, condition: 'Moon Stone', evolves_to: 'Delcatty', new_type: TYPES.NORMAL },
+    'Skitty': { level: null, condition: 'moon_stone', evolves_to: 'Delcatty', new_type: TYPES.NORMAL },
     'Aron': { level: 32, evolves_to: 'Lairon', new_type: TYPES.STEEL },
     'Lairon': { level: 42, evolves_to: 'Aggron', new_type: TYPES.STEEL },
     'Meditite': { level: 37, evolves_to: 'Medicham', new_type: TYPES.FIGHTING },
     'Electrike': { level: 26, evolves_to: 'Manectric', new_type: TYPES.ELECTRIC },
-    'Roselia': { level: null, condition: 'Shiny Stone', evolves_to: 'Roserade', new_type: TYPES.GRASS }, // New Gen 4
+    'Roselia': { level: null, condition: 'shiny_stone', evolves_to: 'Roserade', new_type: TYPES.GRASS }, // New Gen 4
     'Gulpin': { level: 26, evolves_to: 'Swalot', new_type: TYPES.POISON },
     'Carvanha': { level: 30, evolves_to: 'Sharpedo', new_type: TYPES.DARK },
     'Wailmer': { level: 40, evolves_to: 'Wailord', new_type: TYPES.WATER },
@@ -2387,7 +2408,15 @@ const EVOLUTIONS = {
     'Duskull': { level: 37, evolves_to: 'Dusclops', new_type: TYPES.GHOST },
     'Dusclops': { level: null, condition: 'Reaper Cloth', evolves_to: 'Dusknoir', new_type: TYPES.GHOST }, // New Gen 4
     'Wynaut': { level: 15, evolves_to: 'Wobbuffet', new_type: TYPES.PSYCHIC },
-    'Snorunt': { level: 42, evolves_to: 'Glalie', new_type: TYPES.ICE }, // Branching: Dawn Stone (Female) -> Froslass
+    'Snorunt': {
+        level: 42,
+        evolves_to: 'Glalie',
+        new_type: TYPES.ICE,
+        options: [
+            { level: 42, evolves_to: 'Glalie', new_type: TYPES.ICE },
+            { conditionItem: 'dawn_stone', evolves_to: 'Froslass', new_type: TYPES.GHOST }
+        ]
+    },
     'Spheal': { level: 32, evolves_to: 'Sealeo', new_type: TYPES.ICE },
     'Sealeo': { level: 44, evolves_to: 'Walrein', new_type: TYPES.ICE },
     'Clamperl': { level: null, condition: 'Trade', evolves_to: 'Huntail', new_type: TYPES.WATER }, // Branching: Deep Sea Scale -> Gorebyss
@@ -2425,7 +2454,7 @@ const EVOLUTIONS = {
     'Bronzor': { level: 33, evolves_to: 'Bronzong', new_type: TYPES.STEEL },
     'Bonsly': { level: null, condition: 'Know Mimic', evolves_to: 'Sudowoodo', new_type: TYPES.ROCK },
     'Mime Jr.': { level: null, condition: 'Know Mimic', evolves_to: 'Mr. Mime', new_type: TYPES.PSYCHIC },
-    'Happiny': { level: null, condition: 'Oval Stone (Day)', evolves_to: 'Chansey', new_type: TYPES.NORMAL },
+    'Happiny': { level: null, condition: 'oval_stone', evolves_to: 'Chansey', new_type: TYPES.NORMAL },
     'Gible': { level: 24, evolves_to: 'Gabite', new_type: TYPES.DRAGON },
     'Gabite': { level: 48, evolves_to: 'Garchomp', new_type: TYPES.DRAGON },
     'Munchlax': { level: null, condition: 'Friendship', evolves_to: 'Snorlax', new_type: TYPES.NORMAL },
@@ -2437,11 +2466,19 @@ const EVOLUTIONS = {
     'Mantyke': { level: null, condition: 'Party with Remoraid', evolves_to: 'Mantine', new_type: TYPES.FLYING },
     'Snover': { level: 40, evolves_to: 'Abomasnow', new_type: TYPES.ICE },
     // --- GEN 3 FIXES (Manquants) ---
-    'Skitty': { level: 25, evolves_to: 'Delcatty', new_type: TYPES.NORMAL }, // Pierre Lune -> Niv 25
+    'Skitty': { level: null, condition: 'moon_stone', evolves_to: 'Delcatty', new_type: TYPES.NORMAL },
     'Spoink': { level: 32, evolves_to: 'Grumpig', new_type: TYPES.PSYCHIC },
     'Swablu': { level: 35, evolves_to: 'Altaria', new_type: TYPES.DRAGON },
     'Corphish': { level: 30, evolves_to: 'Crawdaunt', new_type: TYPES.WATER },
-    'Snorunt': { level: 42, evolves_to: 'Glalie', new_type: TYPES.ICE },
+    'Snorunt': {
+        level: 42,
+        evolves_to: 'Glalie',
+        new_type: TYPES.ICE,
+        options: [
+            { level: 42, evolves_to: 'Glalie', new_type: TYPES.ICE },
+            { conditionItem: 'dawn_stone', evolves_to: 'Froslass', new_type: TYPES.GHOST }
+        ]
+    },
     'Spheal': { level: 32, evolves_to: 'Sealeo', new_type: TYPES.ICE },
     'Sealeo': { level: 44, evolves_to: 'Walrein', new_type: TYPES.ICE },
 
@@ -2451,14 +2488,14 @@ const EVOLUTIONS = {
     'Tangela': { level: 33, evolves_to: 'Tangrowth', new_type: TYPES.GRASS }, // Pouv. Antique -> Niv 33
     'Aipom': { level: 32, evolves_to: 'Ambipom', new_type: TYPES.NORMAL }, // Coup Double -> Niv 32
     'Yanma': { level: 33, evolves_to: 'Yanmega', new_type: TYPES.BUG }, // Pouv. Antique -> Niv 33
-    'Murkrow': { level: 30, evolves_to: 'Honchkrow', new_type: TYPES.DARK }, // Pierre Nuit -> Niv 30
-    'Misdreavus': { level: 30, evolves_to: 'Mismagius', new_type: TYPES.GHOST }, // Pierre Nuit -> Niv 30
+    'Murkrow': { level: null, condition: 'dusk_stone', evolves_to: 'Honchkrow', new_type: TYPES.DARK },
+    'Misdreavus': { level: null, condition: 'dusk_stone', evolves_to: 'Mismagius', new_type: TYPES.GHOST },
     'Sneasel': { level: 30, evolves_to: 'Weavile', new_type: TYPES.DARK }, // Griffe Rasoir -> Niv 30
     'Nosepass': { level: 30, evolves_to: 'Probopass', new_type: TYPES.ROCK }, // Champ Magnétique -> Niv 30
     'Dusclops': { level: 40, evolves_to: 'Dusknoir', new_type: TYPES.GHOST }, // Tissu Fauche -> Niv 40
-    'Roselia': { level: 30, evolves_to: 'Roserade', new_type: TYPES.GRASS }, // Pierre Éclat -> Niv 30
+    'Roselia': { level: null, condition: 'shiny_stone', evolves_to: 'Roserade', new_type: TYPES.GRASS },
     'Piloswine': { level: 33, evolves_to: 'Mamoswine', new_type: TYPES.ICE }, // Pouv. Antique -> Niv 33
-    'Togetic': { level: 30, evolves_to: 'Togekiss', new_type: TYPES.FAIRY }, // Pierre Éclat -> Niv 30
+    'Togetic': { level: null, condition: 'shiny_stone', evolves_to: 'Togekiss', new_type: TYPES.FAIRY },
 
     // --- GEN 4 : NOUVEAUX POKEMON SINNOH ---
     'Cranidos': { level: 30, evolves_to: 'Rampardos', new_type: TYPES.ROCK },
@@ -2482,6 +2519,37 @@ const EVOLUTIONS = {
     'Mantyke': { level: 30, evolves_to: 'Mantine', new_type: TYPES.WATER }, // Avec Remoraid -> Niv 30
     'Snover': { level: 40, evolves_to: 'Abomasnow', new_type: TYPES.ICE },
 };
+
+const EVOLUTION_CONDITION_ITEM_MAP = {
+    'Trade': 'trade_stone',
+    'Thunder Stone': 'thunder_stone',
+    'Fire Stone': 'fire_stone',
+    'Water Stone': 'water_stone',
+    'Leaf Stone': 'leaf_stone',
+    'Moon Stone': 'moon_stone',
+    'Sun Stone': 'sun_stone',
+    'Shiny Stone': 'shiny_stone',
+    'Dusk Stone': 'dusk_stone',
+    'Dawn Stone': 'dawn_stone',
+    'Oval Stone (Day)': 'oval_stone'
+};
+
+// Objets d'evolution hors "pierres" (evolutions specifiques par objet)
+const EVOLUTION_SPECIAL_ITEM_IDS = [
+    'metal_coat',
+    'kings_rock',
+    'dragon_scale',
+    'upgrade',
+    'prism_scale',
+    'protector',
+    'electirizer',
+    'magmarizer',
+    'reaper_cloth',
+    'dubious_disc',
+    'razor_claw',
+    'razor_fang',
+    'trade_stone'
+];
 
 const EVOLUTION_FAMILIES = {
     // Gen 1 - Starters
@@ -4411,6 +4479,490 @@ const ACHIEVEMENTS = {
         trackingKey: 'rocketStakingLegendaryStolen',
         rewards: { questTokens: 200 }
     },
+
+    // --- TEAM ROCKET : MACHINE À SOUS ---
+    'rocketCasinoSpins_1': { title: "Joueur", desc: "Effectuer 10 spins à la machine Team Rocket", target: 10, trackingKey: 'rocketCasinoSpins', rewards: { pokedollars: 5000, questTokens: 15 } },
+    'rocketCasinoSpins_2': { title: "Régulier", desc: "Effectuer 50 spins à la machine Team Rocket", target: 50, trackingKey: 'rocketCasinoSpins', rewards: { pokedollars: 15000, questTokens: 40 } },
+    'rocketCasinoSpins_3': { title: "Accro", desc: "Effectuer 200 spins à la machine Team Rocket", target: 200, trackingKey: 'rocketCasinoSpins', rewards: { questTokens: 100, items: { 'evolution_stone': 1 } } },
+    'rocketCasinoSpins_4': { title: "High Roller", desc: "Effectuer 500 spins à la machine Team Rocket", target: 500, trackingKey: 'rocketCasinoSpins', rewards: { questTokens: 250, items: { 'time_dust_1h': 1 } } },
+    'rocketCasinoSpins_5': { title: "Maître du Casino", desc: "Effectuer 1000 spins à la machine Team Rocket", target: 1000, trackingKey: 'rocketCasinoSpins', rewards: { questTokens: 500, items: { 'masterball': 1 } } }
+};
+
+const HEADER_SKIN_DEFAULT_ID = 'classic_lab';
+
+/**
+ * Skins du header.
+ * - `unlockAchievementId`: succès requis (null = skin sans condition)
+ * - `imagePath`: PNG optionnel (tu pourras déposer tes fichiers à ces chemins)
+ * - `colors`: fallback visuel même sans image
+ * - `colors.fadeFallback`: optionnel, teinte de fondu dédiée pour le background global
+ */
+const HEADER_SKINS = {
+    classic_lab: {
+        id: 'classic_lab',
+        name: 'Laboratoire Classique',
+        description: 'Style d’origine, sobre et lisible.',
+        unlockAchievementId: null,
+        imagePath: '',
+        colors: {
+            bg: '#947864',
+            border: '#5d4a3e',
+            panelBg: '#bec3c6',
+            panelBorder: '#3b3b3b',
+            titleColor: '#5d4a3e',
+            overlay: 'rgba(0,0,0,0.00)',
+            glow: 'rgba(0,0,0,0.25)'
+        }
+    },
+    skin_1: {
+        id: 'skin_1',
+        name: 'Skin 1',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-1.png',
+        colors: {
+            bg: '#28323f',
+            border: '#1a212a',
+            panelBg: '#b8c6d9',
+            panelBorder: '#3b4f6b',
+            titleColor: '#d9e8ff',
+            overlay: 'rgba(15,23,42,0.18)',
+            glow: 'rgba(59,130,246,0.25)'
+        }
+    },
+    skin_2: {
+        id: 'skin_2',
+        name: 'Skin 2',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-2.png',
+        colors: {
+            bg: '#3f2d25',
+            border: '#291b15',
+            panelBg: '#dfc2ae',
+            panelBorder: '#765242',
+            titleColor: '#ffe4d3',
+            overlay: 'rgba(41,27,21,0.20)',
+            glow: 'rgba(180,83,9,0.25)'
+        }
+    },
+    skin_3: {
+        id: 'skin_3',
+        name: 'Skin 3',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-3.png',
+        colors: {
+            bg: '#1f3b34',
+            border: '#142622',
+            panelBg: '#b5e0d4',
+            panelBorder: '#2f6a5b',
+            titleColor: '#d7fff3',
+            overlay: 'rgba(20,38,34,0.18)',
+            glow: 'rgba(34,197,94,0.24)'
+        }
+    },
+    skin_4: {
+        id: 'skin_4',
+        name: 'Skin 4',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-4.png',
+        colors: {
+            bg: '#33225a',
+            border: '#20143b',
+            panelBg: '#d0c1f2',
+            panelBorder: '#5e45a1',
+            titleColor: '#ece2ff',
+            overlay: 'rgba(32,20,59,0.20)',
+            glow: 'rgba(139,92,246,0.28)'
+        }
+    },
+    skin_5: {
+        id: 'skin_5',
+        name: 'Skin 5',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-5.png',
+        colors: {
+            bg: '#3f1f2e',
+            border: '#28131d',
+            panelBg: '#e7bfd2',
+            panelBorder: '#7f3f62',
+            titleColor: '#ffe0f0',
+            overlay: 'rgba(40,19,29,0.20)',
+            glow: 'rgba(236,72,153,0.26)'
+        }
+    },
+    skin_6: {
+        id: 'skin_6',
+        name: 'Skin 6',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-6.png',
+        colors: {
+            bg: '#2f3521',
+            border: '#1f2515',
+            panelBg: '#d2dfb9',
+            panelBorder: '#5f7740',
+            titleColor: '#ecffd0',
+            overlay: 'rgba(31,37,21,0.20)',
+            glow: 'rgba(132,204,22,0.26)'
+        }
+    },
+    skin_7: {
+        id: 'skin_7',
+        name: 'Skin 7',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-7.png',
+        colors: {
+            bg: '#1e2f3d',
+            border: '#131e27',
+            panelBg: '#b7d4e8',
+            panelBorder: '#365c76',
+            titleColor: '#dff2ff',
+            overlay: 'rgba(19,30,39,0.20)',
+            glow: 'rgba(56,189,248,0.24)'
+        }
+    },
+    skin_8: {
+        id: 'skin_8',
+        name: 'Skin 8',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-8.png',
+        colors: {
+            bg: '#3a2d1f',
+            border: '#241b12',
+            panelBg: '#e4cfaa',
+            panelBorder: '#7a5f35',
+            titleColor: '#fff0d1',
+            overlay: 'rgba(36,27,18,0.20)',
+            glow: 'rgba(245,158,11,0.26)'
+        }
+    },
+    skin_9: {
+        id: 'skin_9',
+        name: 'Skin 9',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-9.png',
+        colors: {
+            bg: '#21362a',
+            border: '#14231b',
+            panelBg: '#bfdfc8',
+            panelBorder: '#3f7552',
+            titleColor: '#defee8',
+            overlay: 'rgba(20,35,27,0.20)',
+            glow: 'rgba(74,222,128,0.24)'
+        }
+    },
+    skin_10: {
+        id: 'skin_10',
+        name: 'Skin 10',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-10.png',
+        colors: {
+            bg: '#2f2741',
+            border: '#1c1728',
+            panelBg: '#cdc5e9',
+            panelBorder: '#5b4a8e',
+            titleColor: '#ece7ff',
+            overlay: 'rgba(28,23,40,0.20)',
+            glow: 'rgba(167,139,250,0.26)'
+        }
+    },
+    skin_11: {
+        id: 'skin_11',
+        name: 'Skin 11',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-11.png',
+        colors: {
+            bg: '#382335',
+            border: '#221520',
+            panelBg: '#e1c1da',
+            panelBorder: '#7a4168',
+            titleColor: '#fbe3f5',
+            overlay: 'rgba(34,21,32,0.20)',
+            glow: 'rgba(244,114,182,0.25)'
+        }
+    },
+    skin_12: {
+        id: 'skin_12',
+        name: 'Skin 12',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-12.png',
+        colors: {
+            bg: '#2d3a1f',
+            border: '#1d2614',
+            panelBg: '#d5e6b8',
+            panelBorder: '#627c3f',
+            titleColor: '#efffda',
+            overlay: 'rgba(29,38,20,0.20)',
+            glow: 'rgba(163,230,53,0.24)'
+        }
+    },
+    skin_13: {
+        id: 'skin_13',
+        name: 'Skin 13',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-13.png',
+        colors: {
+            bg: '#1f3742',
+            border: '#14222a',
+            panelBg: '#bedde8',
+            panelBorder: '#3f6e81',
+            titleColor: '#def7ff',
+            overlay: 'rgba(20,34,42,0.20)',
+            glow: 'rgba(34,211,238,0.24)'
+        }
+    },
+    skin_14: {
+        id: 'skin_14',
+        name: 'Skin 14',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-14.png',
+        colors: {
+            bg: '#3d2520',
+            border: '#261713',
+            panelBg: '#e7c3b9',
+            panelBorder: '#7d4a3e',
+            titleColor: '#ffe8e1',
+            overlay: 'rgba(38,23,19,0.20)',
+            glow: 'rgba(251,113,133,0.24)'
+        }
+    },
+    skin_15: {
+        id: 'skin_15',
+        name: 'Skin 15',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-15.png',
+        colors: {
+            bg: '#243346',
+            border: '#16202c',
+            panelBg: '#c3d4ea',
+            panelBorder: '#466184',
+            titleColor: '#e4eeff',
+            overlay: 'rgba(22,32,44,0.20)',
+            glow: 'rgba(96,165,250,0.24)'
+        }
+    },
+    skin_16: {
+        id: 'skin_16',
+        name: 'Skin 16',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-16.png',
+        colors: {
+            bg: '#3a2c24',
+            border: '#241b16',
+            panelBg: '#e3cdbf',
+            panelBorder: '#785843',
+            titleColor: '#fbeadf',
+            overlay: 'rgba(36,27,22,0.20)',
+            glow: 'rgba(251,146,60,0.24)'
+        }
+    },
+    skin_17: {
+        id: 'skin_17',
+        name: 'Skin 17',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-17.png',
+        colors: {
+            bg: '#213225',
+            border: '#152018',
+            panelBg: '#c6dec9',
+            panelBorder: '#486c4d',
+            titleColor: '#e5fce8',
+            overlay: 'rgba(21,32,24,0.20)',
+            glow: 'rgba(74,222,128,0.22)'
+        }
+    },
+    skin_18: {
+        id: 'skin_18',
+        name: 'Skin 18',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-18.png',
+        colors: {
+            bg: '#2e2640',
+            border: '#1c1728',
+            panelBg: '#d0c6e7',
+            panelBorder: '#5d4e87',
+            titleColor: '#ede7ff',
+            overlay: 'rgba(28,23,40,0.20)',
+            glow: 'rgba(196,181,253,0.22)'
+        }
+    },
+    skin_19: {
+        id: 'skin_19',
+        name: 'Skin 19',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-19.png',
+        colors: {
+            bg: '#392432',
+            border: '#231620',
+            panelBg: '#e1c3d8',
+            panelBorder: '#7a4766',
+            titleColor: '#fde7f5',
+            overlay: 'rgba(35,22,32,0.20)',
+            glow: 'rgba(244,114,182,0.22)'
+        }
+    },
+    skin_20: {
+        id: 'skin_20',
+        name: 'Skin 20',
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: 'img/header-skins/skin-20.png',
+        colors: {
+            bg: '#273428',
+            border: '#18211a',
+            panelBg: '#cde0c8',
+            panelBorder: '#4f6d4a',
+            titleColor: '#edffe8',
+            overlay: 'rgba(24,33,26,0.20)',
+            glow: 'rgba(134,239,172,0.22)'
+        }
+    },
+    bronze_hunter: {
+        id: 'bronze_hunter',
+        name: 'Bronze Chasseur',
+        description: 'Débloqué via Guerrier I.',
+        unlockAchievementId: 'battleWins_1',
+        imagePath: 'img/header-skins/bronze-hunter.png',
+        colors: {
+            bg: '#6a3f2a',
+            border: '#3b1d12',
+            panelBg: '#d8b596',
+            panelBorder: '#5a3d2f',
+            titleColor: '#f5d7be',
+            overlay: 'rgba(0,0,0,0.22)',
+            glow: 'rgba(106,63,42,0.45)'
+        }
+    },
+    league_gold: {
+        id: 'league_gold',
+        name: 'Ligue Or',
+        description: 'Débloqué via Collectionneur de Badges III.',
+        unlockAchievementId: 'badgesEarned_3',
+        imagePath: 'img/header-skins/league-gold.png',
+        colors: {
+            bg: '#7b5b16',
+            fadeFallback: '#1f2a2f',
+            border: '#4a3307',
+            panelBg: '#f6d975',
+            panelBorder: '#6c4f10',
+            titleColor: '#ffe7a8',
+            overlay: 'rgba(0,0,0,0.15)',
+            glow: 'rgba(251,191,36,0.40)'
+        }
+    },
+    shiny_prisma: {
+        id: 'shiny_prisma',
+        name: 'Shiny Prisma',
+        description: 'Débloqué via Chasseur d’Étoiles II.',
+        unlockAchievementId: 'shinyHunter_2',
+        imagePath: 'img/header-skins/shiny-prisma.png',
+        colors: {
+            bg: '#3e2a7a',
+            border: '#241246',
+            panelBg: '#c7bbff',
+            panelBorder: '#4f3b93',
+            titleColor: '#e7dcff',
+            overlay: 'rgba(64,32,128,0.22)',
+            glow: 'rgba(139,92,246,0.42)'
+        }
+    },
+    titan_obsidian: {
+        id: 'titan_obsidian',
+        name: 'Titan Obsidienne',
+        description: 'Débloqué via Tueur de Boss III.',
+        unlockAchievementId: 'bossKiller_3',
+        imagePath: 'img/header-skins/titan-obsidian.png',
+        colors: {
+            bg: '#1d232c',
+            border: '#0d1218',
+            panelBg: '#9ea8b5',
+            panelBorder: '#2d3948',
+            titleColor: '#d8e0ea',
+            overlay: 'rgba(0,0,0,0.28)',
+            glow: 'rgba(29,35,44,0.50)'
+        }
+    },
+    living_legend: {
+        id: 'living_legend',
+        name: 'Légende Vivante',
+        description: 'Débloqué via niveau max 200.',
+        unlockAchievementId: 'levelMax_11',
+        imagePath: 'img/header-skins/living-legend.png',
+        colors: {
+            bg: '#4d1d12',
+            border: '#2e0f09',
+            panelBg: '#ffbfa9',
+            panelBorder: '#7a2f21',
+            titleColor: '#ffd6c7',
+            overlay: 'rgba(122,47,33,0.16)',
+            glow: 'rgba(239,68,68,0.35)'
+        }
+    },
+    billionaire_neon: {
+        id: 'billionaire_neon',
+        name: 'Milliardaire Néon',
+        description: 'Débloqué via Milliardaire II.',
+        unlockAchievementId: 'moneyMaker_4',
+        imagePath: 'img/header-skins/billionaire-neon.png',
+        colors: {
+            bg: '#10243d',
+            border: '#061528',
+            panelBg: '#9fd0ff',
+            panelBorder: '#1f4f80',
+            titleColor: '#d8ecff',
+            overlay: 'rgba(16,36,61,0.18)',
+            glow: 'rgba(59,130,246,0.38)'
+        }
+    },
+    rocket_overlord: {
+        id: 'rocket_overlord',
+        name: 'Rocket Overlord',
+        description: 'Débloqué via Client VIP.',
+        unlockAchievementId: 'rocket_vip_client_1',
+        imagePath: 'img/header-skins/rocket-overlord.png',
+        colors: {
+            bg: '#2f1212',
+            border: '#180707',
+            panelBg: '#f5b0b0',
+            panelBorder: '#6b1f1f',
+            titleColor: '#ffd7d7',
+            overlay: 'rgba(47,18,18,0.26)',
+            glow: 'rgba(239,68,68,0.40)'
+        }
+    },
+    casino_emperor: {
+        id: 'casino_emperor',
+        name: 'Empereur Casino',
+        description: 'Débloqué via Maître du Casino.',
+        unlockAchievementId: 'rocketCasinoSpins_5',
+        imagePath: 'img/header-skins/casino-emperor.png',
+        colors: {
+            bg: '#223018',
+            border: '#111a0c',
+            panelBg: '#c8efaa',
+            panelBorder: '#3a5b25',
+            titleColor: '#e3ffd1',
+            overlay: 'rgba(34,48,24,0.20)',
+            glow: 'rgba(34,197,94,0.35)'
+        }
+    }
 };
 
 
@@ -4451,7 +5003,7 @@ const QUEST_TEMPLATES = {
 
     [QUEST_TYPES.CHALLENGE]: [
         { title: "Maître des Statuts", desc: "Infliger {target} effets de statut", target: [5, 12, 25], difficulty: 'MEDIUM', trackingKey: 'statusInflicted' },
-        { title: "Survivant de la Tour", desc: "Atteindre l'étage {target} de la Tour de Combat", target: [5, 10, 15], difficulty: 'HARD', trackingKey: 'towerFloor' }
+        { title: "Survivant de la Tour", desc: "Atteindre l'étage {target} de la Tour de Combat", target: [10, 20, 30], difficulty: 'HARD', trackingKey: 'towerFloor' }
     ],
 
     [QUEST_TYPES.EXPLORATION]: [
@@ -4719,6 +5271,203 @@ const STAT_BOOSTERS = {
 // 1. Ajoute ces objets dans ta liste d'objets (ou fusionne avec ALL_ITEMS existant)
 // Assure-toi que les clés 'old_rod' et 'surfboard' correspondent exactement à ce qu'on a mis dans getReachablePokemonInZone
 const KEY_ITEMS = {
+    'thunder_stone': {
+        name: "Pierre Foudre",
+        description: "Fait évoluer certaines espèces sensibles à l'électricité.",
+        icon: "⚡",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/thunder-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'fire_stone': {
+        name: "Pierre Feu",
+        description: "Fait évoluer certaines espèces liées à l'élément feu.",
+        icon: "🔥",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/fire-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'water_stone': {
+        name: "Pierre Eau",
+        description: "Fait évoluer certaines espèces liées à l'élément eau.",
+        icon: "💧",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/water-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'leaf_stone': {
+        name: "Pierre Plante",
+        description: "Fait évoluer certaines espèces liées à la nature.",
+        icon: "🍃",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leaf-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'moon_stone': {
+        name: "Pierre Lune",
+        description: "Fait évoluer certaines espèces influencées par la lune.",
+        icon: "🌙",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/moon-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'sun_stone': {
+        name: "Pierre Soleil",
+        description: "Fait évoluer certaines espèces sensibles à la lumière solaire.",
+        icon: "☀️",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sun-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'shiny_stone': {
+        name: "Pierre Éclat",
+        description: "Fait évoluer certaines espèces grâce à son rayonnement pur.",
+        icon: "✨",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/shiny-stone.png",
+        rarity: 'epic',
+        type: 'item'
+    },
+    'dusk_stone': {
+        name: "Pierre Nuit",
+        description: "Fait évoluer certaines espèces liées aux ténèbres.",
+        icon: "🌑",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dusk-stone.png",
+        rarity: 'epic',
+        type: 'item'
+    },
+    'dawn_stone': {
+        name: "Pierre Aube",
+        description: "Fait évoluer certaines espèces au potentiel latent.",
+        icon: "🌅",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dawn-stone.png",
+        rarity: 'epic',
+        type: 'item'
+    },
+    'oval_stone': {
+        name: "Pierre Ovale",
+        description: "Fait évoluer certaines espèces particulières.",
+        icon: "🥚",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/oval-stone.png",
+        rarity: 'rare',
+        type: 'item'
+    },
+    'metal_coat': {
+        name: "Peau metal",
+        description: "Objet d'evolution pour certaines especes.",
+        icon: "⚙️",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/metal-coat.png",
+        rarity: 'rare',
+        type: 'item',
+        evolutionItem: true
+    },
+    'kings_rock': {
+        name: "Roche Royale",
+        description: "Objet d'evolution utilise pour des evolutions specifiques.",
+        icon: "👑",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/kings-rock.png",
+        rarity: 'rare',
+        type: 'item',
+        evolutionItem: true
+    },
+    'dragon_scale': {
+        name: "Ecaille Draco",
+        description: "Objet d'evolution pour certaines especes draconiques.",
+        icon: "🐉",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dragon-scale.png",
+        rarity: 'rare',
+        type: 'item',
+        evolutionItem: true
+    },
+    'upgrade': {
+        name: "Ameliorateur",
+        description: "Objet d'evolution technologique.",
+        icon: "💿",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/up-grade.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'prism_scale': {
+        name: "Ecaille Bel'inne",
+        description: "Objet d'evolution pour certaines especes marines.",
+        icon: "🫧",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/prism-scale.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'protector': {
+        name: "Protecteur",
+        description: "Objet d'evolution defensif.",
+        icon: "🛡️",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/protector.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'electirizer': {
+        name: "Electriseur",
+        description: "Objet d'evolution charge en electricite.",
+        icon: "🔌",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/electirizer.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'magmarizer': {
+        name: "Magmariseur",
+        description: "Objet d'evolution charge de chaleur.",
+        icon: "🌋",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/magmarizer.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'reaper_cloth': {
+        name: "Tissu Fauche",
+        description: "Objet d'evolution impregne d'energie spectrale.",
+        icon: "🧵",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/reaper-cloth.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'dubious_disc': {
+        name: "CD Douteux",
+        description: "Objet d'evolution aux donnees suspectes.",
+        icon: "📀",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/dubious-disc.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
+    'razor_claw': {
+        name: "Griffe Rasoir",
+        description: "Objet d'evolution tranchant.",
+        icon: "🩸",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razor-claw.png",
+        rarity: 'rare',
+        type: 'item',
+        evolutionItem: true
+    },
+    'razor_fang': {
+        name: "Croic Rasoir",
+        description: "Objet d'evolution a dents acerees.",
+        icon: "🦷",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/razor-fang.png",
+        rarity: 'rare',
+        type: 'item',
+        evolutionItem: true
+    },
+    'trade_stone': {
+        name: "Pierre d'échange",
+        description: "Substitut aux évolutions par échange pour les espèces compatibles.",
+        icon: "🔁",
+        img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/trade-stone.png",
+        rarity: 'epic',
+        type: 'item',
+        evolutionItem: true
+    },
     'old_rod': {
         name: "Canne à Pêche",
         description: "Permet d'attraper des Pokémon aquatiques dans les zones de pêche.",
@@ -4797,7 +5546,7 @@ const STORY_QUESTS = {
         trackingKey: 'creature_captured',
         requiredSpecies: 'Pidgey',
         difficulty: 'EASY',
-        rewards: { items: { 'greatball': 3 }, pokedollars: 800, tokens: 25 }
+        rewards: { items: { 'greatball': 3, 'scope': 1 }, pokedollars: 800, tokens: 25 }
     },
     'exploration': {
         id: 'story_exploration',
@@ -5588,7 +6337,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 4000, max: 8000 },
             tokens: { min: 2, max: 5, chance: 0.6 },
             shards: { amount: 2, chance: 0.3 },
-            items: { 'greatball': { amount: 2, chance: 0.4 }, 'ct_Tonnerre': { amount: 1, chance: 0.15 } },
+            items: { 'greatball': { amount: 2, chance: 0.4 }, 'ct_Tonnerre': { amount: 1, chance: 0.15 }, 'electirizer': { amount: 1, chance: 0.03 }, 'metal_coat': { amount: 1, chance: 0.02 } },
             requirements: [
                 { type: 'type', value: TYPES.ELECTRIC },
                 { type: 'type', value: TYPES.STEEL },
@@ -5609,7 +6358,7 @@ const EXPEDITION_DEFINITIONS = {
             tokens: { min: 5, max: 10, chance: 0.8 },
             eggs: { [RARITY.RARE]: { amount: 1, chance: 0.2 } },
             shards: { amount: 3, chance: 0.4 },
-            items: { 'hard_stone': { amount: 1, chance: 0.1 }, 'talent_reroll': { amount: 1, chance: 0.05 } },
+            items: { 'hard_stone': { amount: 1, chance: 0.1 }, 'talent_reroll': { amount: 1, chance: 0.05 }, 'kings_rock': { amount: 1, chance: 0.03 } },
             requirements: [
                 { type: 'type', value: TYPES.ROCK },
                 { type: 'type', value: TYPES.GROUND },
@@ -5629,7 +6378,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 15000, max: 30000 },
             tokens: { min: 10, max: 20, chance: 1.0 },
             eggs: { [RARITY.EPIC]: { amount: 1, chance: 0.1 } },
-            items: { 'spell_tag': { amount: 1, chance: 0.1 }, 'talent_choice': { amount: 1, chance: 0.02 } },
+            items: { 'spell_tag': { amount: 1, chance: 0.1 }, 'talent_choice': { amount: 1, chance: 0.02 }, 'reaper_cloth': { amount: 1, chance: 0.03 } },
             requirements: [
                 { type: 'type', value: TYPES.GHOST },
                 { type: 'type', value: TYPES.DARK },
@@ -5649,7 +6398,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 5000, max: 10000 },
             tokens: { min: 3, max: 7, chance: 0.7 },
             shards: { amount: 4, chance: 0.5 },
-            items: { 'greatball': { amount: 3, chance: 0.4 }, 'never_melt_ice': { amount: 1, chance: 0.1 } }, // Assurez-vous d'avoir cet item ou mettez-en un autre
+            items: { 'greatball': { amount: 3, chance: 0.4 }, 'never_melt_ice': { amount: 1, chance: 0.1 }, 'razor_claw': { amount: 1, chance: 0.025 } }, // Assurez-vous d'avoir cet item ou mettez-en un autre
             requirements: [
                 { type: 'type', value: TYPES.ICE },
                 { type: 'type', value: TYPES.WATER },
@@ -5669,7 +6418,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 12000, max: 25000 },
             tokens: { min: 8, max: 15, chance: 0.9 },
             eggs: { [RARITY.RARE]: { amount: 2, chance: 0.3 } },
-            items: { 'sharp_beak': { amount: 1, chance: 0.1 }, 'choice_scarf': { amount: 1, chance: 0.05 } },
+            items: { 'sharp_beak': { amount: 1, chance: 0.1 }, 'choice_scarf': { amount: 1, chance: 0.05 }, 'dragon_scale': { amount: 1, chance: 0.02 } },
             requirements: [
                 { type: 'type', value: TYPES.FLYING },
                 { type: 'type', value: TYPES.DRAGON },
@@ -5689,7 +6438,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 20000, max: 40000 },
             tokens: { min: 10, max: 20, chance: 1.0 },
             shards: { amount: 6, chance: 0.6 },
-            items: { 'talent_choice': { amount: 1, chance: 0.05 }, 'expert_belt': { amount: 1, chance: 0.08 } },
+            items: { 'talent_choice': { amount: 1, chance: 0.05 }, 'expert_belt': { amount: 1, chance: 0.08 }, 'protector': { amount: 1, chance: 0.03 } },
             requirements: [
                 { type: 'type', value: TYPES.PSYCHIC },
                 { type: 'type', value: TYPES.GROUND },
@@ -5770,7 +6519,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 6000, max: 12000 },
             tokens: { min: 4, max: 8, chance: 0.7 },
             eggs: { [RARITY.RARE]: { amount: 1, chance: 0.25 } },
-            items: { 'black_sludge': { amount: 1, chance: 0.05 }, 'greatball': { amount: 2, chance: 0.4 } },
+            items: { 'black_sludge': { amount: 1, chance: 0.05 }, 'greatball': { amount: 2, chance: 0.4 }, 'razor_fang': { amount: 1, chance: 0.025 } },
             requirements: [
                 { type: 'type', value: TYPES.POISON },
                 { type: 'type', value: TYPES.BUG },
@@ -5791,7 +6540,7 @@ const EXPEDITION_DEFINITIONS = {
             tokens: { min: 15, max: 25, chance: 0.9 },
             eggs: { [RARITY.EPIC]: { amount: 1, chance: 0.15 } },
             shards: { amount: 5, chance: 0.6 },
-            items: { 'mystic_water': { amount: 1, chance: 0.08 }, 'hyperball': { amount: 3, chance: 0.5 }, 'time_dust_1h': { amount: 1, chance: 0.003 } },
+            items: { 'mystic_water': { amount: 1, chance: 0.08 }, 'hyperball': { amount: 3, chance: 0.5 }, 'time_dust_1h': { amount: 1, chance: 0.003 }, 'prism_scale': { amount: 1, chance: 0.025 } },
             requirements: [
                 { type: 'type', value: TYPES.WATER },
                 { type: 'type', value: TYPES.DARK },
@@ -5811,7 +6560,7 @@ const EXPEDITION_DEFINITIONS = {
             pokedollars: { min: 35000, max: 55000 },
             tokens: { min: 25, max: 40, chance: 1.0 },
             shards: { amount: 8, chance: 0.7 },
-            items: { 'upgrade': { amount: 1, chance: 0.05 }, 'talent_reroll': { amount: 1, chance: 0.1 }, 'time_dust_1h': { amount: 1, chance: 0.004 }, 'time_dust_3h': { amount: 1, chance: 0.001 } },
+            items: { 'upgrade': { amount: 1, chance: 0.05 }, 'talent_reroll': { amount: 1, chance: 0.1 }, 'time_dust_1h': { amount: 1, chance: 0.004 }, 'time_dust_3h': { amount: 1, chance: 0.001 }, 'dubious_disc': { amount: 1, chance: 0.025 } },
             requirements: [
                 { type: 'type', value: TYPES.ELECTRIC },
                 { type: 'type', value: TYPES.PSYCHIC },
@@ -5855,7 +6604,7 @@ const EXPEDITION_DEFINITIONS = {
             tokens: { min: 20, max: 40, chance: 1.0 },
             eggs: { [RARITY.LEGENDARY]: { amount: 1, chance: 0.01 } }, // Très rare chance de légendaire
             shards: { amount: 10, chance: 0.8 },
-            items: { 'choice_band': { amount: 1, chance: 0.05 }, 'flame_orb': { amount: 1, chance: 0.05 }, 'time_dust_1h': { amount: 1, chance: 0.006 }, 'time_dust_3h': { amount: 1, chance: 0.0015 } },
+            items: { 'choice_band': { amount: 1, chance: 0.05 }, 'flame_orb': { amount: 1, chance: 0.05 }, 'time_dust_1h': { amount: 1, chance: 0.006 }, 'time_dust_3h': { amount: 1, chance: 0.0015 }, 'magmarizer': { amount: 1, chance: 0.02 } },
             requirements: [
                 { type: 'type', value: TYPES.FIRE },
                 { type: 'type', value: TYPES.DRAGON },
@@ -5957,6 +6706,96 @@ const POKEMART_ITEMS = {
         amount: 10,
         cost: 13500,
         icon: "⚫"
+    },
+    'thunder_stone_1': {
+        name: "Pierre Foudre",
+        description: "Fait évoluer certaines espèces (ex: Pikachu, Evoli).",
+        type: 'item',
+        itemId: 'thunder_stone',
+        amount: 1,
+        cost: 3200,
+        icon: "⚡"
+    },
+    'fire_stone_1': {
+        name: "Pierre Feu",
+        description: "Fait évoluer certaines espèces (ex: Vulpix, Caninos, Evoli).",
+        type: 'item',
+        itemId: 'fire_stone',
+        amount: 1,
+        cost: 3200,
+        icon: "🔥"
+    },
+    'water_stone_1': {
+        name: "Pierre Eau",
+        description: "Fait évoluer certaines espèces (ex: Stari, Kokiyas, Evoli).",
+        type: 'item',
+        itemId: 'water_stone',
+        amount: 1,
+        cost: 3200,
+        icon: "💧"
+    },
+    'leaf_stone_1': {
+        name: "Pierre Plante",
+        description: "Fait évoluer certaines espèces (ex: Ortide, Boustiflor).",
+        type: 'item',
+        itemId: 'leaf_stone',
+        amount: 1,
+        cost: 3200,
+        icon: "🍃"
+    },
+    'moon_stone_1': {
+        name: "Pierre Lune",
+        description: "Fait évoluer certaines espèces (ex: Nidorina, Melofee).",
+        type: 'item',
+        itemId: 'moon_stone',
+        amount: 1,
+        cost: 3200,
+        icon: "🌙"
+    },
+    'sun_stone_1': {
+        name: "Pierre Soleil",
+        description: "Fait évoluer certaines espèces (ex: Tournegrin, Ortide).",
+        type: 'item',
+        itemId: 'sun_stone',
+        amount: 1,
+        cost: 4200,
+        icon: "☀️"
+    },
+    'shiny_stone_1': {
+        name: "Pierre Éclat",
+        description: "Fait évoluer certaines espèces (ex: Togetic, Roselia).",
+        type: 'item',
+        itemId: 'shiny_stone',
+        amount: 1,
+        cost: 5200,
+        icon: "✨"
+    },
+    'dusk_stone_1': {
+        name: "Pierre Nuit",
+        description: "Fait évoluer certaines espèces (ex: Corboss, Magireve).",
+        type: 'item',
+        itemId: 'dusk_stone',
+        amount: 1,
+        cost: 5200,
+        icon: "🌑"
+    },
+    'dawn_stone_1': {
+        name: "Pierre Aube",
+        description: "Fait évoluer certaines espèces (ex: Kirlia, Stalgamin).",
+        type: 'item',
+        itemId: 'dawn_stone',
+        amount: 1,
+        cost: 5200,
+        icon: "🌅"
+    },
+    'oval_stone_1': {
+        name: "Pierre Ovale",
+        description: "Fait évoluer certaines espèces (ex: Ptiravi).",
+        type: 'item',
+        itemId: 'oval_stone',
+        amount: 1,
+        cost: 4200,
+        icon: "🥚"
     }
 };
 
@@ -6034,18 +6873,21 @@ const DUST_SHOP_ITEMS = {
         type: 'item',
         item: 'time_dust_9h',
         amount: 1
+    },
+    'trade_stone_shop': {
+        id: 'trade_stone_shop',
+        name: "Pierre d'échange",
+        description: "Permet les évolutions normalement liées aux échanges.",
+        cost: 18000,
+        type: 'item',
+        item: 'trade_stone',
+        amount: 1
     }
 };
 
 // ============================================================
 // TEAM ROCKET MODULE (Banque / Prêt / Staking / Casino)
 // ============================================================
-const TEAM_ROCKET_QUEST_ORDER = [
-    'rocket_recruit_meowth',
-    'rocket_capture_persian',
-    'rocket_first_stake'
-];
-
 const TEAM_ROCKET_QUESTS = {
     'rocket_recruit_meowth': {
         id: 'rocket_recruit_meowth',
@@ -6081,15 +6923,70 @@ const TEAM_ROCKET_QUESTS = {
         difficulty: 'MEDIUM',
         tags: ['team_rocket'],
         rewards: { pokedollars: 3000, tokens: 65, items: { 'greatball': 5 } }
+    },
+    'rocket_spins_10': {
+        id: 'rocket_spins_10',
+        title: "Premiers Pas au Casino",
+        description: "Effectuez 10 spins à la machine à sous Team Rocket.",
+        dialogue: "La machine, c'est le cœur du business. Fais 10 tours et on verra si tu as de la chance.",
+        target: 10,
+        trackingKey: 'rocket_spins',
+        difficulty: 'EASY',
+        tags: ['team_rocket'],
+        rewards: { pokedollars: 2000, tokens: 20 }
+    },
+    'rocket_spins_50': {
+        id: 'rocket_spins_50',
+        title: "Habitué des Rouleaux",
+        description: "Effectuez 50 spins à la machine à sous Team Rocket.",
+        dialogue: "Tu reviens ? Bien. 50 spins, et on te considère comme un des nôtres.",
+        target: 50,
+        trackingKey: 'rocket_spins',
+        difficulty: 'MEDIUM',
+        tags: ['team_rocket'],
+        rewards: { pokedollars: 8000, tokens: 50, items: { 'greatball': 5 } }
+    },
+    'rocket_spins_100': {
+        id: 'rocket_spins_100',
+        title: "Cent Tours de Manivelle",
+        description: "Effectuez 100 spins à la machine à sous Team Rocket.",
+        dialogue: "Cent spins. Ça en fait du RJ dépensé. Prouve que tu tiens la distance.",
+        target: 100,
+        trackingKey: 'rocket_spins',
+        difficulty: 'MEDIUM',
+        tags: ['team_rocket'],
+        rewards: { pokedollars: 15000, tokens: 80, items: { 'hyperball': 3 } }
+    },
+    'rocket_spins_250': {
+        id: 'rocket_spins_250',
+        title: "Machine à Sous Pro",
+        description: "Effectuez 250 spins à la machine à sous Team Rocket.",
+        dialogue: "250 spins, c'est du sérieux. Les gros bras font ça avant le déjeuner.",
+        target: 250,
+        trackingKey: 'rocket_spins',
+        difficulty: 'HARD',
+        tags: ['team_rocket'],
+        rewards: { tokens: 150, items: { 'evolution_stone': 1 } }
+    },
+    'rocket_spins_500': {
+        id: 'rocket_spins_500',
+        title: "Marathon du Casino",
+        description: "Effectuez 500 spins à la machine à sous Team Rocket.",
+        dialogue: "Cinq cents. Tu es presque un vrai. Termine et on te récompense.",
+        target: 500,
+        trackingKey: 'rocket_spins',
+        difficulty: 'HARD',
+        tags: ['team_rocket'],
+        rewards: { tokens: 300, items: { 'time_dust_1h': 1 } }
     }
 };
 
 const ROCKET_TRUST_LEVELS = {
     1: { requiredXp: 0, label: "Recrue" },
-    2: { requiredXp: 100, label: "Associé" },
-    3: { requiredXp: 260, label: "Lieutenant" },
-    4: { requiredXp: 520, label: "Capitaine" },
-    5: { requiredXp: 900, label: "Exécutif" }
+    2: { requiredXp: 1000, label: "Associé" },
+    3: { requiredXp: 2600, label: "Lieutenant" },
+    4: { requiredXp: 5200, label: "Capitaine" },
+    5: { requiredXp: 9000, label: "Exécutif" }
 };
 
 const ROCKET_PUSH_STAKING_CONFIG = {
@@ -6101,10 +6998,10 @@ const ROCKET_PUSH_STAKING_CONFIG = {
     offerRotationMs: 600000,
     // GPS = Gains Par Seconde (RJ/sec) de base avant multiplicateur de palier.
     gpsByCategory: {
-        common: 1,
-        uncommon: 5,
-        rare: 20,
-        legendary: 100
+        common: 2,
+        uncommon: 4,
+        rare: 16,
+        legendary: 32
     },
     // Courbe de risque "Push Your Luck" : test effectué à la fin de chaque cycle de 30s.
     stealRiskByTierPercent: {
@@ -6122,34 +7019,15 @@ const ROCKET_PUSH_STAKING_CONFIG = {
 };
 
 const ROCKET_CASINO_BALANCE_PRESETS = {
-    // Variance faible: plus de petits gains, moins de jackpots.
-    safe: {
-        symbols: [
-            { id: 'ID_1', key: 'zubat', label: 'Nosferapti', weight: 56, payMultiplier: 2, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
-            { id: 'ID_2', key: 'koffing', label: 'Smogo', weight: 30, payMultiplier: 4, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
-            { id: 'ID_3', key: 'arbok', label: 'Arbok', weight: 10, payMultiplier: 12, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
-            { id: 'ID_4', key: 'logo_r', label: 'Logo R', weight: 3.6, payMultiplier: 35, sprite: 'img/rocket-menu.png' },
-            { id: 'ID_5', key: 'meowth', label: 'Miaouss', weight: 0.4, payMultiplier: 350, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' }
-        ]
-    },
-    // Équilibrage actuel (référence).
+    // Équilibrage actuel (référence, unique preset).
     medium: {
         symbols: [
-            { id: 'ID_1', key: 'zubat', label: 'Nosferapti', weight: 50, payMultiplier: 2, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
-            { id: 'ID_2', key: 'koffing', label: 'Smogo', weight: 30, payMultiplier: 5, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
-            { id: 'ID_3', key: 'arbok', label: 'Arbok', weight: 12, payMultiplier: 15, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
-            { id: 'ID_4', key: 'logo_r', label: 'Logo R', weight: 7, payMultiplier: 50, sprite: 'img/rocket-menu.png' },
-            { id: 'ID_5', key: 'meowth', label: 'Miaouss', weight: 1, payMultiplier: 500, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' }
-        ]
-    },
-    // Variance élevée: jackpots plus rares mais plus puissants.
-    highVariance: {
-        symbols: [
-            { id: 'ID_1', key: 'zubat', label: 'Nosferapti', weight: 58, payMultiplier: 1.5, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
-            { id: 'ID_2', key: 'koffing', label: 'Smogo', weight: 26, payMultiplier: 4, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
-            { id: 'ID_3', key: 'arbok', label: 'Arbok', weight: 10, payMultiplier: 18, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
-            { id: 'ID_4', key: 'logo_r', label: 'Logo R', weight: 5.4, payMultiplier: 70, sprite: 'img/rocket-menu.png' },
-            { id: 'ID_5', key: 'meowth', label: 'Miaouss', weight: 0.6, payMultiplier: 900, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' }
+            { id: 'ID_1', key: 'zubat',   label: 'Nosferapti', weight: 60,   payMultiplier: 2,   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/41.png' },
+            { id: 'ID_2', key: 'koffing', label: 'Smogo',      weight: 45,   payMultiplier: 5,   sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/109.png' },
+            { id: 'ID_3', key: 'arbok',   label: 'Arbok',      weight: 30,   payMultiplier: 15,  sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/24.png' },
+            { id: 'ID_4', key: 'red_gyarados', label: 'Léviator Rouge', weight: 22, payMultiplier: 50, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/130.png' },
+            { id: 'ID_5', key: 'meowth',  label: 'Miaouss',    weight: 12,    payMultiplier: 500, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/52.png' },
+            { id: 'ID_6', key: 'giovanni',label: 'Giovanni',   weight: 6,  payMultiplier: 900, sprite: 'img/Giovanni.png' }
         ]
     }
 };
@@ -6170,24 +7048,24 @@ const SLOT_REWARDS = [
     // --- ID_2 / Smogo ---
     { symbolId: 'ID_2', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 1.15 },
     { symbolId: 'ID_2', weight: 45, rewardType: 'quest_token', targetId: 'quest_token', amount: 8 },
-    { symbolId: 'ID_2', weight: 30, rewardType: 'currency', targetId: 'marques_du_triomphe', amount: 5 },
+    { symbolId: 'ID_2', weight: 30, rewardType: 'currency', targetId: 'marques_du_triomphe', amount: 10 },
     { symbolId: 'ID_2', weight: 25, rewardType: 'currency', targetId: 'essence_dust', amount: 60 },
 
     // --- ID_3 / Arbok ---
     { symbolId: 'ID_3', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 1.5 },
     { symbolId: 'ID_3', weight: 40, rewardType: 'quest_token', targetId: 'quest_token', amount: 16 },
-    { symbolId: 'ID_3', weight: 35, rewardType: 'item', targetId: 'hyperball', amount: 4 },
-    { symbolId: 'ID_3', weight: 25, rewardType: 'item', targetId: 'greatball', amount: 8 },
+    { symbolId: 'ID_3', weight: 35, rewardType: 'item', targetId: 'hyperball', amount: 2 },
+    { symbolId: 'ID_3', weight: 25, rewardType: 'item', targetId: 'greatball', amount: 4 },
 
-    // --- ID_4 / Logo Rocket ---
+    // --- ID_4 / Léviator Rouge ---
     { symbolId: 'ID_4', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 2.0 },
-    { symbolId: 'ID_4', weight: 25, rewardType: 'item', targetId: 'hyperball', amount: 8 },
+    { symbolId: 'ID_4', weight: 25, rewardType: 'item', targetId: 'hyperball', amount: 6 },
     { symbolId: 'ID_4', weight: 22, rewardType: 'item', targetId: 'time_dust_1h', amount: 1 },
     { symbolId: 'ID_4', weight: 20, rewardType: 'item', targetId: 'leftovers', amount: 1 },
     { symbolId: 'ID_4', weight: 18, rewardType: 'quest_token', targetId: 'quest_token', amount: 25 },
-    { symbolId: 'ID_4', weight: 15, rewardType: 'currency', targetId: 'marques_du_triomphe', amount: 18 },
+    { symbolId: 'ID_4', weight: 15, rewardType: 'currency', targetId: 'marques_du_triomphe', amount: 50 },
 
-    // --- ID_6 / Giovanni (optionnel si symbole présent dans la grille) ---
+    // --- ID_6 / Giovanni  ---
     { symbolId: 'ID_6', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 2.2 },
     { symbolId: 'ID_6', weight: 24, rewardType: 'item', targetId: 'masterball', amount: 1 },
     { symbolId: 'ID_6', weight: 22, rewardType: 'item', targetId: 'prism_iv', amount: 1 },
@@ -6195,6 +7073,19 @@ const SLOT_REWARDS = [
     { symbolId: 'ID_6', weight: 18, rewardType: 'item', targetId: 'time_dust_3h', amount: 1 },
     { symbolId: 'ID_6', weight: 16, rewardType: 'item', targetId: 'choice_band', amount: 1 },
     { symbolId: 'ID_6', weight: 12, rewardType: 'item', targetId: 'leftovers', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'metal_coat', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'kings_rock', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'dragon_scale', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'upgrade', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'prism_scale', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'protector', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'electirizer', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'magmarizer', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'reaper_cloth', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'dubious_disc', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'razor_claw', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'razor_fang', amount: 1 },
+    { symbolId: 'ID_6', weight: 4, rewardType: 'item', targetId: 'trade_stone', amount: 1 },
 
     // --- ID_5 / Miaouss Jackpot ---
     { symbolId: 'ID_5', weight: 100, rewardType: 'currency', targetId: 'pokedollars_scaled', amount: 2.5 },

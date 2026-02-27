@@ -125,6 +125,8 @@ function endTowerRunLogic(game, isForfeit = false) {
         game.towerRecord = floorsCleared;
         game.pokedollars += floorsCleared * 100;
     }
+    if (!game.stats) game.stats = {};
+    game.stats.towerFloorsClimbed = (game.stats.towerFloorsClimbed || 0) + Math.max(0, floorsCleared);
     if (game.checkSpecialQuests) game.checkSpecialQuests('towerFloor');
 
     if (game.towerState.runStats) {

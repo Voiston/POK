@@ -24,15 +24,14 @@ class Game {
         this.pokedex = {};
         this.hasAutoCatcher = false; // Débloqué ou non
         this.autoCatcherSettings = {
-            catchNew: false,   // Capturer les non-découverts ?
-            catchShiny: true,  // Capturer les Shinies ? (OUI par défaut !)
-            catchDupe: false   // Capturer les doublons (Farm de Shards) ?
+            enabled: true,     // Auto-catch des cibles sélectionnées
+            catchShiny: true   // Auto-catch des shinies / roamers
         };
         this.pokedexSortBy = 'id';   // Critère par défaut
         this.pokedexSortOrder = 'asc'; // Ordre par défaut
         this.pokedexSubTab = 'pokedex'; // 'pokedex' | 'collectionbonuses'
         this.collectionBonusTab = 'all'; // 'all' ou id de famille
-        this.captureMode = 0; // 0 = OFF, 1 = ALL, 2 = TARGET
+        this.captureMode = 0; // 0 = OFF, 2 = TARGET
         this.captureTargets = null; // Nom du Pokémon ciblé
         this.zoneProgress = {};
         Object.keys(ZONES).forEach(zoneId => {
@@ -45,7 +44,12 @@ class Game {
         this.quests = [];
         this.pendingRoamer = null;
         this.pauseOnRare = true; // Par défaut : On s'arrête (Sécurité)
+        this.unlockedHeaderSkins = [(typeof HEADER_SKIN_DEFAULT_ID === 'string' && HEADER_SKIN_DEFAULT_ID) ? HEADER_SKIN_DEFAULT_ID : 'classic_lab'];
+        this.selectedHeaderSkin = (typeof HEADER_SKIN_DEFAULT_ID === 'string' && HEADER_SKIN_DEFAULT_ID) ? HEADER_SKIN_DEFAULT_ID : 'classic_lab';
+        this.headerSkinFadeColorCache = {};
         this.offlineSimMaxCombatsPerSecond = (GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300;
+        this.recyclerSortMode = 'rarity'; // Tri par défaut dans le recycleur
+        this.recyclerSortDir = 'desc';    // 'desc' = les plus rares / plus nombreux d'abord
         this.achievements = {};
         this.tooltipTimer = null; // Stocke le timer
         this.TOOLTIP_DELAY = 200; // Délai en millisecondes (0.2s) - Modifiez ici !
@@ -121,6 +125,9 @@ class Game {
             second_chance: { level: 0, baseCost: 500, costMultiplier: 1.5, name: "Seconde chance ", description: " Obtiens une chance de d'obtenir un deuxième lancé ! ", effect: " 1% par niveau", maxLevel: 25 },
             incubatorSlots: { level: 0, baseCost: 1500, costMultiplier: 2, name: "Slot d'incubateur", description: "Débloque un emplacement d'incubateur supplémentaire (max 4)", effect: "+1 incubateur", maxLevel: 3 },
             incubationSpeed: { level: 0, baseCost: 800, costMultiplier: 1.8, name: "Incubation rapide", description: "Réduit le temps d'incubation des œufs", effect: "-10% temps par niveau", maxLevel: 5 },
+            prizeMoney: { level: 0, baseCost: 500, costMultiplier: 1.5, name: "The prize money", description: "Augmente le gain de pokedollars par combat", effect: "+1% gain pokkedollar par combat", maxLevel: 20 },
+            shinyHunt: { level: 0, baseCost: 1000, costMultiplier: 1.5, name: "Chasse au shiny", description: "Augmente les chances d'obtenir un shiny", effect: "+5% chance par niveau", maxLevel: 20 },
+            casinoRoyal: { level: 0, baseCost: 750, costMultiplier: 1.5, name: "Casino Royal", description: "Réduit le coût de lancer de la machine à sous", effect: "-5% coût par niveau", maxLevel: 10 },
         };
 
         // Incubateurs : tableau de 4 slots. Chaque slot : null ou { rarity, startTime, durationMs }
@@ -128,7 +135,8 @@ class Game {
         this.autoIncubation = this.createDefaultAutoIncubationState();
         this.offlineIncubationLastReport = null;
 
-
+        // Temps offline "en attente" (cas : onglet quitté pendant une simulation déjà en cours)
+        this.pendingOfflineTimeMs = 0;
 
 
         this.currentEnemy = null;
@@ -147,7 +155,7 @@ class Game {
         });
 
         this.arenaState = {
-            active: false, arenaId: null, championTeam: [], currentChampionIndex: 0, startTime: 0, maxDuration: 90000, playerKOCount: 0
+            active: false, arenaId: null, championTeam: [], currentChampionIndex: 0, startTime: 0, maxDuration: null, playerKOCount: 0
         };
         this.recentCombatDurations = [];
 
@@ -209,9 +217,13 @@ class Game {
             rocketStakingRecoveredTier9Plus: 0,
             rocketStakingRecoveredHighRisk: 0,
             rocketStakingLegendaryStolen: 0,
+            rocketCasinoSpins: 0,      // Spins à la machine Team Rocket (achievements + stats)
             prestigeCount: 0,          // (Anciennement prestigesDone)
             upgradesPurchased: 0,      // Pour "Investisseur Avisé"
             badgesEarned: 0,           // Pour "Collectionneur de Badges"
+
+            // --- TOUR DE COMBAT ---
+            towerFloorsClimbed: 0,
 
             // --- ÉTATS DYNAMIQUES (Mises à jour en temps réel) ---
             pensionCount: 0,           // Pour "Élevage Intensif" (Valeur actuelle)
@@ -246,19 +258,29 @@ class Game {
                     const timeHidden = Date.now() - this.tabHiddenTime;
                     console.log("📱 Retour après:", (timeHidden / 1000).toFixed(1) + "s");
 
-                    if (timeHidden > 1000) { // Si absence > 1 seconde
+                    // Cas 1 : aucune simulation offline en cours -> comportement normal
+                    if (!this.isOfflineSimulating) {
+                        if (timeHidden > 1000) { // Si absence > 1 seconde
 
-                        // 1. Rattrapage des Combats + tout le reste (stats passives, banque, prêt, staking, quêtes, boosts)
-                        if (timeHidden > 5000) {
-                            this.catchupMissedCombats(timeHidden);
-                        } else {
-                            // Absence courte (<5s) : pas de simu combats, mais on rattrape le reste
-                            this.catchUpPassiveStats(timeHidden);
-                            this.catchUpAllSystems(timeHidden);
+                            // 1. Rattrapage des Combats + tout le reste (stats passives, banque, prêt, staking, quêtes, boosts)
+                            if (timeHidden > 5000) {
+                                this.catchupMissedCombats(timeHidden);
+                            } else {
+                                // Absence courte (<5s) : pas de simu combats, mais on rattrape le reste
+                                this.catchUpPassiveStats(timeHidden);
+                                this.catchUpAllSystems(timeHidden);
+                            }
+
+                            // 2. Affichage à jour (expéditions déjà rattrapées dans catchUpAllSystems / catchupMissedCombats)
+                            this.updateExpeditionsDisplay();
                         }
-
-                        // 2. Affichage à jour (expéditions déjà rattrapées dans catchUpAllSystems / catchupMissedCombats)
-                        this.updateExpeditionsDisplay();
+                    } else {
+                        // Cas 2 : une simulation offline est DÉJÀ en cours
+                        // -> on empile simplement ce temps pour le rattraper une fois la simu actuelle terminée
+                        if (timeHidden > 1000) {
+                            this.pendingOfflineTimeMs = (this.pendingOfflineTimeMs || 0) + timeHidden;
+                            console.log("⏱️ Temps offline ajouté en attente:", (this.pendingOfflineTimeMs / 1000).toFixed(1), "s");
+                        }
                     }
 
                     this.tabHiddenTime = null;
@@ -266,6 +288,7 @@ class Game {
             }
         });
 
+        this.selectHeaderSkin(this.selectedHeaderSkin, { save: false, silent: true });
         this.initBalanceTelemetry();
         this.init();
     }
@@ -570,10 +593,19 @@ class Game {
                 if (!POKEMON_BASE_STATS[base]) {
                     console.warn(`⚠️ Évolution orpheline : ${base} n'a pas de stats.`);
                 }
-                if (!POKEMON_BASE_STATS[evoData.evolves_to]) {
-                    console.error(`⛔ Évolution brisée : ${base} -> ${evoData.evolves_to} (Cible inexistante)`);
-                    errors++;
+                const targets = [];
+                if (evoData.evolves_to) targets.push(evoData.evolves_to);
+                if (Array.isArray(evoData.options)) {
+                    evoData.options.forEach((opt) => {
+                        if (opt && opt.evolves_to) targets.push(opt.evolves_to);
+                    });
                 }
+                targets.forEach((targetName) => {
+                    if (!POKEMON_BASE_STATS[targetName]) {
+                        console.error(`⛔ Évolution brisée : ${base} -> ${targetName} (Cible inexistante)`);
+                        errors++;
+                    }
+                });
             }
         }
 
@@ -736,6 +768,20 @@ class Game {
         // Vérification stock
         if (!this.items[itemKey] || this.items[itemKey] < amountToUse) {
             logMessage(`❌ Pas assez d'objets !`);
+            return false;
+        }
+
+        // Si l'objet est une pierre d'évolution, on indique au joueur de l'utiliser via l'équipe
+        const isEvolutionItem = Object.values(EVOLUTIONS).some((evo) => {
+            if (!evo) return false;
+            if (this.resolveEvolutionConditionItem(evo.condition) === itemKey) return true;
+            if (Array.isArray(evo.options)) {
+                return evo.options.some((opt) => this.resolveEvolutionConditionItem(opt && opt.conditionItem) === itemKey);
+            }
+            return false;
+        });
+        if (isEvolutionItem) {
+            toast.info("Objet d'Évolution", "Utilisez cet objet directement depuis le menu d'un Pokémon compatible dans votre Équipe ou Stockage.");
             return false;
         }
 
@@ -1484,10 +1530,13 @@ class Game {
                 stats.incubation.placedTotal = stats.incubation.hatchedTotal + slotsWithEgg;
             }
             this.offlineIncubationLastReport = stats.incubation;
+            this.isOfflineSimulating = false;
             return;
         }
 
         console.log(`🔄 Simulation: ${maxPossibleCombats} combats (Moyenne: ${(averageCombatDuration / 1000).toFixed(2)}s)`);
+
+        this.isOfflineSimulating = true;
 
         // Objet unique pour tout suivre
         let stats = {
@@ -1507,169 +1556,154 @@ class Game {
 
         const MIN_OFFLINE_FOR_MODAL_MS = 30000;
 
-        // D. Préparation du rendu initial
+        // Ouvrir directement le rapport hors-ligne et mettre à jour les compteurs en live.
         if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
             this.initOfflineReportUi(stats, maxPossibleCombats);
         }
+
 
         // Coupe les logs normaux
         const originalLogFunction = window.logMessage;
         window.logMessage = function () { };
 
-        // Paramètres pour l'animation Async
-        const minDuration = 1000; // min 1 seconde d'animation
-        const maxCombatsPerSecond =
-            (this.offlineSimMaxCombatsPerSecond && Number.isFinite(this.offlineSimMaxCombatsPerSecond) && this.offlineSimMaxCombatsPerSecond > 0)
-                ? this.offlineSimMaxCombatsPerSecond
-                : ((GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300);
-
-        // Calcul de la durée cible en respectant un plafond de combats simulés par seconde
-        // targetDurationMs = maxPossibleCombats / maxCombatsPerSecond (au minimum minDuration)
-        let targetDurationMs = Math.max(
-            minDuration,
-            (maxPossibleCombats / maxCombatsPerSecond) * 1000
-        );
-
+        // E. TIME-SLICED SIMULATION
+        // Traitement par tranches de ~16ms pour ne jamais bloquer le navigateur,
+        // même avec 20 000+ combats. Entre chaque tranche : setTimeout(0) = yield.
+        const CHUNK_BUDGET_MS = 16; // une frame cible
         let currentCombat = 0;
-        let startTime = null;
-        let lastElapsed = 0;
         let isSkipped = false;
 
-        // Bouton Skip Modal
         this.offlineSimSkip = () => { isSkipped = true; };
 
-        // E. BOUCLE D'ANIMATION ET DE SIMULATION (Asynchrone via requestAnimationFrame)
-        const step = (timestamp) => {
-            if (!startTime) startTime = timestamp;
-            const elapsed = timestamp - startTime;
-            const frameDelta = Math.max(0, elapsed - lastElapsed);
-            lastElapsed = elapsed;
+        const finalize = () => {
+            // G. INCUBATEURS (une seule passe à la fin)
+            this.simulateIncubatorsChunk(missedTime, stats);
 
-            let targetCombats = 0;
-            if (isSkipped || elapsed >= targetDurationMs) {
-                targetCombats = maxPossibleCombats;
-            } else {
-                targetCombats = Math.floor((elapsed / targetDurationMs) * maxPossibleCombats);
+            // H. NETTOYAGE FINAL
+            this.isOfflineSimulating = false;
+            window.logMessage = originalLogFunction;
+
+            for (const creature of this.playerTeam) {
+                creature.heal();
+                creature.currentStamina = creature.maxStamina;
+                creature.clearStatusEffect();
             }
 
-            let combatsToRun = targetCombats - currentCombat;
+            this.combatState = 'waiting';
+            this.lastCombatTime = Date.now();
 
-            // Limitation stricte du nombre de combats exécutés sur cette frame
-            if (frameDelta > 0 && maxCombatsPerSecond > 0 && Number.isFinite(maxCombatsPerSecond)) {
-                const maxThisFrame = Math.max(1, Math.floor(maxCombatsPerSecond * (frameDelta / 1000)));
-                combatsToRun = Math.min(combatsToRun, maxThisFrame);
+            for (let idx = 0; idx < this.getMaxIncubatorSlots(); idx++) {
+                const slot = this.incubators[idx];
+                if (slot && slot.durationMs != null) slot.startTime = Date.now();
             }
 
-            // F. BATCH SIMULATION
-            for (let i = 0; i < combatsToRun; i++) {
-                // 1. Vérif équipe en vie
+            if (stats.incubation) {
+                const slotsWithEgg = this.incubators.filter(s => s != null).length;
+                stats.incubation.placedTotal = stats.incubation.hatchedTotal + slotsWithEgg;
+            }
+
+            this.offlineIncubationLastReport = stats.incubation;
+            this.updateItemsDisplay();
+            this.updateDisplay();
+            logMessage(`⚡ Rattrapage terminé : ${stats.simulated} combats simulés.`);
+            console.log(`✅ Fin Simu: ${stats.simulated} combats, ${stats.won} wins, Gain: ${stats.money}$`);
+
+            // Vérification batch des quêtes (skippées pendant la simulation pour la perf)
+            // isOfflineSimulating est déjà false → checkSpecialQuests passe normalement
+            const _offlineQuestBatch = [
+                'eggsOpened', 'creature_hatched', 'creature_obtained',
+                'incubator_hatched', 'incubator_hatched_rare_plus',
+                'bossDefeated', 'epicDefeated',
+                'level_up', 'totalShards',
+                'new_discovery', 'shiniesObtained', 'legendary_obtained', 'rareObtained',
+                'pokedollars_gained'
+            ];
+            _offlineQuestBatch.forEach(e => this.checkSpecialQuests(e));
+
+
+            if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
+                // Les compteurs sont déjà live: on fige l'état final et on déverrouille la fermeture.
+                this.updateOfflineReportUi(stats, currentCombat, maxPossibleCombats);
+                this.finalizeOfflineReportUi(stats);
+            }
+
+            const extraOffline = this.pendingOfflineTimeMs || 0;
+            if (extraOffline > 1000) {
+                this.pendingOfflineTimeMs = 0;
+                setTimeout(() => this.catchupMissedCombats(extraOffline), 0);
+            }
+        };
+
+        const chunkStep = () => {
+            if (isSkipped) {
+                // Terminer d'un coup (skip demandé explicitement)
+                while (currentCombat < maxPossibleCombats) {
+                    this.faintedThisCombat = new Set();
+                    this.currentPlayerCreature = this.getFirstAliveCreature();
+                    if (!this.currentPlayerCreature) { maxPossibleCombats = currentCombat; break; }
+                    this.activeCreatureIndex = this.playerTeam.indexOf(this.currentPlayerCreature);
+                    const r = this.simulateCombat();
+                    stats.simulated++;
+                    if (r) {
+                        stats.won++; stats.xp += r.xp || 0; stats.money += r.money || 0;
+                        if (r.items) for (const [k, v] of Object.entries(r.items)) stats.items[k] = (stats.items[k] || 0) + v;
+                        if (r.captured) { stats.captured++; if (stats.capturedPokemonList.length < 50) stats.capturedPokemonList.push(r.captured); }
+                    } else { stats.lost++; }
+                    const rt = Math.floor(this.combatCooldown / 1000); for (let j = 0; j < rt; j++) this.regenerateStamina();
+                    this.combatState = 'waiting';
+                    currentCombat++;
+                }
+                finalize();
+                return;
+            }
+
+            // Tranche normale : traiter des combats pendant CHUNK_BUDGET_MS ms
+            const sliceStart = performance.now();
+            while (currentCombat < maxPossibleCombats) {
                 this.faintedThisCombat = new Set();
                 this.currentPlayerCreature = this.getFirstAliveCreature();
-
-                // Si toute l'équipe fainte, on stoppe net la simulation
-                if (!this.currentPlayerCreature) {
-                    targetCombats = currentCombat + i;
-                    maxPossibleCombats = targetCombats;
-                    isSkipped = true;
-                    break;
-                }
-
+                if (!this.currentPlayerCreature) { maxPossibleCombats = currentCombat; break; }
                 this.activeCreatureIndex = this.playerTeam.indexOf(this.currentPlayerCreature);
 
-                // 2. Le Combat (Une seule fois !)
                 const result = this.simulateCombat();
                 stats.simulated++;
 
                 if (result) {
-                    // Victoire
                     stats.won++;
                     stats.xp += result.xp || 0;
                     stats.money += result.money || 0;
-                    if (result.items) {
-                        for (const [itemName, count] of Object.entries(result.items)) {
-                            stats.items[itemName] = (stats.items[itemName] || 0) + count;
-                        }
-                    }
+                    if (result.items) for (const [k, v] of Object.entries(result.items)) stats.items[k] = (stats.items[k] || 0) + v;
                     if (result.captured) {
                         stats.captured++;
-                        if (stats.capturedPokemonList.length < 50) {
-                            stats.capturedPokemonList.push(result.captured);
-                        }
+                        if (stats.capturedPokemonList.length < 50) stats.capturedPokemonList.push(result.captured);
                     }
                 } else {
-                    // Défaite
                     stats.lost++;
                 }
 
-                // 3. Regen Stamina (Post-Combat)
                 const regenTicks = Math.floor(this.combatCooldown / 1000);
-                for (let j = 0; j < regenTicks; j++) {
-                    this.regenerateStamina();
-                }
-
+                for (let j = 0; j < regenTicks; j++) this.regenerateStamina();
                 this.combatState = 'waiting';
+                currentCombat++;
+
+                // Vérifier le budget temps toutes les 50 itérations pour limiter l'overhead
+                if (currentCombat % 50 === 0 && performance.now() - sliceStart >= CHUNK_BUDGET_MS) break;
             }
 
-            currentCombat = targetCombats;
-
-            // G. INCUBATEURS PROGRESSIFS (même proportion que les combats pour fluidité)
-            const progress = maxPossibleCombats > 0 ? currentCombat / maxPossibleCombats : 1;
-            const incubationToApply = missedTime * progress - (stats.incubationElapsedApplied || 0);
-            if (incubationToApply > 0) {
-                this.simulateIncubatorsChunk(incubationToApply, stats);
-                stats.incubationElapsedApplied = (stats.incubationElapsedApplied || 0) + incubationToApply;
-            }
-
-            // H. RAFRAICHISSEMENT UI PENDANT
             if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
                 this.updateOfflineReportUi(stats, currentCombat, maxPossibleCombats);
             }
 
-            // I. CONDITION DE BOUCLE OU FIN
-            if (currentCombat < maxPossibleCombats && !isSkipped) {
-                window.requestAnimationFrame(step);
+            if (currentCombat < maxPossibleCombats) {
+                setTimeout(chunkStep, 0);
             } else {
-                // I. FINALE NETTOYAGE (partie immédiate : soins, logs)
-                window.logMessage = originalLogFunction; // Remet les logs
-
-                // Soins complets gratuits après l'absence (Qualité de vie)
-                for (const creature of this.playerTeam) {
-                    creature.heal();
-                    creature.currentStamina = creature.maxStamina;
-                    creature.clearStatusEffect();
-                }
-
-                this.combatState = 'waiting';
-                this.lastCombatTime = Date.now();
-
-                // Remettre les slots incubateurs en temps réel (startTime était en temps virtuel pendant la simu)
-                for (let idx = 0; idx < this.getMaxIncubatorSlots(); idx++) {
-                    const slot = this.incubators[idx];
-                    if (slot && slot.durationMs != null) {
-                        slot.startTime = Date.now();
-                    }
-                }
-
-                // Cohérence des stats incubation : "Placé auto" = éclosions + œufs encore en cours (évite placé > éclosions)
-                if (stats.incubation) {
-                    const slotsWithEgg = this.incubators.filter(s => s != null).length;
-                    stats.incubation.placedTotal = stats.incubation.hatchedTotal + slotsWithEgg;
-                }
-
-                this.offlineIncubationLastReport = stats.incubation;
-                this.updateItemsDisplay();
-                this.updateDisplay();
-                logMessage(`⚡ Rattrapage terminé : ${stats.simulated} combats simulés.`);
-                console.log(`✅ Fin Simu: ${stats.simulated} combats, ${stats.won} wins, Gain: ${stats.money}$`);
-
-                if (missedTime >= MIN_OFFLINE_FOR_MODAL_MS) {
-                    this.updateOfflineReportUi(stats, maxPossibleCombats, maxPossibleCombats);
-                    this.finalizeOfflineReportUi(stats);
-                }
+                setTimeout(finalize, 0);
             }
         };
 
-        window.requestAnimationFrame(step);
+        // Premier yield pour laisser le modal s'afficher avant de commencer
+        setTimeout(chunkStep, 0);
+
     }
 
     initOfflineReportUi(stats, maxPossibleCombats) {
@@ -1691,13 +1725,8 @@ class Game {
                 <h2>Rapport Hors-Ligne</h2>
             </div>
             
-            <div class="offline-progress-container">
-                <div id="offlineProgressBarNeutral" class="offline-progress-fill">
-                    <div class="offline-progress-stripes"></div>
-                </div>
-                <div id="offlineProgressTextNeutral" class="offline-progress-text">0%</div>
-            </div>
             
+
             <div class="modal-body" style="flex: 1; overflow-y: auto;">
                 <div class="offline-summary">
                     <div class="offline-time" id="offlineTimeDisplay">${timeStr}</div>
@@ -1750,10 +1779,11 @@ class Game {
             </div>
 
             <div class="modal-footer">
-                <button class="claim-btn skip-sim-btn" onclick="if(window.game && window.game.offlineSimSkip) window.game.offlineSimSkip()"><span style="font-size:16px;">⏩</span> Passer l'animation</button>
+                <button class="claim-btn" onclick="if(window.game && typeof window.game.offlineSimSkip === 'function') window.game.offlineSimSkip()">Passer le calcul</button>
             </div>
         </div>
         `;
+
 
         // Désactiver la fermeture pendant la simulation (clic extérieur interdit temporairement)
         if (modal._offlineBackdropClick) {
@@ -1768,23 +1798,21 @@ class Game {
         const elSim = document.getElementById('anim-simulated');
         const elMoney = document.getElementById('anim-money');
         const elXp = document.getElementById('anim-xp');
-        const bar = document.getElementById('offlineProgressBarNeutral');
-        const txt = document.getElementById('offlineProgressTextNeutral');
-
         if (elSim) elSim.innerHTML = formatNumber(stats.simulated);
         if (elMoney) elMoney.innerHTML = '+' + formatNumber(stats.money);
         if (elXp) elXp.innerHTML = '+' + formatNumber(stats.xp);
-
-        let percent = 0;
-        if (maxPossibleCombats > 0) percent = Math.floor((currentCombat / maxPossibleCombats) * 100);
-
-        if (bar) bar.style.width = percent + '%';
-        if (txt) txt.innerHTML = percent + '%';
     }
 
     finalizeOfflineReportUi(stats) {
         const modal = document.getElementById('offlineModal');
         if (!modal) return;
+
+        // Harmoniser l'affichage des combats une fois la simulation terminée :
+        // on remplace le maximum théorique par le nombre réel de combats simulés
+        const lblSimulated = document.getElementById('lbl-simulated');
+        if (lblSimulated) {
+            lblSimulated.textContent = `Combats / ${formatNumber(stats.simulated)}`;
+        }
 
         // On peut maintenant fermer la modal !
         if (!modal._offlineBackdropClick) {
@@ -1899,6 +1927,37 @@ class Game {
             });
             captureGrid.innerHTML = captureHtml;
         }
+    }
+
+    // Animation cosmétique des compteurs du modal après simulation synchrone
+    animateOfflineCounters(stats, maxPossibleCombats) {
+        const DURATION = 1500;
+        const start = performance.now();
+        const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+        const bar = document.getElementById('offlineProgressBarNeutral');
+        const txt = document.getElementById('offlineProgressTextNeutral');
+        const elSim = document.getElementById('anim-simulated');
+        const elMoney = document.getElementById('anim-money');
+        const elXp = document.getElementById('anim-xp');
+        const elCap = document.getElementById('anim-captured');
+        const lblSim = document.getElementById('lbl-simulated');
+        if (lblSim) lblSim.textContent = `Combats / ${formatNumber(stats.simulated)}`;
+
+        const tick = (now) => {
+            const t = Math.min(1, (now - start) / DURATION);
+            const e = easeOut(t);
+
+            if (bar) bar.style.width = (e * 100).toFixed(1) + '%';
+            if (txt) txt.textContent = Math.floor(e * 100) + '%';
+            if (elSim) elSim.textContent = formatNumber(Math.floor(e * stats.simulated));
+            if (elMoney) elMoney.textContent = '+' + formatNumber(Math.floor(e * stats.money));
+            if (elXp) elXp.textContent = '+' + formatNumber(Math.floor(e * stats.xp));
+            if (elCap) elCap.textContent = Math.floor(e * (stats.captured || 0));
+
+            if (t < 1) window.requestAnimationFrame(tick);
+        };
+        window.requestAnimationFrame(tick);
     }
 
     getSpawnDelay() {
@@ -2665,8 +2724,9 @@ class Game {
         }
         if (type === 'staking') tr.questProgress.stakingCompleted = (tr.questProgress.stakingCompleted || 0) + delta;
         if (type === 'quest') tr.questProgress.teamRocketQuestsCompleted = (tr.questProgress.teamRocketQuestsCompleted || 0) + delta;
+        if (type === 'spin') tr.questProgress.spins = (tr.questProgress.spins || 0) + delta;
 
-        const weight = (type === 'capture') ? 2 : (type === 'quest' ? 40 : 25);
+        const weight = (type === 'capture') ? 2 : (type === 'quest' ? 40 : (type === 'spin' ? 1 : 25));
         tr.trustXp += Math.max(1, Math.floor(delta * weight));
         this.syncRocketTrustLevelFromXp();
     }
@@ -3264,6 +3324,10 @@ class Game {
         if (!this.items) this.items = {};
         const aggregated = {};
 
+        const trustLevel = Math.max(1, Math.floor(Number(this.teamRocketState && this.teamRocketState.trustLevel) || 1));
+        const trustScaledCurrency = { pokedollars_scaled: true, pokedollars: true, marques_du_triomphe: true, essence_dust: true };
+        const trustScaledItems = { hyperball: true, greatball: true, time_dust_1h: true, prism_iv: true, time_dust_3h: true };
+
         rewards.forEach(entry => {
             if (!entry || !entry.rewardType) return;
             const rewardType = String(entry.rewardType);
@@ -3274,6 +3338,12 @@ class Game {
                 amount = this.computeRocketCasinoScaledPokedollars(sourceAmount || 1);
             }
             if (amount <= 0 && rewardType !== 'jackpot') return;
+            const isScaled = (rewardType === 'currency' && trustScaledCurrency[targetId])
+                || (rewardType === 'quest_token' && targetId === 'quest_token')
+                || (rewardType === 'item' && trustScaledItems[targetId]);
+            if (isScaled) {
+                amount = (rewardType === 'currency') ? (amount * trustLevel) : Math.floor(amount * trustLevel);
+            }
             const key = `${rewardType}:${targetId || 'none'}`;
             if (!aggregated[key]) {
                 aggregated[key] = { rewardType, targetId, amount: 0 };
@@ -3327,7 +3397,13 @@ class Game {
         const defaultLines = Math.max(1, Math.min(maxPaylines, Math.floor(Number(cfg.defaultActivePaylines) || maxPaylines)));
         const activeLines = Math.max(1, Math.min(maxPaylines, Math.floor(Number(linesPlayed) || defaultLines)));
         const lineCost = Math.max(1, Math.floor(Number(cfg.lineCostRJ) || 250));
-        const totalStake = lineCost * activeLines;
+        let totalStake = lineCost * activeLines;
+
+        if (this.upgrades && this.upgrades.casinoRoyal) {
+            const reduction = this.upgrades.casinoRoyal.level * 0.05;
+            totalStake = Math.floor(totalStake * (1 - reduction));
+        }
+
         if (this.teamRocketState.rj < totalStake) {
             logMessage(`❌ Pas assez de RJ (coût: ${formatNumber(totalStake)} RJ).`);
             return null;
@@ -3343,6 +3419,11 @@ class Game {
         this.teamRocketState.rj -= totalStake;
         this.teamRocketState.casino.stats.spins++;
         this.teamRocketState.casino.stats.rjSpent += totalStake;
+
+        this.addRocketTrustProgress('spin', 1);
+        this.stats.rocketCasinoSpins = (this.stats.rocketCasinoSpins || 0) + 1;
+        this.checkAchievements('rocketCasinoSpins');
+        if (typeof this.checkSpecialQuests === 'function') this.checkSpecialQuests('rocket_spins');
 
         const appliedRewards = this.applyRocketCasinoRewards(rewardsToApply);
         if (appliedRewards.jackpotCount > 0) {
@@ -4009,6 +4090,19 @@ class Game {
         const teamTalents = this.playerTeam.filter(c => c.passiveTalent).map(c => c.passiveTalent);
         this.playerTeam.forEach(c => c.gainExp(expGain, teamTalents));
 
+        // XP Pension (1%) — aligné sur finalizeCombat
+        const pensionExpGain = Math.floor(expGain * 0.01);
+        if (pensionExpGain > 0 && this.pension && this.pension.length > 0) {
+            let pensionLeveledUp = false;
+            this.pension.forEach(c => {
+                if (c.gainExp(pensionExpGain, teamTalents)) pensionLeveledUp = true;
+            });
+            if (pensionLeveledUp) {
+                this.updatePensionDisplay();
+                this.incrementPlayerStats();
+            }
+        }
+
         // --- 3. ARGENT (Boss x5, Épique x2, aligné sur finalizeCombat) ---
         let pokedollars = Math.floor((currentZone * 20) + (Math.random() * currentZone * 10));
         if (isBoss) pokedollars *= 5;
@@ -4017,7 +4111,11 @@ class Game {
         if (collecteurBonus > 0) pokedollars = Math.floor(pokedollars * (1 + collecteurBonus));
         const collGold = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).gold_mult || 0;
         const fortuneBonus = 1 + this.getAccountTalentBonus('pokedollars_mult') + collGold;
-        pokedollars = Math.floor(pokedollars * fortuneBonus);
+        let upgradeBonus = 0;
+        if (this.upgrades && this.upgrades.prizeMoney) {
+            upgradeBonus = this.upgrades.prizeMoney.level * 0.01;
+        }
+        pokedollars = Math.floor(pokedollars * (fortuneBonus + upgradeBonus));
         this.addCombatPokedollars(pokedollars, 'combat_simulated');
 
         // --- 4. TIERS (même logique que finalizeCombat : source de vérité = zoneProgress) ---
@@ -4044,16 +4142,66 @@ class Game {
         if (droppedItem) {
             dropsInThisCombat[droppedItem] = 1;
         }
+        if (isBoss) {
+            const tradeStoneDrop = this.tryDropTradeStone('Boss (Simulation)');
+            if (tradeStoneDrop) {
+                dropsInThisCombat[tradeStoneDrop] = (dropsInThisCombat[tradeStoneDrop] || 0) + 1;
+            }
+        }
 
-        // B. Gestion Oeufs
-        const baseEggChance = currentZone * 0.001 + 0.01;
-        if (Math.random() < (baseEggChance + this.getEggDropBonus())) {
-            const eggRarity = this.determineEggRarity();
-            this.addEgg(eggRarity);
+        // Tickets de combat (mêmes taux qu'en online)
+        if ((isBoss && Math.random() < 0.10) || (isEpic && Math.random() < 0.01)) {
+            this.combatTickets++;
+            logMessage("🎟️ Ticket de Combat trouvé !");
+        }
 
-            // On enregistre l'œuf comme un item pour le rapport
-            const eggName = `egg_${eggRarity}`;
-            dropsInThisCombat[eggName] = (dropsInThisCombat[eggName] || 0) + 1;
+        // Time Dust sur Boss (aligné sur finalizeCombat, mais compté dans le rapport)
+        if (isBoss) {
+            const timeDustDrop = this.tryDropTimeDust('Boss (Simulation)');
+            if (timeDustDrop) {
+                dropsInThisCombat[timeDustDrop] = (dropsInThisCombat[timeDustDrop] || 0) + 1;
+            }
+        }
+
+        // B. Gestion Oeufs — alignée sur finalizeCombat
+        if (isBoss) {
+            // Boss : œuf garanti (rare/épique/légendaire) + chance d'œuf bonus
+            let bossEggRarity = RARITY.RARE;
+            const r = Math.random();
+            if (r < 0.10) bossEggRarity = RARITY.LEGENDARY;
+            else if (r < 0.55) bossEggRarity = RARITY.EPIC;
+            this.addEgg(bossEggRarity);
+            const bossEggKey = `egg_${bossEggRarity}`;
+            dropsInThisCombat[bossEggKey] = (dropsInThisCombat[bossEggKey] || 0) + 1;
+
+            // Chance d'œuf bonus (même logique que finalizeCombat)
+            if (Math.random() < 0.5) {
+                const bonusEggRarity = this.determineEggRarity();
+                this.addEgg(bonusEggRarity);
+                const bonusKey = `egg_${bonusEggRarity}`;
+                dropsInThisCombat[bonusKey] = (dropsInThisCombat[bonusKey] || 0) + 1;
+            }
+        } else if (isEpic) {
+            // Épique : œuf Rare garanti + chance d'œuf Epic
+            const rareKey = `egg_${RARITY.RARE}`;
+            this.addEgg(RARITY.RARE);
+            dropsInThisCombat[rareKey] = (dropsInThisCombat[rareKey] || 0) + 1;
+
+            if (Math.random() < 0.3) {
+                const epicKey = `egg_${RARITY.EPIC}`;
+                this.addEgg(RARITY.EPIC);
+                dropsInThisCombat[epicKey] = (dropsInThisCombat[epicKey] || 0) + 1;
+            }
+        } else {
+            // Standard : même formule qu'en online
+            const baseEggChance = currentZone * 0.001 + 0.01;
+            if (Math.random() < (baseEggChance + this.getEggDropBonus())) {
+                const eggRarity = this.determineEggRarity();
+                this.addEgg(eggRarity);
+
+                const eggName = `egg_${eggRarity}`;
+                dropsInThisCombat[eggName] = (dropsInThisCombat[eggName] || 0) + 1;
+            }
         }
 
         // --- 6. AUTO-CATCH ---
@@ -4061,19 +4209,27 @@ class Game {
 
 
         if (this.hasAutoCatcher) {
-            const s = this.autoCatcherSettings;
-            let shouldCatch = false;
-
-            if (s.catchShiny && enemy.isShiny) shouldCatch = true;
-
-            if (!shouldCatch && s.catchNew) {
-                const alreadyCaught = Object.values(this.pokedex).some(e => e.name === enemy.name && e.count > 0);
-                if (!alreadyCaught) shouldCatch = true;
+            const targets = [];
+            if (Array.isArray(this.captureTargets)) targets.push(...this.captureTargets);
+            if (this.captureTarget && !targets.includes(this.captureTarget)) targets.push(this.captureTarget);
+            const s = this.autoCatcherSettings || {};
+            const autoTargetsEnabled = s.enabled !== false;
+            const autoShinyEnabled = s.catchShiny !== false;
+            const inTargetMode = this.captureMode === 2;
+            const targetMatches = targets.includes(enemy.name);
+            const shinyOrRoamer = !!enemy.isShiny || !!enemy.isRoaming;
+            const shouldCatchTarget = autoTargetsEnabled && inTargetMode && targetMatches;
+            const shouldCatchShiny = autoShinyEnabled && shinyOrRoamer;
+            if (!shouldCatchTarget && !shouldCatchShiny) {
+                return {
+                    xp: expGain,
+                    money: pokedollars,
+                    items: dropsInThisCombat,
+                    captured: null
+                };
             }
 
-            if (!shouldCatch && s.catchDupe && !enemy.isBoss) shouldCatch = true;
-
-            if (shouldCatch) {
+            if (shouldCatchTarget || shouldCatchShiny) {
                 const ballType = 'pokeball';
                 if ((this.items[ballType] || 0) > 0) {
                     const recycleLevel = (this.upgrades && this.upgrades.recycle) ? this.upgrades.recycle.level : 0;
@@ -4659,18 +4815,37 @@ class Game {
 
         if (this.hasAutoCatcher) {
             panel.style.display = 'block';
-            document.getElementById('ac-shiny').checked = this.autoCatcherSettings.catchShiny;
-            document.getElementById('ac-new').checked = this.autoCatcherSettings.catchNew;
-            document.getElementById('ac-dupe').checked = this.autoCatcherSettings.catchDupe;
+            const enabledBtn = document.getElementById('ac-enabled');
+            const shinyBtn = document.getElementById('ac-shiny');
+            const s = this.autoCatcherSettings || {};
+            const applyToggleVisual = (btn, on) => {
+                if (!btn) return;
+                const wasOn = btn.getAttribute('aria-pressed') === 'true';
+                btn.classList.toggle('is-on', !!on);
+                btn.classList.toggle('is-off', !on);
+                btn.textContent = on ? 'ON' : 'OFF';
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                // Petite pulse uniquement lors du passage OFF -> ON.
+                if (on && !wasOn) {
+                    btn.classList.remove('just-enabled');
+                    void btn.offsetWidth; // force reflow to restart animation
+                    btn.classList.add('just-enabled');
+                }
+            };
+            applyToggleVisual(enabledBtn, s.enabled !== false);
+            applyToggleVisual(shinyBtn, s.catchShiny !== false);
         } else {
             panel.style.display = 'none';
         }
     }
 
     toggleAutoCatch(setting) {
-        if (setting === 'shiny') this.autoCatcherSettings.catchShiny = !this.autoCatcherSettings.catchShiny;
-        if (setting === 'new') this.autoCatcherSettings.catchNew = !this.autoCatcherSettings.catchNew;
-        if (setting === 'dupe') this.autoCatcherSettings.catchDupe = !this.autoCatcherSettings.catchDupe;
+        if (!this.autoCatcherSettings || typeof this.autoCatcherSettings !== 'object') {
+            this.autoCatcherSettings = { enabled: true, catchShiny: true };
+        }
+        if (setting === 'enabled') this.autoCatcherSettings.enabled = !(this.autoCatcherSettings.enabled !== false);
+        if (setting === 'shiny') this.autoCatcherSettings.catchShiny = !(this.autoCatcherSettings.catchShiny !== false);
+        this.updateAutoCatcherUI();
         this.saveGame(); // Sauvegarde la préférence
     }
 
@@ -4737,6 +4912,12 @@ class Game {
                     const stats = this.towerState.runStats;
                     stats.items = stats.items || {};
                     stats.items[timeDustDrop] = (stats.items[timeDustDrop] || 0) + 1;
+                }
+                const tradeStoneDrop = this.tryDropTradeStone('Boss Tour');
+                if (tradeStoneDrop && this.towerState.runStats) {
+                    const stats = this.towerState.runStats;
+                    stats.items = stats.items || {};
+                    stats.items[tradeStoneDrop] = (stats.items[tradeStoneDrop] || 0) + 1;
                 }
 
                 let bossEggRarity = RARITY.RARE;
@@ -4818,7 +4999,11 @@ class Game {
 
         const collGold = (this.getCollectionBonuses ? this.getCollectionBonuses() : {}).gold_mult || 0;
         const fortuneBonus = 1 + this.getAccountTalentBonus('pokedollars_mult') + collGold;
-        pokedollarsEarned = Math.floor(pokedollarsEarned * fortuneBonus);
+        let upgradeBonus = 0;
+        if (this.upgrades && this.upgrades.prizeMoney) {
+            upgradeBonus = this.upgrades.prizeMoney.level * 0.01;
+        }
+        pokedollarsEarned = Math.floor(pokedollarsEarned * (fortuneBonus + upgradeBonus));
 
         const combatGold = this.addCombatPokedollars(pokedollarsEarned, 'combat');
         if (pokedollarsEarned > 0) {
@@ -4888,6 +5073,7 @@ class Game {
 
         this.rollItemDrop();
         if (isBoss) this.tryDropTimeDust('Boss');
+        if (isBoss) this.tryDropTradeStone('Boss');
 
         // Drop Œufs
         let eggChance = 0;
@@ -5200,6 +5386,22 @@ class Game {
         return null;
     }
 
+    // Drop dédié boss : Pierre d'échange
+    tryDropTradeStone(sourceLabel = 'Boss') {
+        const chance = 0.03;
+        if (Math.random() < chance) {
+            this.addItem('trade_stone', 1);
+            const item = (typeof ALL_ITEMS !== 'undefined') ? ALL_ITEMS.trade_stone : null;
+            const itemName = item && item.name ? item.name : "Pierre d'échange";
+            logMessage(`🔁 Drop spécial (${sourceLabel}) : ${itemName} !`);
+            if (typeof toast !== 'undefined' && toast.success) {
+                toast.success("Drop Boss", `${itemName} obtenu !`);
+            }
+            return 'trade_stone';
+        }
+        return null;
+    }
+
     // Dans la classe Game
     addItem(itemKey, quantity = 1, updateUI = true) {
         const item = ALL_ITEMS[itemKey];
@@ -5221,6 +5423,8 @@ class Game {
     // updateItemsDisplay -> logique déplacée vers uiManager.js (updateItemsDisplayUI)
     updateItemsDisplay() {
         if (typeof updateItemsDisplayUI === 'function') updateItemsDisplayUI(this);
+        // Maintient l'UI Auto-Catch visible/synchronisée dans l'onglet Sac à dos.
+        this.updateAutoCatcherUI();
     }
     updateStatBoostsDisplay() {
         const container = document.getElementById('activeStatBoosts');
@@ -5563,7 +5767,7 @@ class Game {
         this.arenaState.championTeam = this.createChampionTeam(arenaId);
         this.arenaState.currentChampionIndex = 0;
         this.arenaState.startTime = Date.now();
-        this.arenaState.maxDuration = 90000;
+        this.arenaState.maxDuration = null;
 
         // 5. Configuration Combat
         this.activeCreatureIndex = 0;
@@ -5586,12 +5790,7 @@ class Game {
     checkArenaTimeout() {
         if (!this.arenaState.active) return false;
 
-        const elapsed = Date.now() - this.arenaState.startTime;
-        if (elapsed >= this.arenaState.maxDuration) {
-            this.loseArena("Temps ecoule !");
-            return true;
-        }
-
+        // Temps limite des combats d'arène désactivé : plus de défaite automatique au bout de 90s.
         return false;
     }
 
@@ -6191,7 +6390,8 @@ class Game {
         if (!slot) return;
         const rarity = slot.rarity;
         this.incubators[slotIndex] = null;
-        this.updateIncubatorsDisplay();
+        // Ne pas re-rendre le DOM à chaque œuf en mode silent (simulation offline) — très coûteux
+        if (!options.silent) this.updateIncubatorsDisplay();
         return this.openEgg(rarity, true, {
             silent: !!options.silent,
             source: 'incubator',
@@ -6650,7 +6850,7 @@ class Game {
                 <strong>Type:</strong> ${arena.type}<br>
                 <strong>Niveau:</strong> ${arena.teamLevel}<br>
                 <strong>Équipe:</strong> 6 Pokémon<br>
-                <strong>Temps limite:</strong> 90 secondes
+                <strong>Temps limite:</strong> Aucun (durée illimitée)
             </div>
             <div class="arena-reward-box">
                 <div class="arena-reward-title">Récompense: ${talent.name}</div>
@@ -6820,8 +7020,10 @@ class Game {
             if (!offline && source === 'incubator') {
                 this.showAutoEggHatchMiniModal(creature, rarity);
             }
-            this.updateDisplay();
+            // Ne pas re-rendre toute l'UI pour chaque œuf en simulation offline — catastrophique en perf
+            if (!offline) this.updateDisplay();
         }
+
         return {
             ok: true,
             source,
@@ -6864,6 +7066,7 @@ class Game {
     }
 
     showEggHatchModal(creature, rarity) {
+        if (this.isOfflineSimulating) return;
         const modal = document.getElementById('eggHatchModal');
         const content = document.getElementById('eggHatchContent');
         if (!modal || !content) return;
@@ -6911,6 +7114,7 @@ class Game {
     }
 
     showAutoEggHatchMiniModal(creature, rarity) {
+        if (this.isOfflineSimulating) return;
         if (typeof renderEggHatchModalContent !== 'function') return;
         const payload = this.buildEggHatchDisplayPayload(creature, rarity);
         let container = document.getElementById('autoEggHatchMiniContainer');
@@ -7041,7 +7245,8 @@ class Game {
         }
 
         const moveNameFromKey = (k) => k.replace(/^ct_/, '').replace(/_/g, ' ');
-        let html = `<div class="creature-modal-info-box" style="padding:16px; max-height:400px; overflow-y:auto;"><h5 style="margin:0 0 12px 0;">📿 Choisir une CT à enseigner à ${creature.name}</h5>`;
+        let html = `<div class="creature-modal-info-box" style="padding:16px; max-height:400px; overflow-y:auto;"><h5 style="margin:0 0 12px 0; display:flex; align-items:center; gap:6px;"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tm-normal.png" alt="CT" style="width:18px; height:18px; image-rendering:pixelated;"> Choisir une CT à enseigner à ${creature.name}</h5>`;
+
         html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:12px;">Attaque actuelle : <strong>${creature.getMove ? creature.getMove() : 'Charge'}</strong></p>`;
 
         const moveKeyMap = {};
@@ -7208,6 +7413,13 @@ class Game {
         const moveTypeBg = moveTypeColors.bg;
         const moveTypeText = moveTypeColors.text;
 
+        // Bouton CT inline (présent seulement si le joueur a des CTs)
+        const ctCount = Object.keys(this.items || {}).filter(k => k.startsWith('ct_') && this.items[k] > 0).length;
+        const ctBtnHTML = ctCount > 0
+            ? `<button class="btn-ct-inline" title="Enseigner une CT (${ctCount} disponible${ctCount > 1 ? 's' : ''})" onclick="game.showTeachCTModal(${index}, '${location}')"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/tm-normal.png" alt="CT" class="btn-ct-sprite"></button>`
+            : '';
+
+
         const moveHTML = `
             <div class="creature-modal-info-box creature-modal-move-box" style="border-left-color: ${moveTypeBg};">
                 <h5 class="creature-modal-move-title" style="color: ${moveTypeBg};">Attaque</h5>
@@ -7215,6 +7427,7 @@ class Game {
                     <span class="move-pill" style="background: ${moveTypeBg}; color: ${moveTypeText};">${move.name}</span>
                     <span class="move-category ${moveCategoryClass}">${move.category}</span>
                     <span class="move-power">Pui. ${move.power}</span>
+                    ${ctBtnHTML}
                 </div>
             </div>
         `;
@@ -7254,6 +7467,95 @@ class Game {
         }
     }
 
+    resolveEvolutionConditionItem(condition) {
+        if (!condition) return null;
+        if (typeof EVOLUTION_CONDITION_ITEM_MAP !== 'undefined' && EVOLUTION_CONDITION_ITEM_MAP[condition]) {
+            return EVOLUTION_CONDITION_ITEM_MAP[condition];
+        }
+        return condition;
+    }
+
+    getCreatureByLocation(location, creatureIndex) {
+        if (location === 'team') return this.playerTeam[creatureIndex];
+        if (location === 'storage') return this.storage[creatureIndex];
+        if (location === 'pension') return this.pension[creatureIndex];
+        return null;
+    }
+
+    getAvailableEvolutionOptions(creature) {
+        const evolutionData = EVOLUTIONS[creature && creature.name];
+        if (!evolutionData) return [];
+
+        const hasItem = (itemKey) => !!(itemKey && this.items && this.items[itemKey] > 0);
+        const options = [];
+        const pushOptionIfValid = (raw) => {
+            if (!raw) return;
+            const requiredItem = this.resolveEvolutionConditionItem(raw.conditionItem || raw.condition || null);
+            const requiredLevel = Number(raw.level != null ? raw.level : evolutionData.level);
+            const evolvesTo = raw.evolves_to || evolutionData.evolves_to;
+            const newType = raw.new_type || evolutionData.new_type;
+            if (!evolvesTo) return;
+
+            const levelOk = Number.isFinite(requiredLevel) ? creature.level >= requiredLevel : true;
+            const itemOk = requiredItem ? hasItem(requiredItem) : true;
+            if (!levelOk || !itemOk) return;
+
+            options.push({
+                evolves_to: evolvesTo,
+                new_type: newType,
+                requiredItem,
+                requiredLevel: Number.isFinite(requiredLevel) ? requiredLevel : null
+            });
+        };
+
+        if (Array.isArray(evolutionData.options) && evolutionData.options.length > 0) {
+            evolutionData.options.forEach(pushOptionIfValid);
+            return options;
+        }
+
+        pushOptionIfValid({
+            conditionItem: evolutionData.condition,
+            level: evolutionData.level,
+            evolves_to: evolutionData.evolves_to,
+            new_type: evolutionData.new_type
+        });
+        return options;
+    }
+
+    showEvolutionChoiceModal(creatureIndex, location) {
+        const creature = this.getCreatureByLocation(location, creatureIndex);
+        if (!creature) return;
+        const options = this.getAvailableEvolutionOptions(creature);
+        if (options.length === 0) {
+            logMessage("⛔ Aucune évolution disponible pour le moment.");
+            return;
+        }
+        if (options.length === 1) {
+            this.evolveCreature(creatureIndex, location, options[0]);
+            return;
+        }
+        if (typeof showEvolutionChoiceModalUI === 'function') {
+            showEvolutionChoiceModalUI({
+                creatureName: creature.name,
+                creatureIndex,
+                location,
+                options
+            });
+        }
+    }
+
+    evolveCreatureWithOption(creatureIndex, location, optionIndex) {
+        const creature = this.getCreatureByLocation(location, creatureIndex);
+        if (!creature) return;
+        const options = this.getAvailableEvolutionOptions(creature);
+        const option = options[optionIndex];
+        if (!option) {
+            logMessage("⛔ Option d'évolution invalide.");
+            return;
+        }
+        this.evolveCreature(creatureIndex, location, option);
+    }
+
     // Helper pour ne pas surcharger la fonction principale
     generateCreatureActionsHTML(creature, index, location, maxLevel) {
         let actionsHTML = '';
@@ -7263,9 +7565,6 @@ class Game {
         const canUsePension = maxPensionSlots > 0;
 
         if (location === 'team') {
-            if (index !== this.activeCreatureIndex && creature.isAlive()) {
-                actionsHTML += `<button class="btn" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937; font-weight: 800; box-shadow: 0 4px 0 #d97706;" onclick="game.setActiveCreature(${index}); game.closeCreatureModal();">Activer</button>`;
-            }
             if (this.playerTeam.length > 1) {
                 actionsHTML += `<button class="btn" style="background: #6b7280; color: white; border: 2px solid #4b5563; box-shadow: 0 4px 0 #374151;" onclick="game.moveToStorage(${index}); game.closeCreatureModal();" ${isTowerActive ? 'disabled' : ''}>${isTowerActive ? 'VERROUILLÉ' : 'Stocker'}</button>`;
             }
@@ -7289,13 +7588,17 @@ class Game {
             actionsHTML += `<button class="btn" style="background: #6b7280; color: white; border: 2px solid #4b5563; box-shadow: 0 4px 0 #374151;" onclick="game.moveFromPension(${index}, false); game.closeCreatureModal();">Stockage</button>`;
         }
 
+
         // Évolution
-        const evolutionData = EVOLUTIONS[creature.name];
-        if (evolutionData && creature.level >= evolutionData.level && !evolutionData.condition) {
-            const existingDuplicate = this.findCreatureByName(evolutionData.evolves_to, creature.isShiny);
+        const evolutionOptions = this.getAvailableEvolutionOptions(creature);
+        if (evolutionOptions.length > 0) {
+            const existingDuplicate = (evolutionOptions.length === 1)
+                ? this.findCreatureByName(evolutionOptions[0].evolves_to, creature.isShiny)
+                : null;
             const label = existingDuplicate ? "🧬 FUSIONNER" : "✨ ÉVOLUER";
             const color = existingDuplicate ? "linear-gradient(135deg, #a855f7, #9333ea)" : "linear-gradient(135deg, #34d399, #059669)";
-            actionsHTML += `<button class="btn" style="background: ${color}; color: white; animation: pulse-reward 2s infinite;" onclick="game.evolveCreature(${index}, '${location}');">${label}</button>`;
+            const actionFn = evolutionOptions.length > 1 ? 'showEvolutionChoiceModal' : 'evolveCreature';
+            actionsHTML += `<button class="btn" style="background: ${color}; color: white; animation: pulse-reward 2s infinite;" onclick="game.${actionFn}(${index}, '${location}');">${label}</button>`;
         }
 
         // Prestige
@@ -7322,11 +7625,7 @@ class Game {
             }
         }
 
-        // Enseigner une CT
-        const ctCount = Object.keys(this.items || {}).filter(k => k.startsWith('ct_') && this.items[k] > 0).length;
-        if (ctCount > 0) {
-            actionsHTML += `<button class="btn" style="background: #06b6d4; color: white;" onclick="game.showTeachCTModal(${index}, '${location}');">📿 Enseigner CT (${ctCount})</button>`;
-        }
+        // Note : le bouton CT est affiché directement dans la zone move-details du modal
 
         return actionsHTML;
     }
@@ -7781,6 +8080,10 @@ class Game {
     }
 
     checkSpecialQuests(eventType, params = {}) {
+        // Court-circuit pendant la simulation offline : évite des milliers d'itérations
+        // sur les quêtes actives. Les stats sous-jacentes (this.stats, this.pokedex) sont
+        // correctement mises à jour — les quêtes se déclencheront à la prochaine action réelle.
+        if (this.isOfflineSimulating) return;
         if (typeof checkSpecialQuestsLogic === 'function') checkSpecialQuestsLogic(this, eventType, params);
     }
 
@@ -7844,7 +8147,7 @@ class Game {
 
 
     // LOGIQUE : Évolution Sécurisée (Préserve Shiny, IVs, Prestige)
-    evolveCreature(creatureIndex, location) {
+    evolveCreature(creatureIndex, location, selectedOption = null) {
         let creature;
         let containerArray;
 
@@ -7869,19 +8172,33 @@ class Game {
         const evolutionData = EVOLUTIONS[creature.name];
         if (!evolutionData) return; // Pas d'évolution
 
-        // On bloque si c'est une évolution par objet (géré par useItem)
-        if (evolutionData.condition) {
-            logMessage(`ℹ️ ${creature.name} a besoin d'un objet spécial pour évoluer.`);
+        const availableOptions = this.getAvailableEvolutionOptions(creature);
+        if (availableOptions.length === 0) {
+            logMessage(`⛔ ${creature.name} ne remplit pas les conditions d'évolution.`);
             return;
         }
 
-        if (creature.level < evolutionData.level) {
-            logMessage(`⛔ ${creature.name} doit être niveau ${evolutionData.level} pour évoluer.`);
-            return;
+        let chosenOption = null;
+        if (selectedOption && selectedOption.evolves_to) {
+            chosenOption = availableOptions.find((opt) => (
+                opt.evolves_to === selectedOption.evolves_to &&
+                (opt.requiredItem || null) === (selectedOption.requiredItem || null)
+            )) || null;
         }
+        if (!chosenOption) chosenOption = availableOptions[0];
 
         const oldName = creature.name;
-        const newName = evolutionData.evolves_to;
+        const newName = chosenOption.evolves_to;
+
+        // Consommer l'objet si nécessaire
+        if (chosenOption.requiredItem) {
+            const requiredItem = chosenOption.requiredItem;
+            this.items[requiredItem]--;
+            if (this.items[requiredItem] <= 0) {
+                delete this.items[requiredItem];
+            }
+            this.updateItemsDisplay();
+        }
 
         // 3. VÉRIFICATION DOUBLON (Fusion)
         // On regarde si on possède DÉJÀ la forme évoluée (avec le même statut Shiny)
@@ -8040,6 +8357,7 @@ class Game {
         // 2. Marquer comme complété
         this.achievementsCompleted[id] = true;
         this.achievementsCompleted[id + '_date'] = Date.now();
+        this.unlockHeaderSkinByAchievement(id);
 
         // 3. DISTRIBUTION DES RÉCOMPENSES
         if (def.rewards) {
@@ -8377,6 +8695,17 @@ class Game {
 
     updateRecyclerDisplay() {
         if (typeof updateRecyclerDisplayUI === 'function') updateRecyclerDisplayUI(this);
+    }
+
+    toggleRecyclerSort(mode) {
+        if (!mode) return;
+        if (this.recyclerSortMode === mode) {
+            this.recyclerSortDir = this.recyclerSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.recyclerSortMode = mode;
+            this.recyclerSortDir = 'desc';
+        }
+        this.updateRecyclerDisplay();
     }
 
     /**
@@ -8913,6 +9242,349 @@ class Game {
     loadGame() {
         return typeof loadGameLogic === 'function' ? loadGameLogic(this) : false;
     }
+
+    getDefaultHeaderSkinId() {
+        return (typeof HEADER_SKIN_DEFAULT_ID === 'string' && HEADER_SKIN_DEFAULT_ID)
+            ? HEADER_SKIN_DEFAULT_ID
+            : 'classic_lab';
+    }
+
+    colorToRgbTriplet(colorValue, fallback = '44, 62, 80') {
+        if (typeof colorValue !== 'string') return fallback;
+        const color = colorValue.trim();
+
+        const hexMatch = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+        if (hexMatch) {
+            let hex = hexMatch[1];
+            if (hex.length === 3) {
+                hex = hex.split('').map((c) => c + c).join('');
+            }
+            const intVal = parseInt(hex, 16);
+            const r = (intVal >> 16) & 255;
+            const g = (intVal >> 8) & 255;
+            const b = intVal & 255;
+            return `${r}, ${g}, ${b}`;
+        }
+
+        const rgbMatch = color.match(/^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/i);
+        if (rgbMatch) {
+            const clamp = (n) => Math.max(0, Math.min(255, Number(n) || 0));
+            return `${clamp(rgbMatch[1])}, ${clamp(rgbMatch[2])}, ${clamp(rgbMatch[3])}`;
+        }
+
+        return fallback;
+    }
+
+    sampleBottomImageRgbTriplet(imagePath, fallback = '44, 62, 80') {
+        if (typeof imagePath !== 'string' || !imagePath.trim()) {
+            return Promise.resolve(fallback);
+        }
+
+        // Note: avec un lancement direct en file://, la lecture pixels via canvas
+        // peut être bloquée (origine opaque). On retourne le fallback pour éviter
+        // un comportement instable.
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+            if (!this._headerSkinSamplingFileWarned) {
+                this._headerSkinSamplingFileWarned = true;
+                console.warn('[HeaderSkin] Pixel sampling disabled on file://. Use http://localhost to enable accurate sampling.');
+            }
+            return Promise.resolve(fallback);
+        }
+
+        const normalizedPath = imagePath.trim();
+        const cacheKey = `${normalizedPath}::v4`;
+        if (this.headerSkinFadeColorCache && this.headerSkinFadeColorCache[cacheKey]) {
+            return Promise.resolve(this.headerSkinFadeColorCache[cacheKey]);
+        }
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            try {
+                const parsedUrl = new URL(normalizedPath, window.location.href);
+                const isHttp = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+                const isCrossOrigin = parsedUrl.origin !== window.location.origin;
+                if (isHttp && isCrossOrigin) img.crossOrigin = 'anonymous';
+            } catch (e) {
+                // Ignore URL parsing failures and continue without crossOrigin.
+            }
+            img.onload = () => {
+                try {
+                    const srcW = img.naturalWidth || img.width || 0;
+                    const srcH = img.naturalHeight || img.height || 0;
+                    if (!srcW || !srcH) {
+                        resolve(fallback);
+                        return;
+                    }
+
+                    const collectPixels = (bandRatio, minBandPx, maxCanvasH) => {
+                        const bandHeight = Math.max(minBandPx, Math.floor(srcH * bandRatio));
+                        const canvasW = Math.min(256, srcW);
+                        const canvasH = Math.min(maxCanvasH, bandHeight);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = canvasW;
+                        canvas.height = canvasH;
+                        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                        if (!ctx) return [];
+
+                        ctx.drawImage(
+                            img,
+                            0,
+                            Math.max(0, srcH - bandHeight),
+                            srcW,
+                            bandHeight,
+                            0,
+                            0,
+                            canvasW,
+                            canvasH
+                        );
+
+                        const data = ctx.getImageData(0, 0, canvasW, canvasH).data;
+                        const extracted = [];
+                        for (let i = 0; i < data.length; i += 4) {
+                            const alpha = data[i + 3] / 255;
+                            if (alpha <= 0.05) continue;
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+
+                            const maxCh = Math.max(r, g, b);
+                            const minCh = Math.min(r, g, b);
+                            const saturation = maxCh === 0 ? 0 : (maxCh - minCh) / maxCh;
+                            const luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+
+                            // Ignore les highlights chauds/vifs qui biaisent le fondu.
+                            if (luminance > 170 && saturation > 0.22) continue;
+
+                            extracted.push({ r, g, b, luminance, saturation });
+                        }
+                        return extracted;
+                    };
+
+                    let pixels = collectPixels(0.04, 4, 64);
+                    if (pixels.length < 24) {
+                        pixels = collectPixels(0.18, 10, 96);
+                    }
+
+                    if (pixels.length === 0) {
+                        resolve(fallback);
+                        return;
+                    }
+
+                    const sortedLum = pixels.map((p) => p.luminance).sort((a, b) => a - b);
+                    const darkCut = sortedLum[Math.max(0, Math.floor(sortedLum.length * 0.36))];
+                    const midCut = sortedLum[Math.max(0, Math.floor(sortedLum.length * 0.50))];
+
+                    let corePixels = pixels.filter((p) => p.luminance <= darkCut && p.saturation <= 0.7);
+                    if (corePixels.length < Math.max(20, Math.floor(pixels.length * 0.10))) {
+                        corePixels = pixels.filter((p) => p.luminance <= midCut);
+                    }
+                    if (corePixels.length < Math.max(16, Math.floor(pixels.length * 0.08))) {
+                        corePixels = pixels;
+                    }
+
+                    let weightedR = 0;
+                    let weightedG = 0;
+                    let weightedB = 0;
+                    let totalWeight = 0;
+
+                    for (const p of corePixels) {
+                        const darkness = 1 - (p.luminance / 255);
+                        const satPenalty = 1 - (0.40 * p.saturation);
+                        const weight = Math.max(0.05, darkness * darkness * satPenalty);
+                        weightedR += p.r * weight;
+                        weightedG += p.g * weight;
+                        weightedB += p.b * weight;
+                        totalWeight += weight;
+                    }
+
+                    if (totalWeight <= 0) {
+                        resolve(fallback);
+                        return;
+                    }
+
+                    const r = Math.round(weightedR / totalWeight);
+                    const g = Math.round(weightedG / totalWeight);
+                    const b = Math.round(weightedB / totalWeight);
+                    const rgb = `${r}, ${g}, ${b}`;
+                    this.headerSkinFadeColorCache[cacheKey] = rgb;
+                    resolve(rgb);
+                } catch (error) {
+                    resolve(fallback);
+                }
+            };
+            img.onerror = () => resolve(fallback);
+            img.src = normalizedPath;
+        });
+    }
+
+    normalizeHeaderSkinState() {
+        const defaultId = this.getDefaultHeaderSkinId();
+        if (!Array.isArray(this.unlockedHeaderSkins)) this.unlockedHeaderSkins = [];
+        if (!this.unlockedHeaderSkins.includes(defaultId)) this.unlockedHeaderSkins.push(defaultId);
+
+        if (typeof HEADER_SKINS !== 'undefined' && HEADER_SKINS && typeof HEADER_SKINS === 'object') {
+            this.unlockedHeaderSkins = this.unlockedHeaderSkins
+                .filter((id, index, arr) => !!HEADER_SKINS[id] && arr.indexOf(id) === index);
+            if (!this.unlockedHeaderSkins.includes(defaultId)) this.unlockedHeaderSkins.push(defaultId);
+        }
+
+        if (typeof this.selectedHeaderSkin !== 'string' || !this.selectedHeaderSkin) {
+            this.selectedHeaderSkin = defaultId;
+        }
+    }
+
+    refreshUnlockedHeaderSkinsFromAchievements(options = {}) {
+        const silent = options.silent !== false;
+        if (typeof HEADER_SKINS === 'undefined' || !HEADER_SKINS) return false;
+        this.normalizeHeaderSkinState();
+        let unlockedAny = false;
+        const completed = this.achievementsCompleted || {};
+
+        Object.entries(HEADER_SKINS).forEach(([skinId, skinDef]) => {
+            if (!skinDef) return;
+            const unlockId = skinDef.unlockAchievementId;
+            const isUnlockedByDefault = !unlockId;
+            if (!isUnlockedByDefault && !completed[unlockId]) return;
+            if (this.unlockedHeaderSkins.includes(skinId)) return;
+            this.unlockedHeaderSkins.push(skinId);
+            unlockedAny = true;
+            if (!silent && !isUnlockedByDefault && typeof logMessage === 'function') {
+                logMessage(`🎨 Skin de header débloqué : ${skinDef.name}`);
+            }
+        });
+
+        return unlockedAny;
+    }
+
+    unlockHeaderSkinByAchievement(achievementId, options = {}) {
+        if (!achievementId || typeof HEADER_SKINS === 'undefined' || !HEADER_SKINS) return false;
+        this.normalizeHeaderSkinState();
+        const silent = !!options.silent;
+        let unlockedAny = false;
+
+        Object.entries(HEADER_SKINS).forEach(([skinId, skinDef]) => {
+            if (!skinDef || skinDef.unlockAchievementId !== achievementId) return;
+            if (this.unlockedHeaderSkins.includes(skinId)) return;
+            this.unlockedHeaderSkins.push(skinId);
+            unlockedAny = true;
+            if (!silent) {
+                if (typeof logMessage === 'function') logMessage(`🎨 Skin de header débloqué : ${skinDef.name}`);
+                if (typeof toast !== 'undefined' && toast.info) toast.info("Nouveau skin", `Header: ${skinDef.name}`);
+            }
+        });
+
+        if (unlockedAny) this.updateHeaderSkinOptionsUI();
+        return unlockedAny;
+    }
+
+    applyHeaderSkinVisual(skinId) {
+        const header = document.querySelector('.header');
+        const gameContainer = document.querySelector('.game-container');
+        if (!header || typeof HEADER_SKINS === 'undefined' || !HEADER_SKINS) return;
+        const defaultId = this.getDefaultHeaderSkinId();
+        const skin = HEADER_SKINS[skinId] || HEADER_SKINS[defaultId];
+        if (!skin) return;
+        const isThemeSelected = skin.id !== defaultId;
+
+        const colors = skin.colors || {};
+        const imagePath = (typeof skin.imagePath === 'string') ? skin.imagePath.trim() : '';
+        const fadeRgb = this.colorToRgbTriplet(colors.fadeFallback || colors.bg || colors.panelBg || '#2c3e50');
+
+        header.style.setProperty('--header-skin-bg', colors.bg || '#947864');
+        header.style.setProperty('--header-skin-border', colors.border || '#5d4a3e');
+        header.style.setProperty('--header-skin-panel-bg', colors.panelBg || '#bec3c6');
+        header.style.setProperty('--header-skin-panel-border', colors.panelBorder || '#3b3b3b');
+        header.style.setProperty('--header-skin-panel-bg-themed', colors.panelBgThemed || 'rgba(15, 23, 42, 0.56)');
+        header.style.setProperty('--header-skin-panel-border-themed', colors.panelBorderThemed || colors.panelBorder || '#3b3b3b');
+        header.style.setProperty('--header-skin-title-color', colors.titleColor || '#5d4a3e');
+        header.style.setProperty('--header-skin-overlay', colors.overlay || 'rgba(0,0,0,0)');
+        header.style.setProperty('--header-skin-glow', colors.glow || 'rgba(0,0,0,0.25)');
+        header.style.setProperty('--header-skin-image', imagePath ? `url("${imagePath}")` : 'none');
+        header.classList.toggle('header-theme-active', isThemeSelected);
+
+        if (gameContainer) {
+            gameContainer.style.setProperty('--header-skin-container-image', imagePath ? `url("${imagePath}")` : 'none');
+            gameContainer.style.setProperty('--header-skin-fade-rgb', fadeRgb);
+            gameContainer.classList.toggle('has-themed-header-bg', isThemeSelected);
+
+            if (isThemeSelected && imagePath) {
+                const expectedSkinId = skin.id;
+                this.sampleBottomImageRgbTriplet(imagePath, fadeRgb).then((sampledRgb) => {
+                    if (this.selectedHeaderSkin !== expectedSkinId) return;
+                    const currentContainer = document.querySelector('.game-container');
+                    if (!currentContainer || !currentContainer.classList.contains('has-themed-header-bg')) return;
+                    currentContainer.style.setProperty('--header-skin-fade-rgb', sampledRgb || fadeRgb);
+                });
+            }
+        }
+    }
+
+    updateHeaderSkinOptionsUI() {
+        const select = document.getElementById('optHeaderSkinSelect');
+        const desc = document.getElementById('optHeaderSkinDesc');
+        const unlockCounter = document.getElementById('optHeaderSkinUnlock');
+        if (!select || typeof HEADER_SKINS === 'undefined' || !HEADER_SKINS) return;
+
+        this.normalizeHeaderSkinState();
+        this.refreshUnlockedHeaderSkinsFromAchievements({ silent: true });
+
+        const defaultId = this.getDefaultHeaderSkinId();
+        if (!this.unlockedHeaderSkins.includes(this.selectedHeaderSkin)) {
+            this.selectedHeaderSkin = defaultId;
+        }
+
+        select.innerHTML = '';
+        Object.values(HEADER_SKINS).forEach((skin) => {
+            if (!skin || !skin.id) return;
+            const unlocked = this.unlockedHeaderSkins.includes(skin.id);
+            const option = document.createElement('option');
+            option.value = skin.id;
+            option.textContent = unlocked ? skin.name : `🔒 ${skin.name}`;
+            option.disabled = !unlocked;
+            if (skin.id === this.selectedHeaderSkin) option.selected = true;
+            select.appendChild(option);
+        });
+
+        if (unlockCounter) {
+            unlockCounter.textContent = `${this.unlockedHeaderSkins.length}/${Object.keys(HEADER_SKINS).length} débloqués`;
+        }
+
+        const activeSkinId = select.value || this.selectedHeaderSkin || defaultId;
+        const activeSkin = HEADER_SKINS[activeSkinId] || HEADER_SKINS[defaultId];
+        if (desc && activeSkin) {
+            let unlockLabel = 'Débloqué de base';
+            if (activeSkin.unlockAchievementId) {
+                const ach = (typeof ACHIEVEMENTS !== 'undefined') ? ACHIEVEMENTS[activeSkin.unlockAchievementId] : null;
+                unlockLabel = ach ? `Succès: ${ach.title}` : `Succès: ${activeSkin.unlockAchievementId}`;
+            }
+            desc.textContent = `${activeSkin.description} · ${unlockLabel}`;
+        }
+    }
+
+    selectHeaderSkin(skinId, options = {}) {
+        const save = options.save !== false;
+        const silent = !!options.silent;
+        if (typeof HEADER_SKINS === 'undefined' || !HEADER_SKINS) return;
+
+        this.normalizeHeaderSkinState();
+        this.refreshUnlockedHeaderSkinsFromAchievements({ silent: true });
+
+        const defaultId = this.getDefaultHeaderSkinId();
+        const targetId = (typeof skinId === 'string' && skinId) ? skinId : defaultId;
+        if (!this.unlockedHeaderSkins.includes(targetId)) {
+            this.selectedHeaderSkin = defaultId;
+            if (!silent && typeof toast !== 'undefined' && toast.warning) {
+                toast.warning("Skin verrouillé", "Terminez le succès associé pour l'équiper.");
+            }
+        } else {
+            this.selectedHeaderSkin = targetId;
+        }
+
+        this.applyHeaderSkinVisual(this.selectedHeaderSkin);
+        this.updateHeaderSkinOptionsUI();
+        if (save && typeof this.saveGame === 'function') this.saveGame();
+    }
+
     // UI : Menu des Données (Mise à jour avec Option Pause Rare)
     openSaveManager() {
         const modal = document.getElementById('saveManagerModal');
@@ -8970,6 +9642,8 @@ class Game {
             const v = this.offlineSimMaxCombatsPerSecond || ((GAME_SPEEDS && GAME_SPEEDS.OFFLINE_SIM_MAX_COMBATS_PER_SECOND) || 300);
             offlineSlider.value = v;
         }
+
+        this.updateHeaderSkinOptionsUI();
     }
 
     // SYSTEM : Fermer le modal
@@ -9118,6 +9792,10 @@ class Game {
                 <div class="stat-box">
                     <div class="stat-title">Total intérêts banque Team Rocket</div>
                     <div class="stat-number">${formatNumber(this.stats.totalRocketBankInterestGained || 0)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Spins (machine Team Rocket)</div>
+                    <div class="stat-number">${formatNumber(this.stats.rocketCasinoSpins || 0)}</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-title">Zone Actuelle</div>
@@ -9887,8 +10565,8 @@ class Game {
         // Mise à jour du statut
         const statusSpan = document.getElementById('tooltipCaptureStatus');
         if (statusSpan) {
-            statusSpan.textContent = (this.captureMode === 1 || this.captureMode === 2) ? 'ON' : 'OFF';
-            statusSpan.className = (this.captureMode === 1 || this.captureMode === 2) ? 'tooltip-status' : 'tooltip-status off';
+            statusSpan.textContent = (this.captureMode === 2) ? 'ON' : 'OFF';
+            statusSpan.className = (this.captureMode === 2) ? 'tooltip-status' : 'tooltip-status off';
         }
 
         // Positionnement dynamique

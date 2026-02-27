@@ -84,6 +84,8 @@ function saveGameLogic(game) {
         isPensionCollapsed: game.isPensionCollapsed,
         captureMode: game.captureMode,
         captureTargets: game.captureTargets,
+        selectedHeaderSkin: game.selectedHeaderSkin,
+        unlockedHeaderSkins: Array.isArray(game.unlockedHeaderSkins) ? [...game.unlockedHeaderSkins] : [],
         teamRocketState: game.teamRocketState ? JSON.parse(JSON.stringify(game.teamRocketState)) : null,
 
         // -- Objets & Buffs --
@@ -282,6 +284,7 @@ function loadGameLogic(game) {
         game.playerTeam = gameData.playerTeam.map(data => Creature.deserialize(data));
 
         game.captureMode = gameData.captureMode || 0;
+        if (game.captureMode === 1) game.captureMode = 2; // Migration ancien mode "ALL" -> "TARGET"
         game.captureTargets = gameData.captureTargets || null;
         game.updateCaptureButtonDisplay();
         game.updateCaptureTargetList();
@@ -310,7 +313,11 @@ function loadGameLogic(game) {
 
         game.hasAutoCatcher = gameData.hasAutoCatcher || false;
         if (gameData.autoCatcherSettings) {
-            game.autoCatcherSettings = gameData.autoCatcherSettings;
+            const loaded = gameData.autoCatcherSettings;
+            game.autoCatcherSettings = {
+                enabled: loaded.enabled !== undefined ? !!loaded.enabled : true,
+                catchShiny: loaded.catchShiny !== undefined ? !!loaded.catchShiny : true
+            };
         }
 
         game.availableExpeditions = gameData.availableExpeditions || [];
@@ -359,6 +366,10 @@ function loadGameLogic(game) {
         game.achievements = gameData.achievements || {};
         game.completedStoryQuests = gameData.completedStoryQuests || [];
         game.completedTeamRocketQuests = gameData.completedTeamRocketQuests || [];
+        game.unlockedHeaderSkins = Array.isArray(gameData.unlockedHeaderSkins) ? [...gameData.unlockedHeaderSkins] : [];
+        game.selectedHeaderSkin = (typeof gameData.selectedHeaderSkin === 'string' && gameData.selectedHeaderSkin)
+            ? gameData.selectedHeaderSkin
+            : (typeof game.getDefaultHeaderSkinId === 'function' ? game.getDefaultHeaderSkinId() : 'classic_lab');
 
         if (gameData.quests) {
             game.quests = gameData.quests.map(questData => {
@@ -413,6 +424,14 @@ function loadGameLogic(game) {
         }
 
         game.items = (gameData.items && typeof gameData.items === 'object') ? { ...gameData.items } : {};
+        // Migration rétro-compatibilité: réattribue le Scope Sylphe aux saves qui avaient déjà validé
+        // la quête de capture ciblée correspondante avant son retrait temporaire.
+        if (Array.isArray(game.completedStoryQuests) && game.completedStoryQuests.includes('story_rarity_hunt')) {
+            if ((game.items.scope || 0) <= 0) {
+                game.items.scope = 1;
+                logMessage("🔭 Scope Sylphe restauré (migration de quête).");
+            }
+        }
         game.activeVitamins = gameData.activeVitamins || {
             hp: 0, attack: 0, spattack: 0, defense: 0, spdefense: 0, speed: 0, all: 0
         };
@@ -440,7 +459,21 @@ function loadGameLogic(game) {
         if (gameData.stats) {
             game.stats = { ...game.stats, ...gameData.stats };
         }
+        // Migration: sync rocketCasinoSpins from Team Rocket state if not in save (achievements + stats modal)
+        if (typeof game.stats.rocketCasinoSpins !== 'number' && game.teamRocketState) {
+            const tr = game.teamRocketState;
+            const fromQuest = (tr.questProgress && typeof tr.questProgress.spins === 'number') ? tr.questProgress.spins : 0;
+            const fromCasino = (tr.casino && tr.casino.stats && typeof tr.casino.stats.spins === 'number') ? tr.casino.stats.spins : 0;
+            game.stats.rocketCasinoSpins = Math.max(0, fromQuest, fromCasino);
+        }
         game.achievementsCompleted = gameData.achievementsCompleted || {};
+
+        if (typeof game.refreshUnlockedHeaderSkinsFromAchievements === 'function') {
+            game.refreshUnlockedHeaderSkinsFromAchievements({ silent: true });
+        }
+        if (typeof game.selectHeaderSkin === 'function') {
+            game.selectHeaderSkin(game.selectedHeaderSkin, { save: false, silent: true });
+        }
 
         if (typeof narrativeManager !== 'undefined' && narrativeManager && typeof narrativeManager.loadSaveData === 'function') {
             if (gameData.narrative) {

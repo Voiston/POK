@@ -147,9 +147,15 @@ function changeZoneLogic(game, zoneId) {
     game.combatState = 'waiting';
     game.lastCombatTime = Date.now();
 
+    // Changement de zone : on réinitialise les cibles de capture ciblée.
+    game.captureTargets = [];
+    game.captureTarget = null;
+
     logMessage("Voyage vers : " + ZONES[currentZone].name);
 
     updateZoneSelectorLogic(game);
+    if (game.updateCaptureButtonDisplay) game.updateCaptureButtonDisplay();
+    if (game.updateCaptureBadge) game.updateCaptureBadge();
     if (game.updateCaptureTargetList) game.updateCaptureTargetList();
     if (typeof updateZoneInfo === 'function') updateZoneInfo();
 
@@ -185,6 +191,19 @@ function changeZoneLogic(game, zoneId) {
 // SPAWN D'ENNEMIS (création du prochain adversaire)
 // ============================================================
 
+function rollWildShiny(game) {
+    let shinyChance = 0.001; // Base 1/1000
+    if (game) {
+        const shinyBoost = game.getActiveBoostMultiplier ? game.getActiveBoostMultiplier('shiny') : 0;
+        let upgradeBonus = 0;
+        if (game.upgrades && game.upgrades.shinyHunt) {
+            upgradeBonus = game.upgrades.shinyHunt.level * 0.05;
+        }
+        shinyChance *= (1 + shinyBoost + upgradeBonus);
+    }
+    return Math.random() < shinyChance;
+}
+
 /**
  * Crée un Boss de zone (légendaire, IV max, zone x30).
  */
@@ -199,7 +218,7 @@ function createBossLogic(game) {
     const level = zone.levelRange[1] + 10;
     const type = game.findTypeForPokemon ? game.findTypeForPokemon(name) : 'normal';
     const secondaryType = POKEMON_SECONDARY_TYPES[name] || null;
-    const enemy = new Creature(name, type, level, RARITY.LEGENDARY, true, false, secondaryType, true, false);
+    const enemy = new Creature(name, type, level, RARITY.LEGENDARY, true, rollWildShiny(game), secondaryType, true, false);
     enemy.zoneMultiplier = zone.multiplier * 30;
     enemy.recalculateStats();
     enemy.heal();
@@ -221,7 +240,7 @@ function createEpicLogic(game) {
     const level = zone.levelRange[1] + 5;
     const type = game.findTypeForPokemon ? game.findTypeForPokemon(name) : 'normal';
     const secondaryType = POKEMON_SECONDARY_TYPES[name] || null;
-    const enemy = new Creature(name, type, level, RARITY.EPIC, true, false, secondaryType, false, true);
+    const enemy = new Creature(name, type, level, RARITY.EPIC, true, rollWildShiny(game), secondaryType, false, true);
     enemy.zoneMultiplier = zone.multiplier * 15;
     enemy.recalculateStats();
     enemy.heal();
@@ -243,12 +262,12 @@ function getOrCreateEnemyLogic(game) {
         var secondaryType = POKEMON_SECONDARY_TYPES[name] || null;
         var zone = ZONES[currentZone];
         var level = zone ? zone.levelRange[1] + 5 : 50;
-        var roamer = new Creature(name, type, level, RARITY.LEGENDARY, true, false, secondaryType, true, false);
+        var roamer = new Creature(name, type, level, RARITY.LEGENDARY, true, rollWildShiny(game), secondaryType, true, false);
         roamer.isRoaming = true;
         roamer.zoneMultiplier = zone ? zone.multiplier * 30 : 10;
         roamer.recalculateStats();
         roamer.heal();
-        logMessage("✨ UN POKÉMON VAGABOND APPARAÎT : " + name + " !");
+        logMessage("UN POKÉMON VAGABOND APPARAÎT : " + name + " !");
         return roamer;
     }
     var zone = ZONES[currentZone];
@@ -276,7 +295,7 @@ function getOrCreateEnemyLogic(game) {
     var secondaryType = POKEMON_SECONDARY_TYPES[randomName] || null;
     var level = Math.floor(Math.random() * (zone.levelRange[1] - zone.levelRange[0] + 1)) + zone.levelRange[0];
     var trueRarity = game.getNaturalRarity ? game.getNaturalRarity(randomName) : RARITY.COMMON;
-    var enemy = new Creature(randomName, randomType, level, trueRarity, true, false, secondaryType);
+    var enemy = new Creature(randomName, randomType, level, trueRarity, true, rollWildShiny(game), secondaryType);
     var savedTier = (game.zoneProgress && game.zoneProgress[currentZone] && game.zoneProgress[currentZone].pokemonTiers && game.zoneProgress[currentZone].pokemonTiers[enemy.name]) || 0;
     enemy.tier = savedTier;
     enemy.zoneMultiplier = zone.multiplier * 5;

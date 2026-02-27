@@ -385,42 +385,29 @@
                 <div id="autoCatcherPanel" class="porygon-panel" style="display:none;">
                     <div class="porygon-header">
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:20px;">🤖</span>
+                            <span style="font-size:20px;"></span>
                             <div>
                                 <div style="font-weight:800; letter-spacing:0.5px;">MODULE PORYGON-Z</div>
                                 <div style="font-size:10px; color:#c7d2fe;">Système de capture automatisé v3.0</div>
                             </div>
                         </div>
-                        <div class="porygon-status">ACTIF</div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                        <div class="switch-container">
-                            <span style="font-size:11px; font-weight:600;">✨ Shinies</span>
-                            <label class="switch">
-                                <input type="checkbox" id="ac-shiny" onchange="game.toggleAutoCatch('shiny')">
-                                <span class="slider"></span>
-                            </label>
+                    <div class="auto-catch-toggles">
+                        <div class="auto-catch-toggle-row">
+                            <span style="font-size:11px; font-weight:600;">🎯 Actif (cibles)</span>
+                            <button type="button" id="ac-enabled" class="auto-catch-toggle-btn"
+                                onclick="game.toggleAutoCatch('enabled')">OFF</button>
                         </div>
 
-                        <div class="switch-container">
-                            <span style="font-size:11px; font-weight:600;">📖 Nouveaux</span>
-                            <label class="switch">
-                                <input type="checkbox" id="ac-new" onchange="game.toggleAutoCatch('new')">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-
-                        <div class="switch-container">
-                            <span style="font-size:11px; font-weight:600;">♻️ Farm (Tout)</span>
-                            <label class="switch">
-                                <input type="checkbox" id="ac-dupe" onchange="game.toggleAutoCatch('dupe')">
-                                <span class="slider"></span>
-                            </label>
+                        <div class="auto-catch-toggle-row">
+                            <span style="font-size:11px; font-weight:600;">✨ Shiny / Roamer</span>
+                            <button type="button" id="ac-shiny" class="auto-catch-toggle-btn"
+                                onclick="game.toggleAutoCatch('shiny')">OFF</button>
                         </div>
                     </div>
                 </div>
-                <h3>🐣 Incubateurs</h3>
+                <h3>Incubateurs</h3>
                 <p style="font-size:12px; color:#64748b; margin:0 0 10px 0;">Placez un œuf dans un incubateur pour
                     l'incuber. Une fois le temps écoulé, cliquez pour ouvrir.</p>
                 <div class="incubators-container" id="incubatorsContainer"></div>
@@ -480,8 +467,21 @@
                 </div>
                 <div class="sub-tab-content" id="shop-recycleur">
                     <div class="recycler-header">
-                        Total : <img src="img/essence-dust.png" class="essence-dust-inline" alt=""> <span
-                            class="essence-count" id="essenceDustCount">0</span> Poussière d'Essence
+                        Total : <img src="img/essence-dust.png" class="essence-dust-inline" alt="">
+                        <span class="essence-count" id="essenceDustCount">0</span> Poussière d'Essence
+                    </div>
+
+                    <div class="recycler-controls"
+                        style="display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 12px 0; align-items:center;">
+                        <input type="text" id="recyclerSearchInput" placeholder="Rechercher un Pokémon..."
+                            oninput="if(window.game){ game.updateRecyclerDisplay(); }"
+                            style="flex:1 1 140px; min-width:0; padding:4px 8px; font-size:12px; border-radius:4px; border:1px solid #444; background:#111; color:#eee;" />
+                        <div class="recycler-sort-buttons" style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="sort-btn" id="recyclerSort-rarity"
+                                onclick="if(window.game){ game.toggleRecyclerSort('rarity'); }">Rareté</button>
+                            <button class="sort-btn" id="recyclerSort-count"
+                                onclick="if(window.game){ game.toggleRecyclerSort('count'); }">Shards</button>
+                        </div>
                     </div>
 
                     <div class="recycler-container">
@@ -993,6 +993,15 @@
                     <input id="optOfflineSimSlider" type="range" min="1" max="1000" step="1" value="300"
                         oninput="if(game){ game.updateOfflineSimSliderLabel(this.value); }"
                         onchange="if(game){ game.updateOfflineSimFromSlider(this.value); }" style="width:100%;">
+                </div>
+                <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.35);">
+                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 13px; font-weight:bold;">🎨 Skin Header</span>
+                        <span id="optHeaderSkinUnlock" style="font-size: 11px; color:#94a3b8;">1/1 débloqués</span>
+                    </div>
+                    <select id="optHeaderSkinSelect" onchange="if(game){ game.selectHeaderSkin(this.value); }"
+                        style="width:100%; padding:8px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; font-size:12px;"></select>
+                    <div id="optHeaderSkinDesc" style="margin-top:6px; font-size:11px; color:#94a3b8;">Skin de base</div>
                 </div>
             </div>
             <div class="menu-danger-zone">
