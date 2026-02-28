@@ -4965,6 +4965,26 @@ const HEADER_SKINS = {
     }
 };
 
+// Slots de test supplémentaires (sans condition) : skin_21 à skin_50
+for (let skinIndex = 21; skinIndex <= 50; skinIndex++) {
+    HEADER_SKINS[`skin_${skinIndex}`] = {
+        id: `skin_${skinIndex}`,
+        name: `Skin ${skinIndex}`,
+        description: 'Skin de test libre (sans condition).',
+        unlockAchievementId: null,
+        imagePath: `img/header-skins/skin-${skinIndex}.png`,
+        colors: {
+            bg: '#243447',
+            border: '#16202a',
+            panelBg: '#c3d4e6',
+            panelBorder: '#3f5f7c',
+            titleColor: '#e6f0ff',
+            overlay: 'rgba(22,32,42,0.20)',
+            glow: 'rgba(59,130,246,0.24)'
+        }
+    };
+}
+
 
 const QUEST_TEMPLATES = {
     [QUEST_TYPES.COMBAT]: [

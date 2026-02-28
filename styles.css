@@ -5148,6 +5148,18 @@ h3 {
     -webkit-backdrop-filter: blur(2px);
 }
 
+.game-container.has-themed-header-bg #activeTalentsDisplay {
+    background: rgba(190, 195, 198, 0.25) !important;
+    border-color: rgba(59, 59, 59, 0.50) !important;
+    box-shadow: 0 4px 0 rgba(59, 59, 59, 0.50);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.game-container.has-themed-header-bg .talents-header-title {
+    color: rgba(226, 232, 240, 0.92) !important;
+}
+
 /* Barre des Onglets (Fixe en haut) */
 .tabs-container {
     display: flex;
